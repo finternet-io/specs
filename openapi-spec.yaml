@@ -1,0 +1,846 @@
+openapi: "3.0.3"
+info:
+  title: "Backend Routes - Finternet"
+  description: |+
+    This is the OpenAPI Specification for the backend routes for the Finternet. The Finternet is a decentralized finance platform that allows users to create and manage assets.
+  version: "0.0.1"
+tags:
+  - name: users
+    description: "Routes for linking with the token manager"
+  - name: token manager admin
+    description: "Routes for the token manager admin"
+  - name: asset management
+    description: "Routes for managing assets"
+paths:
+  # ------------------------------------------------------------------------------
+  # Users
+  /v1/users:
+    post:
+      tags:
+        - users
+      summary: Create a user
+      description: ""
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/User"
+      responses:
+        "200":
+          description: "User created successfully"
+  /v1/users/{user_id}:
+    get:
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: "The user id"
+          schema:
+            type: string
+      tags:
+        - users
+      summary: Get a user
+      description: ""
+      responses:
+        "200":
+          description: "User found successfully"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    put:
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: "The user id"
+          schema:
+            type: string
+      tags:
+        - users
+      summary: Update a user
+      description: ""
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/User"
+      responses:
+        "200":
+          description: "User updated successfully"
+    delete:
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: "The user id"
+          schema:
+            type: string
+      tags:
+        - users
+      summary: Delete a user
+      description: ""
+      responses:
+        "200":
+          description: "User deleted successfully"
+  /v1/users/{user_id}/contacts:
+    post:
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: "The user id"
+          schema:
+            type: string
+      tags:
+        - users
+      summary: Create a contact
+      description: ""
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Contact"
+      responses:
+        "200":
+          description: "Contact created successfully"
+    get:
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: "The user id"
+          schema:
+            type: string
+      tags:
+        - users
+      summary: Get all contacts as a list
+      description: ""
+      responses:
+        "200":
+          description: "Contacts found successfully"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Contact"
+  /v1/users/{user_id}/contacts/{contact_id}:
+    get:
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: "The user id"
+          schema:
+            type: string
+        - name: contact_id
+          in: path
+          required: true
+          description: "The contact id"
+          schema:
+            type: string
+      tags:
+        - users
+      summary: Get a contact
+      description: ""
+      responses:
+        "200":
+          description: "Contact found successfully"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contact"
+    put:
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: "The user id"
+          schema:
+            type: string
+        - name: contact_id
+          in: path
+          required: true
+          description: "The contact id"
+          schema:
+            type: string
+      tags:
+        - users
+      summary: Update a contact
+      description: ""
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Contact"
+      responses:
+        "200":
+          description: "Contact updated successfully"
+    delete:
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: "The user id"
+          schema:
+            type: string
+        - name: contact_id
+          in: path
+          required: true
+          description: "The contact id"
+          schema:
+            type: string
+      tags:
+        - users
+      summary: Delete a contact
+      description: ""
+      responses:
+        "200":
+          description: "Contact deleted successfully"
+  /v1/users/{user_id}/accounts:
+    post:
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: "The user id"
+          schema:
+            type: string
+      tags:
+        - users
+      summary: Create an account
+      description: ""
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Account"
+      responses:
+        "200":
+          description: "Account created successfully"
+    get:
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: "The user id"
+          schema:
+            type: string
+      tags:
+        - users
+      summary: Get all accounts as a list
+      description: ""
+      responses:
+        "200":
+          description: "Accounts found successfully"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Account"
+  /v1/users/{user_id}/accounts/{account_id}:
+    get:
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: "The user id"
+          schema:
+            type: string
+        - name: account_id
+          in: path
+          required: true
+          description: "The account id"
+          schema:
+            type: string
+      tags:
+        - users
+      summary: Get an account
+      description: ""
+      responses:
+        "200":
+          description: "Account found successfully"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+    put:
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: "The user id"
+          schema:
+            type: string
+        - name: account_id
+          in: path
+          required: true
+          description: "The account id"
+          schema:
+            type: string
+      tags:
+        - users
+      summary: Update an account
+      description: ""
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Account"
+      responses:
+        "200":
+          description: "Account updated successfully"
+    delete:
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: "The user id"
+          schema:
+            type: string
+        - name: account_id
+          in: path
+          required: true
+          description: "The account id"
+          schema:
+            type: string
+      tags:
+        - users
+      summary: Delete an account
+      description: ""
+      responses:
+        "200":
+          description: "Account deleted successfully"
+  # ------------------------------------------------------------------------------
+  # Token Manager
+  /v1/token_managers:
+    post:
+      tags:
+        - token manager admin
+      summary: Create a token manager
+      description: ""
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TokenManager"
+      responses:
+        "200":
+          description: "Token manager created successfully"
+    get:
+      tags:
+        - token manager admin
+      summary: Get all token managers as a list
+      description: ""
+      responses:
+        "200":
+          description: "Token managers found successfully"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TokenManager"
+  /v1/token_managers/{token_manager_id}:
+    get:
+      parameters:
+        - name: token_manager_id
+          in: path
+          required: true
+          description: "The token manager id"
+          schema:
+            type: string
+      tags:
+        - token manager admin
+      summary: Get a token manager
+      description: ""
+      responses:
+        "200":
+          description: "Token manager found successfully"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenManager"
+    put:
+      parameters:
+        - name: token_manager_id
+          in: path
+          required: true
+          description: "The token manager id"
+          schema:
+            type: string
+      tags:
+        - token manager admin
+      summary: Update a token manager
+      description: ""
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TokenManager"
+      responses:
+        "200":
+          description: "Token manager updated successfully"
+    delete:
+      parameters:
+        - name: token_manager_id
+          in: path
+          required: true
+          description: "The token manager id"
+          schema:
+            type: string
+      tags:
+        - token manager admin
+      summary: Delete a token manager
+      description: ""
+      responses:
+        "200":
+          description: "Token manager deleted successfully"
+  /v1/token_managers/{token_manager_id}/supported_assets:
+    post:
+      parameters:
+        - name: token_manager_id
+          in: path
+          required: true
+          description: "The token manager id"
+          schema:
+            type: string
+      tags:
+        - token manager admin
+      summary: Create an asset type
+      description: ""
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportedAsset"
+      responses:
+        "200":
+          description: "Asset type created successfully"
+    get:
+      parameters:
+        - name: token_manager_id
+          in: path
+          required: true
+          description: "The token manager id"
+          schema:
+            type: string
+      tags:
+        - token manager admin
+      summary: Get all asset types as a list
+      description: ""
+      responses:
+        "200":
+          description: "Asset types found successfully"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SupportedAsset"
+  /v1/token_managers/{token_manager_id}/supported_assets/{supported_asset_id}:
+    get:
+      parameters:
+        - name: token_manager_id
+          in: path
+          required: true
+          description: "The token manager id"
+          schema:
+            type: string
+        - name: supported_asset_id
+          in: path
+          required: true
+          description: "The supported asset id"
+          schema:
+            type: string
+      tags:
+        - token manager admin
+      summary: Get an asset type
+      description: ""
+      responses:
+        "200":
+          description: "Asset type found successfully"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportedAsset"
+    put:
+      parameters:
+        - name: token_manager_id
+          in: path
+          required: true
+          description: "The token manager id"
+          schema:
+            type: string
+        - name: supported_asset_id
+          in: path
+          required: true
+          description: "The supported asset id"
+          schema:
+            type: string
+      tags:
+        - token manager admin
+      summary: Update an asset type
+      description: ""
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupportedAsset"
+      responses:
+        "200":
+          description: "Asset type updated successfully"
+    delete:
+      parameters:
+        - name: token_manager_id
+          in: path
+          required: true
+          description: "The token manager id"
+          schema:
+            type: string
+        - name: supported_asset_id
+          in: path
+          required: true
+          description: "The supported asset id"
+          schema:
+            type: string
+      tags:
+        - token manager admin
+      summary: Delete an asset type
+      description: ""
+      responses:
+        "200":
+          description: "Asset type deleted successfully"
+  # ------------------------------------------------------------------------------
+  # Asset Management
+  /v1/users/{user_id}/accounts/{account_id}/assets:
+    post:
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: "The user id"
+          schema:
+            type: string
+        - name: account_id
+          in: path
+          required: true
+          description: "The account id"
+          schema:
+            type: string
+      tags:
+        - asset management
+      summary: Create a asset
+      description: ""
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Asset"
+      responses:
+        "200":
+          description: "Asset created successfully"
+  /v1/users/{user_id}/accounts/{account_id}/assets/{asset_id}:
+    get:
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: "The user id"
+          schema:
+            type: string
+        - name: account_id
+          in: path
+          required: true
+          description: "The account id"
+          schema:
+            type: string
+        - name: asset_id
+          in: path
+          required: true
+          description: "The asset id"
+          schema:
+            type: string
+      tags:
+        - asset management
+      summary: Get an asset
+      description: ""
+      responses:
+        "200":
+          description: "Asset found successfully"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Asset"
+    put:
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: "The user id"
+          schema:
+            type: string
+        - name: account_id
+          in: path
+          required: true
+          description: "The account id"
+          schema:
+            type: string
+        - name: asset_id
+          in: path
+          required: true
+          description: "The asset id"
+          schema:
+            type: string
+      tags:
+        - asset management
+      summary: Update an asset
+      description: ""
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Asset"
+      responses:
+        "200":
+          description: "Asset updated successfully"
+    delete:
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: "The user id"
+          schema:
+            type: string
+        - name: account_id
+          in: path
+          required: true
+          description: "The account id"
+          schema:
+            type: string
+        - name: asset_id
+          in: path
+          required: true
+          description: "The asset id"
+          schema:
+            type: string
+      tags:
+        - asset management
+      summary: Delete an asset
+      description: ""
+      responses:
+        "200":
+          description: "Asset deleted successfully"
+  /v1/users/{user_id}/accounts/{account_id}/assets/{asset_id}/asset:transfer:
+    post:
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: "The user id"
+          schema:
+            type: string
+        - name: account_id
+          in: path
+          required: true
+          description: "The account id"
+          schema:
+            type: string
+        - name: asset_id
+          in: path
+          required: true
+          description: "The asset id"
+          schema:
+            type: string
+      tags:
+        - asset management
+      summary: transfer an asset
+      description: ""
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                asset:
+                  $ref: "#/components/schemas/Asset"
+      responses:
+        "200":
+          description: "Asset transferred successfully"
+  /v1/users/{user_id}/accounts/{account_id}/assets/{asset_id}/asset:nominate:
+    post:
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: "The user id"
+          schema:
+            type: string
+        - name: account_id
+          in: path
+          required: true
+          description: "The account id"
+          schema:
+            type: string
+        - name: asset_id
+          in: path
+          required: true
+          description: "The asset id"
+          schema:
+            type: string
+      tags:
+        - asset management
+      summary: nominate an asset
+      description: ""
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                asset:
+                  $ref: "#/components/schemas/Asset"
+      responses:
+        "200":
+          description: "Asset nominated successfully"
+  /v1/users/{user_id}/accounts/{account_id}/assets/{asset_id}/asset:lease:
+    post:
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: "The user id"
+          schema:
+            type: string
+        - name: account_id
+          in: path
+          required: true
+          description: "The account id"
+          schema:
+            type: string
+        - name: asset_id
+          in: path
+          required: true
+          description: "The asset id"
+          schema:
+            type: string
+      tags:
+        - asset management
+      summary: lease an asset
+      description: ""
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                asset:
+                  $ref: "#/components/schemas/Asset"
+      responses:
+        "200":
+          description: "Asset leased successfully"
+  /v1/users/{user_id}/accounts/{account_id}/assets/{asset_id}/asset:pledge:
+    post:
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: "The user id"
+          schema:
+            type: string
+        - name: account_id
+          in: path
+          required: true
+          description: "The account id"
+          schema:
+            type: string
+        - name: asset_id
+          in: path
+          required: true
+          description: "The asset id"
+          schema:
+            type: string
+      tags:
+        - asset management
+      summary: pledge an asset
+      description: ""
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                asset:
+                  $ref: "#/components/schemas/Asset"
+      responses:
+        "200":
+          description: "Asset leased successfully"
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: "string"
+          description: "A Unique Account Address to be assigned to the user"
+        pub_key:
+          type: byte
+          description: "The public key the is securely generated on the user side"
+        name:
+          type: "string"
+          description: "The name of the user"
+        email:
+          type: "string"
+          description: "The email of the user"
+    TokenManager:
+      type: object
+      properties:
+        id:
+          type: "string"
+          description: "A Unique Account Address to be assigned to the token manager"
+        name:
+          type: "string"
+          description: "The name of the token manager"
+        email:
+          type: "string"
+          description: "The email of the token manager"
+    Contact:
+      type: object
+    Account:
+      type: object
+    Workflow:
+      type: object
+    Asset:
+      type: object
+      properties:
+        id:
+          type: string
+          description: "A Unique Account Address to be assigned to the asset"
+        allowed_verbs:
+          type: string
+          description: "The allowed verbs for the asset"
+        issuer_id:
+          type: string
+          description: "The issuer of the asset"
+        asset_type:
+          $ref: "#/components/schemas/AssetType"
+        holder_id:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
+    SupportedAsset:
+      type: object
+      properties:
+        id:
+          type: "string"
+        asset_type:
+          $ref: "#/components/schemas/AssetType"
+    AssetType:
+      type: string
+      enum:
+        - property
+        - currency
