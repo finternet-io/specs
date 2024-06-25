@@ -1,0 +1,308 @@
+openapi: "3.0.1"
+info:
+  version: "0.0.1"
+  title: "Finternet Asset Tokenization API Suite"
+  description: "A comprehensive suite of APIs for interacting with the CORD, designed to handle asset-related requests."
+  termsOfService: "http://studio.dhiway.com/page/terms-and-conditions"
+  contact:
+    name: "Dhiway Networks"
+    email: "info@dhiway.com"
+    url: "https://dhiway.com"
+  license:
+    name: "Apache v2.0"
+    url: "https://www.apache.org/licenses/LICENSE-2.0"
+servers:
+- url: "http://localhost:4000/"
+  description: "Local Development Server"
+paths:
+  /v1/identity:
+    post:
+      tags:
+      - "Identity"
+      summary: "Create a new identity"
+      description: "Initiate a request to create an identity on the blockchain."
+      operationId: "createIdentity"
+      requestBody:
+        description: "Payload containing data to initiate a create identity request on the blockchain."
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                context:
+                  $ref: "#/components/schemas/Context"
+                message:
+                  $ref: "#/components/schemas/Message"
+      responses:
+        default:
+          $ref: "#/components/responses/DefaultResponse"
+  
+  /v1/identity/{identity}:
+    delete:
+      parameters:
+        - name: identity
+          in: path
+          required: true
+          description: "The identity of the entity"
+          schema:
+            type: string
+      tags:
+      - "Identity"
+      summary: "Delete an identity"
+      description: "Delete an existing identity from the blockchain."
+      responses:
+        "200":
+          description: "Identity deleted successfully"
+    put:
+      parameters:
+        - name: identity
+          in: path
+          required: true
+          description: "The identity of the entity"
+          schema:
+            type: string
+      tags:
+      - "Identity"
+      summary: "Rotate the key and sign with the previous private key"
+      description: "Rotate the key internally and sign with the previous private key."
+      responses:
+        "200":
+          description: "Key rotated and signed successfully"
+    get:
+      parameters:
+        - name: identity
+          in: path
+          required: true
+          description: "The identity of the entity"
+          schema:
+            type: string
+      tags:
+      - "Identity"
+      summary: "Get identity details"
+      description: "Retrieve detailed identity information including the public key and/or any available alias."
+      responses:
+        "200":
+          description: "Identity details retrieved successfully"
+
+  /v1/smart-contract:
+    post:
+      tags:
+      - "Smart Contract"
+      summary: "Deploy a smart contract"
+      description: "Deploy a new smart contract on the blockchain."
+      operationId: "deployContract"
+      requestBody:
+        description: "Payload containing the details to deploy a smart contract on the blockchain."
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                context:
+                  $ref: "#/components/schemas/Context"
+                message:
+                  $ref: "#/components/schemas/Message"
+      responses:
+        default:
+          $ref: "#/components/responses/DefaultResponse"
+  
+  /v1/smart-contract/{contract-address}/exec:
+    post:
+      parameters:
+        - name: contract-address
+          in: path
+          required: true
+          description: "The address of the smart contract"
+          schema:
+            type: string
+      tags:
+      - "Smart Contract"
+      summary: "Execute a contract method"
+      description: "Execute a method of the deployed smart contract."
+      operationId: "executeContractMethod"
+      requestBody:
+        description: "Payload containing the details to execute a smart contract method on the blockchain."
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                context:
+                  $ref: "#/components/schemas/Context"
+                message:
+                  $ref: "#/components/schemas/Message"
+      responses:
+        default:
+          $ref: "#/components/responses/DefaultResponse"
+  
+  /v1/smart-contract/estimate-transaction-fee:
+    post:
+      tags:
+      - "Smart Contract"
+      summary: "Estimate transaction fee"
+      description: "Estimate the transaction fee for executing a smart contract method."
+      operationId: "estimateTransactionFee"
+      requestBody:
+        description: "Payload containing the details to estimate the transaction fee for a smart contract method."
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                context:
+                  $ref: "#/components/schemas/Context"
+                message:
+                  $ref: "#/components/schemas/Message"
+      responses:
+        default:
+          $ref: "#/components/responses/DefaultResponse"
+          
+  /v1/smart-contract/upgrade:
+    post:
+      tags:
+      - "Smart Contract"
+      summary: "Upgrade a smart contract"
+      description: "Upgrade an existing smart contract on the blockchain."
+      operationId: "upgradeContract"
+      requestBody:
+        description: "Payload containing the details to upgrade a smart contract on the blockchain."
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                context:
+                  $ref: "#/components/schemas/Context"
+                message:
+                  $ref: "#/components/schemas/Message"
+      responses:
+        default:
+          $ref: "#/components/schemas/DefaultResponse"
+  
+components:
+  securitySchemes:
+    bearerAuth:
+      type: "http"
+      scheme: "bearer"
+      bearerFormat: "token"
+  schemas:
+    Context:
+      type: string
+      description: "Context"
+
+    Message:
+      type: string
+      description: "Context"
+    DefaultResponse:
+      type: object
+      description: "Response indicating the received message's validation status and any associated errors."
+      properties:
+        message:
+          type: string
+          description: "A message describing the status of the response."
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/Error'
+  
+    200_Res:
+      type: object
+      properties:
+        ack:
+          $ref: "#/components/schemas/Ack"
+
+    Ack:
+      description: "Acknowledgement response indicating the receipt and validation status of an API call."
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          description: "Status of the acknowledgement, indicating whether the request passed validation (ACK) or failed (NACK)."
+          enum:
+            - ACK
+            - NACK
+        tags:
+          description: "Additional information included with the acknowledgement."
+          type: array
+          items:
+            $ref: '#/components/schemas/TagGroup'
+
+    Descriptor:
+      description: "Detailed physical description of an entity."
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+        short_desc:
+          type: string
+        long_desc:
+          type: string
+        additional_desc:
+          type: object
+          additionalProperties: false
+          properties:
+            url:
+              type: string
+            content_type:
+              type: string
+              enum:
+                - text/plain
+                - text/html
+                - application/json
+
+    Error:
+      description: "Error object provided when a request is unacceptable, often containing detailed error codes and messages."
+      type: object
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+          description: "Standard error code referring to specific error types."
+        paths:
+          type: string
+          description: "JSON schema path generating the error, mainly used during validation errors."
+        message:
+          type: string
+          description: "Human-readable description of the error, primarily for logging purposes."
+
+    Tag:
+      description: "Metadata tag used to provide extended information, useful for search optimization and display purposes."
+      type: object
+      additionalProperties: false
+      properties:
+        descriptor:
+          description: "Detailed descriptor of the tag."
+          allOf:
+            - $ref: '#/components/schemas/Descriptor'
+        value:
+          description: "Value assigned to the tag, intended to be rendered as-is."
+          type: string
+        display:
+          description: "Indicates if the tag should be displayed."
+          type: boolean
+
+    TagGroup:
+      description: "Collection of tags with additional group-level display properties."
+      type: object
+      additionalProperties: false
+      properties:
+        display:
+          description: "Group-level display property, indicating if the entire group should be displayed."
+          type: boolean
+          default: true
+        descriptor:
+          description: "Detailed descriptor of the tag group."
+          allOf:
+            - $ref: '#/components/schemas/Descriptor'
+
+  responses:
+    DefaultResponse:
+      description: "Default response for all API calls"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/DefaultResponse'
