@@ -177,7 +177,82 @@ paths:
                   $ref: "#/components/schemas/Message"
       responses:
         default:
-          $ref: "#/components/schemas/DefaultResponse"
+          $ref: "#/components/responses/DefaultResponse"
+
+  /v1/proof:
+    post:
+      tags:
+      - "Proof"
+      summary: "Anchor a proof on the blockchain"
+      description: "Anchor a proof on the blockchain for verification."
+      operationId: "anchorProof"
+      requestBody:
+        description: "Payload containing the proof details to be anchored on the blockchain."
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                context:
+                  $ref: "#/components/schemas/Context"
+                message:
+                  $ref: "#/components/schemas/Message"
+      responses:
+        default:
+          $ref: "#/components/responses/DefaultResponse"
+    get:
+      tags:
+      - "Proof"
+      summary: "Read the proof from the blockchain"
+      description: "Retrieve an anchored proof from the blockchain."
+      operationId: "readProof"
+      responses:
+        "200":
+          description: "Proof retrieved successfully"
+    
+  /v1/proof/update:
+    post:
+      tags:
+      - "Proof"
+      summary: "Update a proof"
+      description: "Update an existing proof on the blockchain."
+      operationId: "updateProof"
+      requestBody:
+        description: "Payload containing the details to update a proof on the blockchain."
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                context:
+                  $ref: "#/components/schemas/Context"
+                message:
+                  $ref: "#/components/schemas/Message"
+      responses:
+        default:
+          $ref: "#/components/responses/DefaultResponse"
+
+  /v1/proof/revoke:
+    post:
+      tags:
+      - "Proof"
+      summary: "Revoke a proof"
+      description: "Revoke an existing proof on the blockchain."
+      operationId: "revokeProof"
+      requestBody:
+        description: "Payload containing the details to revoke a proof on the blockchain."
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                context:
+                  $ref: "#/components/schemas/Context"
+                message:
+                  $ref: "#/components/schemas/Message"
+      responses:
+        default:
+          $ref: "#/components/responses/DefaultResponse"
   
 components:
   securitySchemes:
@@ -192,7 +267,7 @@ components:
 
     Message:
       type: string
-      description: "Context"
+      description: "Message"
     DefaultResponse:
       type: object
       description: "Response indicating the received message's validation status and any associated errors."
@@ -248,12 +323,12 @@ components:
             url:
               type: string
             content_type:
-              type: string
+              type: string              
               enum:
                 - text/plain
                 - text/html
                 - application/json
-
+                
     Error:
       description: "Error object provided when a request is unacceptable, often containing detailed error codes and messages."
       type: object
