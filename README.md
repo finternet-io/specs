@@ -48,3 +48,20 @@ The platform comprises the ledger layer and the programmability layer. This faci
 
 An institution that is responsible for the issuance (tokenisation, detokenisation), management and synchronisation of a token with their private ledger
 
+## Ledger Interactions
+
+There are many interactions a user can have with the ledger.
+Some of the capabilities include:
+1. Identity management
+2. Asset tokenization
+3. Anchoring and querying proofs
+
+### Identity management
+
+####  Create identity
+
+The ledger provides identity management by creating a decentralized identity (DID) and anchoring it on the ledger.
+
+For example, this is how a token manager can create identity:
+
+![create_identity.png](/static/create_identity.png)
