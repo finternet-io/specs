@@ -2,7 +2,7 @@
 
 Welcome to the Finternet API specs Documentation repository.
 
-If you wish to learn more about the concept in detail, it is recommended to read the below BIS published papers:
+If you wish to learn more about the concept in detail, it is recommended to read the below BIS working paper and the companion technology architecture paper:
 
 - [The Vision for the Future Financial System](http://bit.ly/finternet-vision)
 - [Technology Vision and Architecture](http://bit.ly/finternet-tech)
