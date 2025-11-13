@@ -1,0 +1,96 @@
+openapi: 3.1.0
+info:
+  title: Finternet Core Schema v1
+  version: 1.0.0
+  description: |
+    Core schema definitions for the Finternet protocol.
+    Provides base types, enumerations, and common properties used across all domain schemas.
+
+components:
+  schemas:
+    Identifier:
+      type: object
+      description: Structured identifier for Finternet addressing (e.g., alice@finternet)
+      x-jsonld:
+        context: https://finternet.io/schema/core/v1/context.jsonld
+        type: finternet:Identifier
+      required:
+        - identifierValue
+        - identifierDomain
+      properties:
+        identifierValue:
+          type: string
+          description: Local part of the identifier (before @)
+          pattern: "^[a-z0-9_-]+$"
+          minLength: 1
+          maxLength: 64
+          examples:
+            - alice
+            - bob
+            - acme-corp
+        identifierDomain:
+          type: string
+          description: Domain part of the identifier (after @)
+          pattern: "^[a-z0-9.-]+$"
+          minLength: 1
+          maxLength: 253
+          examples:
+            - finternet
+
+    Entity:
+      type: object
+      description: Base entity with common properties for all Finternet objects
+      x-jsonld:
+        context: https://finternet.io/schema/core/v1/context.jsonld
+        type: finternet:Entity
+      properties:
+        '@context':
+          oneOf:
+            - type: string
+            - type: object
+          description: JSON-LD context
+        '@id':
+          type: string
+          format: uri
+          description: Unique identifier for this entity (URN or URI)
+        '@type':
+          type: string
+          description: JSON-LD type of the entity
+        name:
+          type: string
+          description: Display name
+        description:
+          type: string
+          description: Description of the entity
+        created:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        modified:
+          type: string
+          format: date-time
+          description: Last modification timestamp
+        version:
+          type: string
+          description: Version of the entity
+        status:
+          type: string
+          description: Current status of the entity
+        primaryAddress:
+          $ref: '#/components/schemas/Identifier'
+        labels:
+          type: array
+          description: Key-value metadata labels for categorization and tagging
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                description: Label name/key
+              value:
+                type: string
+                description: Label value
+            required:
+              - name
+              - value
+

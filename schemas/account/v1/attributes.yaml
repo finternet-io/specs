@@ -1,0 +1,234 @@
+openapi: 3.1.0
+info:
+  title: Finternet Account Schema v1
+  version: 1.0.0
+  description: |
+    Account schema for the Finternet protocol.
+    Extends core Entity schema with account-specific properties including
+    decentralized identity (DID), cryptographic keys, contact methods, and verification.
+
+components:
+  schemas:
+    EntityType:
+      type: string
+      description: Legal entity type enumeration for accounts
+      x-jsonld:
+        context: https://finternet.io/schema/account/v1/context.jsonld
+        type: finternet:EntityType
+      enum:
+        - PERSONAL
+        - BUSINESS
+      x-enumDescriptions:
+        PERSONAL: Individual person account
+        BUSINESS: Business or organizational account
+
+    ContactMethodType:
+      type: string
+      description: Type of contact method for recovery or notifications
+      x-jsonld:
+        context: https://finternet.io/schema/account/v1/context.jsonld
+        type: finternet:ContactMethodType
+      enum:
+        - EMAIL
+        - PHONE
+        - SMS
+        - WHATSAPP
+      x-enumDescriptions:
+        EMAIL: Email-based contact method
+        PHONE: Phone-based contact method
+        SMS: SMS-based contact method
+        WHATSAPP: WhatsApp-based contact method
+
+    ContactMethod:
+      type: object
+      description: A contact method for account recovery or notifications
+      x-jsonld:
+        context: https://finternet.io/schema/account/v1/context.jsonld
+        type: finternet:ContactMethod
+      required:
+        - type
+        - value
+      properties:
+        type:
+          $ref: '#/components/schemas/ContactMethodType'
+        value:
+          type: string
+          description: The contact value (email, phone, etc.)
+          minLength: 3
+        verified:
+          type: boolean
+          description: Whether this contact method has been verified
+          default: false
+        primary:
+          type: boolean
+          description: Whether this is the primary contact method
+          default: false
+        verifiedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the contact method was verified
+
+    Flags:
+      type: object
+      description: Account-specific preferences, permissions, and feature flags
+      x-jsonld:
+        context: https://finternet.io/schema/account/v1/context.jsonld
+        type: finternet:Flags
+      properties:
+        isWhatsAppSendingAllowed:
+          type: boolean
+          description: Whether WhatsApp messaging is allowed
+          default: true
+        isMarketingOptIn:
+          type: boolean
+          description: Whether user has opted in to marketing communications
+          default: false
+        isSMSAllowed:
+          type: boolean
+          description: Whether SMS messaging is allowed
+          default: true
+        isEmailAllowed:
+          type: boolean
+          description: Whether email communication is allowed
+          default: true
+        userDefinedTheme:
+          type: string
+          description: User's preferred UI theme
+          enum:
+            - light
+            - dark
+            - auto
+          default: auto
+        language:
+          type: string
+          description: Preferred language code (ISO 639-1)
+          pattern: "^[a-z]{2}$"
+          default: en
+          examples:
+            - en
+            - es
+            - fr
+            - de
+        timezone:
+          type: string
+          description: Preferred timezone (IANA timezone identifier)
+          default: UTC
+          examples:
+            - UTC
+            - America/New_York
+            - Europe/London
+            - Asia/Kolkata
+        notificationPreferences:
+          type: object
+          description: Structured notification preferences
+          properties:
+            email:
+              type: boolean
+              default: true
+            push:
+              type: boolean
+              default: true
+            sms:
+              type: boolean
+              default: false
+          additionalProperties: false
+
+    Account:
+      type: object
+      description: A Finternet Account representing a user or organization
+      x-jsonld:
+        context: https://finternet.io/schema/account/v1/context.jsonld
+        type: finternet:Account
+      required:
+        - '@context'
+        - '@type'
+        - '@id'
+        - did
+        - primaryAddress
+        - name
+        - email
+        - publicKey
+        - entityType
+      properties:
+        '@context':
+          oneOf:
+            - type: string
+              const: https://finternet.io/schema/account/v1/context.jsonld
+            - type: array
+              items:
+                oneOf:
+                  - type: string
+                  - type: object
+          description: JSON-LD context referencing account and core schemas
+        '@type':
+          type: string
+          const: Account
+          description: JSON-LD type must be 'Account'
+        '@id':
+          type: string
+          format: uri
+          description: Unique URN identifier for the account (e.g., urn:uuid:...)
+          example: "urn:uuid:018b41f8-37c8-7c83-9429-7a670d8a598a"
+        did:
+          type: string
+          pattern: "^did:"
+          description: Decentralized Identifier (DID) for the account
+          example: "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBa82SsoPfnH4Ujp"
+        primaryAddress:
+          $ref: '../core/v1/core.yaml#/components/schemas/Identifier'
+          description: The unique, human-readable identifier for the account
+        name:
+          type: string
+          minLength: 1
+          description: The legal name of the individual or business
+          example: "Alice Smith"
+        email:
+          type: string
+          format: email
+          description: The primary contact email for the account
+          example: "alice.smith@example.com"
+        phone:
+          type: string
+          pattern: "^\\+[1-9]\\d{1,14}$"
+          description: The primary contact phone number (E.164 format)
+          example: "+919876543210"
+        publicKey:
+          type: string
+          minLength: 10
+          description: The root cryptographic public key for the account
+          example: "0x04ab3c5d7ef9..."
+        entityType:
+          allOf:
+            - $ref: '#/components/schemas/EntityType'
+          description: The type of entity (PERSONAL or BUSINESS)
+        flags:
+          $ref: '#/components/schemas/Flags'
+          description: Structured preferences and feature flags for the account
+        controllers:
+          type: array
+          items:
+            type: string
+            format: uri
+          description: Array of controller DIDs for multi-sig or delegated control
+          example:
+            - "did:key:z6Mkf5rGMoatrSj1f4CyvuHBeXJELe9RPdzo2PKGNCKVtZxP"
+        contactMethods:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContactMethod'
+          description: Secondary contact methods for recovery or notifications
+        aliases:
+          type: array
+          items:
+            $ref: '../core/v1/core.yaml#/components/schemas/Identifier'
+          description: Alternative addresses for the account
+        created:
+          type: string
+          format: date-time
+          description: Account creation timestamp
+        modified:
+          type: string
+          format: date-time
+          description: Last modification timestamp
+
+

@@ -1,0 +1,98 @@
+{
+    "@context": [
+        "https://finternet.io/schema/core/v1/context.jsonld",
+        {
+            "finternet": "https://finternet.io/schema/account/v1#",
+            "schema": "https://schema.org/",
+            "di": "https://www.w3.org/ns/did/v1#",
+            "sec": "https://w3id.org/security#",
+            "EntityType": "finternet:EntityType",
+            "PERSONAL": "finternet:PERSONAL",
+            "BUSINESS": "finternet:BUSINESS",
+            "ContactMethodType": "finternet:ContactMethodType",
+            "EMAIL": "finternet:EMAIL",
+            "PHONE": "finternet:PHONE",
+            "SMS": "finternet:SMS",
+            "WHATSAPP": "finternet:WHATSAPP",
+            "ContactMethod": "finternet:ContactMethod",
+            "contactMethodType": "finternet:contactMethodType",
+            "contactValue": "finternet:contactValue",
+            "verified": {
+                "@id": "finternet:verified",
+                "@type": "xsd:boolean"
+            },
+            "verifiedAt": {
+                "@id": "finternet:verifiedAt",
+                "@type": "xsd:dateTime"
+            },
+            "primary": {
+                "@id": "finternet:primary",
+                "@type": "xsd:boolean"
+            },
+            "Flags": "finternet:Flags",
+            "isWhatsAppSendingAllowed": {
+                "@id": "finternet:isWhatsAppSendingAllowed",
+                "@type": "xsd:boolean"
+            },
+            "isMarketingOptIn": {
+                "@id": "finternet:isMarketingOptIn",
+                "@type": "xsd:boolean"
+            },
+            "isSMSAllowed": {
+                "@id": "finternet:isSMSAllowed",
+                "@type": "xsd:boolean"
+            },
+            "isEmailAllowed": {
+                "@id": "finternet:isEmailAllowed",
+                "@type": "xsd:boolean"
+            },
+            "userDefinedTheme": "finternet:userDefinedTheme",
+            "language": "finternet:language",
+            "timezone": "finternet:timezone",
+            "notificationPreferences": {
+                "@id": "finternet:notificationPreferences",
+                "@type": "@json"
+            },
+            "Account": "finternet:Account",
+            "did": {
+                "@id": "di:id",
+                "@type": "@id"
+            },
+            "primaryAddress": "finternet:primaryAddress",
+            "publicKey": {
+                "@id": "finternet:publicKey",
+                "@type": "sec:Key"
+            },
+            "entityType": {
+                "@id": "finternet:entityType",
+                "@type": "@vocab"
+            },
+            "flags": {
+                "@id": "finternet:flags",
+                "@type": "@id"
+            },
+            "controllers": {
+                "@id": "sec:controller",
+                "@type": "@id",
+                "@container": "@set"
+            },
+            "contactMethods": {
+                "@id": "finternet:contactMethods",
+                "@type": "@id",
+                "@container": "@set"
+            },
+            "aliases": {
+                "@id": "finternet:aliases",
+                "@container": "@set"
+            },
+            "email": {
+                "@id": "schema:email",
+                "@type": "xsd:string"
+            },
+            "phone": {
+                "@id": "schema:telephone",
+                "@type": "xsd:string"
+            }
+        }
+    ]
+}

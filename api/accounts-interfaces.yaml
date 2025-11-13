@@ -1,0 +1,845 @@
+openapi: 3.0.4
+info:
+  title: "Finternet API - Account & Address Service"
+  description: |
+    The official API specification for the Finternet Account and Address (Identifier) services.
+
+    ### Protocol-Agnostic Envelope
+    All API interactions use a standard JSON envelope.
+
+    **Request Envelope:**
+    ```json
+    {
+      "context": { ... },
+      "payload": { ... },
+      "signature": { ... } // Optional
+    }
+    ```
+
+    **Response Envelope (Success):**
+    ```json
+    {
+      "context": { ..., "status": "successful" },
+      "response": { ... }
+    }
+    ```
+
+    **Response Envelope (Error):**
+    ```json
+    {
+      "context": { ..., "status": "failed", "error": {"code": "...", "message": "..." },
+      "response": {} // Empty on error
+    }
+    ```
+    (Error details are in the context.error object)
+
+    ### Authentication and Authorization
+    This API uses a two-level authorization model contained within the `context`:
+
+    1.  **Platform-Level (Developer) Authentication:**
+        * `context.developer_token`: The B2B Developer's API Key/Token.
+        * `context.developer_signature`: The B2B Developer's signature (e.g., RFC 9421) of the payload.
+
+    2.  **User-Level (End-User) Authorization:**
+        * `context.authorization`: The end-user's JWT session token (for session-based calls).
+        * `signature` (top-level): The end-user's JWS for critical, cryptographically-signed operations.
+
+    *Note for HTTP Clients:* As a convenience, the `developer_token` may be provided in the standard `Authorization: Bearer <token>` HTTP header, and the `developer_signature` in an `X-Finternet-Signature` header. The server will check the headers first, then fall back to the `context` object.
+  version: "1.0.0"
+servers:
+  - url: "https://foundry.finternetlab.io"
+    description: "Development Environment"
+tags:
+  - name: "Account"
+    description: "Endpoints for user registration, authentication, and account management."
+  - name: "Address"
+    description: "Endpoints for managing human-readable identifiers (Addresses)."
+
+# ===============================================================
+#   PATHS
+# ===============================================================
+
+paths:
+  # -------------------- Account --------------------
+  /v1/account/create:
+    post:
+      tags:
+        - "Account"
+      summary: "Register a new account"
+      description: "Creates a new user account, generates and stores the reproducible DID from the master public key, links the primary address, and registers the master key as the primary controller."
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_RegistrationRequest'
+            examples:
+              IndividualRegistration:
+                summary: "Example for registering an Individual"
+                value:
+                  context:
+                    id: "api.account.create"
+                    version: "1.0"
+                    ts: "2025-09-08T12:00:00Z"
+                    msg_id: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                    developer_token: "dev_pk_..."
+                  payload:
+                    address: "alice@finternet" # Primary Address
+                    email: "alice.smith@example.com"
+                    password: "securePassword123"
+                    name: "Alice Smith"
+                    phoneNumber: "+919876543210"
+                    publicKey: "0x04..." # Master Controller Key
+                    entityType: "Individual"
+              BusinessRegistration:
+                summary: "Example for registering a Business"
+                value:
+                  context:
+                    id: "api.account.create"
+                    version: "1.0"
+                    ts: "2025-09-08T12:01:00Z"
+                    msg_id: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
+                    developer_token: "dev_pk_..."
+                  payload:
+                    address: "acmecorp@finternet"
+                    email: "contact@acmecorp.example.com"
+                    password: "strongBusinessPassword456"
+                    name: "Acme Corporation"
+                    publicKey: "0x05..."
+                    entityType: "Business"
+      responses:
+        '201':
+          description: "Account registered successfully."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_RegistrationSuccess'
+              example:
+                context:
+                  id: "api.account.create"
+                  version: "1.0"
+                  ts: "2025-09-08T12:00:01Z"
+                  msg_id: "c1b2c3d4-e5f6-7890-1234-567890abcdef"
+                  status: "successful"
+                response:
+                  did: "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBa82SsoPfnH4Ujp"
+                  message: "Account registered successfully."
+        '400':
+          description: "Bad request, such as a missing required field."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              examples:
+                MissingField:
+                  summary: "Missing Required Field"
+                  value:
+                    context:
+                      id: "api.account.create"
+                      version: "1.0"
+                      ts: "2025-09-08T12:00:00Z"
+                      msg_id: "a1b2c3d4..."
+                      status: "failed"
+                      error:
+                        code: "BAD_REQUEST"
+                        message: "Field 'name' is required."
+                    response: {}
+        '409':
+          description: "Conflict, an identifier is already in use."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              examples:
+                IdentifierTaken:
+                  summary: "Address Taken"
+                  value:
+                    context:
+                      id: "api.account.create"
+                      version: "1.0"
+                      ts: "2025-09-08T12:00:00Z"
+                      msg_id: "a1b2c3d4..."
+                      status: "failed"
+                      error:
+                        code: "IDENTIFIER_TAKEN"
+                        message: "The address 'alice@finternet' is already in use."
+                    response: {}
+
+  /v1/account/update:
+    post:
+      tags:
+        - "Account"
+      summary: "Update account profile"
+      description: "Allows an authenticated end-user to update their profile information. The account to update is determined by the session token."
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_UpdateAccountRequest'
+            example:
+              context:
+                id: "api.account.update"
+                version: "1.0"
+                ts: "2025-09-09T10:00:00Z"
+                msg_id: "d1e2f3a4-b5c6-7890-1234-567890abcdef"
+                developer_token: "dev_pk_..."
+                authorization: "Bearer <End_User_JWT_Token>"
+              payload:
+                name: "Alice Smith-Jones"
+                phoneNumber: "+919876543211"
+      responses:
+        '200':
+          description: "Account profile updated successfully."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_AccountProfile'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '409':
+          description: "Conflict, the new phone number is already in use."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                context:
+                  id: "api.account.update"
+                  version: "1.0"
+                  ts: "2025-09-08T12:00:00Z"
+                  msg_id: "a1b2c3d4..."
+                  status: "failed"
+                  error:
+                    code: "PHONE_NUMBER_IN_USE"
+                    message: "The phone number is already associated with another account."
+                response: {}
+
+  /v1/address/checkAvailability:
+    post:
+      tags:
+        - "Address"
+      summary: "Check address availability"
+      description: "Checks if a given human-readable address is available for registration."
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_AvailabilityCheckRequest'
+            example:
+              context:
+                id: "api.address.checkAvailability"
+                version: "1.0"
+                ts: "2025-09-08T11:00:00Z"
+                msg_id: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
+                developer_token: "dev_pk_..."
+              payload:
+                address: "newuser@finternet"
+      responses:
+        '200':
+          description: "Availability status of the identifier."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_AvailabilityResponse'
+              example:
+                context:
+                  id: "api.address.checkAvailability"
+                  version: "1.0"
+                  ts: "2025-09-08T11:00:01Z"
+                  msg_id: "f1a2b3c4-d5e6-7890-1234-567890abcdef"
+                  status: "successful"
+                response:
+                  available: true
+
+  /v1/account/login:
+    post:
+      tags:
+        - "Account"
+      summary: "User login"
+      description: "Authenticates an end-user and returns *their* JWT session token. Requires Developer auth."
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_LoginRequest'
+            example:
+              context:
+                id: "api.account.login"
+                version: "1.0"
+                ts: "2025-09-09T09:00:00Z"
+                msg_id: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                developer_token: "dev_pk_..."
+              payload:
+                username: "alice@finternet"
+                password: "securePassword123"
+      responses:
+        '200':
+          description: "Login successful."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_AuthResponse'
+              example:
+                context:
+                  id: "api.account.login"
+                  version: "1.0"
+                  ts: "2025-09-09T09:00:01Z"
+                  msg_id: "b1c2d3e4-f5a6-7890-1234-567890abcdef"
+                  status: "successful"
+                response:
+                  accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  tokenType: "Bearer"
+                  expiresIn: 3600
+        '401':
+          $ref: '#/components/responses/UnauthorizedError' # Catches both dev auth and user auth failures
+
+  /v1/account/logout:
+    post:
+      tags:
+        - "Account"
+      summary: "User logout"
+      description: "Invalidates the end-user's current JWT session token. Requires Developer + User auth."
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_Empty'
+            example:
+              context:
+                id: "api.account.logout"
+                version: "1.0"
+                ts: "2025-09-09T10:30:00Z"
+                msg_id: "c1d2e3f4-a5b6-7890-1234-567890abcdef"
+                developer_token: "dev_pk_..."
+                authorization: "Bearer eyJ..."
+              payload: {}
+      responses:
+        '200':
+          description: "Logout successful."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_Success'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /v1/account/resetPassword:
+    post:
+      tags:
+        - "Account"
+      summary: "Reset password"
+      description: "Initiates the password reset flow for an end-user's email address. Requires Developer auth."
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_ResetPasswordRequest'
+            example:
+              context:
+                id: "api.account.resetPassword"
+                version: "1.0"
+                ts: "2025-09-09T11:00:00Z"
+                msg_id: "d1e2f3a4-b5c6-7890-1234-567890abcdef"
+                developer_token: "dev_pk_..."
+              payload:
+                email: "alice.smith@example.com"
+      responses:
+        '200':
+          description: "Password reset instructions sent."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_Success'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /v1/account/get:
+    post:
+      tags:
+        - "Account"
+      summary: "Get current account profile"
+      description: "Retrieves the full account profile for the authenticated end-user. Requires Developer + User auth."
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_Empty'
+            example:
+              context:
+                id: "api.account.get"
+                version: "1.0"
+                ts: "2025-09-09T09:05:00Z"
+                msg_id: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
+                developer_token: "dev_pk_..."
+                authorization: "Bearer eyJ..."
+              payload: {}
+      responses:
+        '200':
+          description: "Account profile retrieved successfully."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_AccountProfile'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  # /v1/account/lookup:
+  #   post:
+  #     tags:
+  #       - "Account"
+  #     summary: "Lookup account by PII"
+  #     description: "Securely looks up an account profile using private info like email or phone. Requires Developer + User auth."
+  #     security:
+  #       - developerToken: []
+  #       - developerSignature: []
+  #     requestBody:
+  #       required: true
+  #       content:
+  #         application/json:
+  #           schema:
+  #             $ref: '#/components/schemas/ApiRequest_LookupRequest'
+  #           example:
+  #             context:
+  #               id: "api.account.lookup"
+  #               version: "1.0"
+  #               ts: "2025-09-09T09:06:00Z"
+  #               msg_id: "e2f3a4b5-c6d7-8901-2345-67890abcdef"
+  #               developer_token: "dev_pk_..."
+  #               authorization: "Bearer eyJ..."
+  #             payload:
+  #               email: "bob.smith@example.com"
+  #     responses:
+  #       '200':
+  #         description: "Account profile retrieved successfully."
+  #         content:
+  #           application/json:
+  #             schema:
+  #               $ref: '#/components/schemas/ApiResponse_AccountProfile'
+  #       '401':
+  #         $ref: '#/components/responses/UnauthorizedError'
+  #       '404':
+  #         $ref: '#/components/responses/NotFoundError'
+
+  /v1/address/resolve:
+    post:
+      tags:
+        - "Address"
+      summary: "Resolve an Address"
+      description: "Publicly resolves a human-readable address. Requires Developer auth."
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_ResolveRequest'
+            example:
+              context:
+                id: "api.address.resolve"
+                version: "1.0"
+                ts: "2025-09-09T11:05:00Z"
+                msg_id: "f1a2b3c4-d5e6-7890-1234-567890abcdef"
+                developer_token: "dev_pk_..."
+              payload:
+                address: "alice@finternet"
+      responses:
+        '200':
+          description: "Public key and DID retrieved."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_ResolveResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /v1/account/addController:
+    post:
+      tags:
+        - "Account"
+      summary: "[Placeholder] Add a Controller (Requires Signature)"
+      description: "This is a reference API, and details are to be discussed further along with ACL Layer. Adds a new cryptographic key as a controller for the end-user. Requires Developer + User auth + End-User JWS."
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_AddControllerRequest'
+            example:
+              context:
+                id: "api.account.addController"
+                version: "1.0"
+                ts: "2025-09-09T11:10:00Z"
+                msg_id: "a2b3c4d5-e6f7-8901-2345-67890abcdef"
+                developer_token: "dev_pk_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                publicKey: "0x07..."
+                keyType: "DEVICE_MOBILE"
+                role: "TRANSACT"
+              signature:
+                type: "JsonWebSignature2020"
+                jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+      responses:
+        '201':
+          description: "Controller added."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_ControllerDetails'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
+  /v1/account/removeController:
+    post:
+      tags:
+        - "Account"
+      summary: "[Placeholder] Remove a Controller (Requires Signature)"
+      description: "This is a reference API, and details are to be discussed further along with ACL Layer. Removes a controller key from the end-user's account. Requires Developer + User auth + End-User JWS."
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_RemoveControllerRequest'
+            example:
+              context:
+                id: "api.account.removeController"
+                version: "1.0"
+                ts: "2025-09-09T11:15:00Z"
+                msg_id: "b3c4d5e6-f7a8-9012-3456-7890abcdef"
+                developer_token: "dev_pk_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                publicKeyToRemove: "0x07..."
+              signature:
+                type: "JsonWebSignature2020"
+                jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+      responses:
+        '200':
+          description: "Controller removed."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_Success'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+# ===============================================================
+#   COMPONENTS
+# ===============================================================
+
+components:
+  # -------------------- Schemas --------------------
+  schemas:
+    # --- API Envelope Schemas ---
+    Context:
+      type: object
+      required: [id, version, ts, msg_id]
+      properties:
+        id: { type: string, example: "api.account.create" }
+        version: { type: string, example: "1.0" }
+        ts: { type: string, format: date-time }
+        msg_id: { type: string, format: uuid }
+        transaction_id: { type: string, format: uuid, nullable: true, description: "ID for async operations" }
+        developer_token: { type: string, example: "dev_pk_...", nullable: true, description: "B2B Developer API Key/Token" }
+        developer_signature: { type: string, example: "t=...,v1=...", nullable: true, description: "B2B Developer Signature (e.g., HMAC)" }
+        authorization: { type: string, example: "Bearer eyJ...", nullable: true, description: "End-user's session token." }
+    ResponseContext:
+      type: object
+      required: [id, version, ts, msg_id, status]
+      properties:
+        id: { type: string, example: "api.account.create" }
+        version: { type: string, example: "1.0" }
+        ts: { type: string, format: date-time }
+        msg_id: { type: string, format: uuid }
+        transaction_id: { type: string, format: uuid, nullable: true }
+        status: { type: string, enum: [successful, failed, pending] }
+        error: { $ref: '#/components/schemas/ErrorPayload', nullable: true }
+    Signature:
+      type: object
+      required: [type, jws]
+      properties:
+        type: { type: string, example: "JsonWebSignature2020" }
+        jws: { type: string, example: "eyJ...", description: "End-user's JWS of the payload object." }
+    ErrorPayload:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, example: "RESOURCE_NOT_FOUND" }
+        message: { type: string }
+
+    # --- Base Request/Response Schemas ---
+    RequestContext:
+      type: object
+      required: [context, payload]
+      properties:
+        context: { $ref: '#/components/schemas/Context' }
+        payload: { type: object }
+        signature: { $ref: '#/components/schemas/Signature', nullable: true }
+    ApiResponse:
+      type: object
+      required: [context, response]
+      properties:
+        context: { $ref: '#/components/schemas/ResponseContext' }
+        response: { type: object }
+    ApiError:
+      type: object
+      required: [context, response]
+      properties:
+        context: { $ref: '#/components/schemas/ResponseContext' }
+        response: { type: object, description: "Always empty on error.", example: {} }
+
+    # --- Specific Request Envelopes ---
+    ApiRequest_Empty: { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { type: object } } } ] }
+    ApiRequest_RegistrationRequest: { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/RegistrationRequest' } } } ] }
+    ApiRequest_UpdateAccountRequest: { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/UpdateAccountRequest' } } } ] }
+    ApiRequest_AvailabilityCheckRequest: { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/AvailabilityCheckRequest' } } } ] }
+    ApiRequest_LoginRequest: { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/LoginRequest' } } } ] }
+    ApiRequest_ResetPasswordRequest: { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/ResetPasswordRequest' } } } ] }
+    ApiRequest_ResolveRequest: { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/ResolveRequest' } } } ] }
+    ApiRequest_LookupRequest: { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/LookupRequest' } } } ] }
+    ApiRequest_AddControllerRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/AddControllerRequest' }
+            signature: { $ref: '#/components/schemas/Signature' }
+        - required: [signature]
+    ApiRequest_RemoveControllerRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/RemoveControllerRequest' }
+            signature: { $ref: '#/components/schemas/Signature' }
+        - required: [signature]
+
+    # --- Specific Response Envelopes ---
+    ApiResponse_RegistrationSuccess: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/RegistrationSuccessResponse' } } } ] }
+    ApiResponse_AuthResponse: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/AuthResponse' } } } ] }
+    ApiResponse_AvailabilityResponse: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/AvailabilityResponse' } } } ] }
+    ApiResponse_AccountProfile: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/AccountProfile' } } } ] }
+    ApiResponse_ResolveResponse: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/ResolveResponse' } } } ] }
+    ApiResponse_ControllerDetails: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/ControllerDetails' } } } ] }
+    ApiResponse_Success: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { type: object, properties: { message: { type: string, example: "Operation successful." } } } } } ] }
+
+    # --- Core Data Schemas (Payloads) ---
+    RegistrationRequest:
+      type: object
+      required: [address, email, password, name, publicKey, entityType]
+      properties:
+        address: { type: string, example: "alice@finternet" }
+        email: { type: string, format: email }
+        password: { type: string, format: password }
+        name: { type: string, example: "Alice Smith" }
+        phoneNumber: { type: string, example: "+919876543210", nullable: true }
+        publicKey: { type: string, example: "0x04..." }
+        entityType: { type: string, enum: [Individual, Business] }
+    UpdateAccountRequest:
+      type: object
+      properties:
+        name: { type: string, example: "Alice Smith-Jones" }
+        phoneNumber: { type: string, example: "+919876543211", nullable: true }
+    RegistrationSuccessResponse:
+      type: object
+      properties:
+        did: { type: string, example: "did:key:z..." }
+        message: { type: string, example: "Account registered successfully." }
+    AvailabilityCheckRequest:
+      type: object
+      required: [address]
+      properties:
+        address: { type: string, example: "alice@finternet" }
+    ResolveRequest:
+      type: object
+      required: [address]
+      properties:
+        address: { type: string, example: "alice@finternet" }
+    LookupRequest:
+      type: object
+      properties:
+        email: { type: string, format: email }
+        phoneNumber: { type: string, example: "+919876543210" }
+      description: "Must provide at least one lookup field."
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string, example: "alice@finternt" }
+        password: { type: string, format: password }
+    ResetPasswordRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+    AuthResponse:
+      type: object
+      properties:
+        accessToken: { type: string }
+        tokenType: { type: string, example: "Bearer" }
+        expiresIn: { type: integer, example: 3600 }
+    AvailabilityResponse:
+      type: object
+      properties:
+        available: { type: boolean }
+    ResolveResponse:
+      type: object
+      properties:
+        address: { type: string, example: "alice@finternet" }
+        publicKey: { type: string, example: "0x04..." }
+        did: { type: string, example: "did:key:z..." }
+    AccountProfile:
+      type: object
+      required: [did, address, email, name, publicKey, entityType]
+      properties:
+        did: { type: string, example: "did:key:z..." }
+        address: { type: string, example: "alice@finternet" }
+        email: { type: string, format: email }
+        name: { type: string, example: "Alice Smith" }
+        phoneNumber: { type: string, example: "+919876543210", nullable: true }
+        publicKey: { type: string, example: "0x04..." }
+        verificationLevel: { type: string, enum: [Tier0_Unverified, Tier1_Verified, Tier2_InstitutionVerified], example: "Tier0_Unverified", description: "Dynamically generated based on credential tokens" }
+        entityType: { type: string, enum: [Individual, Business] }
+    AddControllerRequest:
+      type: object
+      required: [publicKey, keyType, role]
+      properties:
+        publicKey: { type: string, example: "0x07..." }
+        keyType: { type: string, example: "DEVICE_MOBILE" }
+        role: { type: string, enum: [VIEW, TRANSACT, MANAGE], example: "TRANSACT" }
+    RemoveControllerRequest:
+      type: object
+      required: [publicKeyToRemove]
+      properties:
+        publicKeyToRemove: { type: string, example: "0x07..." }
+    ControllerDetails:
+      type: object
+      properties:
+        controllerId: { type: string, format: uuid }
+        publicKey: { type: string }
+        keyType: { type: string }
+        role: { type: string, enum: [VIEW, TRANSACT, MANAGE] }
+        addedAt: { type: string, format: date-time }
+
+  # -------------------- Responses --------------------
+  responses:
+    UnauthorizedError:
+      description: "Authentication failed. Can be invalid Developer Token OR invalid User JWT."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msg_id: "...", transaction_id: "...", status: "failed", error: { code: "AUTHENTICATION_FAILED", message: "Token invalid or expired." } }
+            response: {}
+    UnauthorizedDeveloperError:
+      description: "Developer authentication failed (HTTP 401)."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msg_id: "...", transaction_id: "...", status: "failed", error: { code: "DEVELOPER_AUTH_FAILED", message: "Invalid developer token." } }
+            response: {}
+    ForbiddenError:
+      description: "Forbidden. Insufficient permissions."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msg_id: "...", transaction_id: "...", status: "failed", error: { code: "PERMISSION_DENIED", message: "Insufficient permissions to perform this action." } }
+            response: {}
+    NotFoundError:
+      description: "Resource not found."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msg_id: "...", transaction_id: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "The requested resource was not found." } }
+            response: {}
+    BadRequestError:
+      description: "Invalid request."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msg_id: "...", transaction_id: "...", status: "failed", error: { code: "INVALID_REQUEST", message: "Invalid request parameters." } }
+            response: {}
+    ConflictError:
+      description: "Conflict with existing resource."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msg_id: "...", transaction_id: "...", status: "failed", error: { code: "RESOURCE_CONFLICT", message: "An account with this identifier already exists." } }
+            response: {}
+
+  # -------------------- Security --------------------
+  securitySchemes:
+    # This section is for documentation purposes.
+    # The server will check for the HTTP header first and fallbacks to context in case the headers are missing.
+
+    # 1. The Developer's Identity Token (Who they are)
+    developerToken:
+      type: http
+      scheme: bearer
+      bearerFormat: "JWT or Opaque"
+      description: |
+        A JWT or Opaque token that identifies the calling B2B developer/backend service.
+        This is passed in the standard `Authorization: Bearer <token>` header.
+        (This can also be passed in the `context.developer_token` as a fallback).
+
+    # 2. The Developer's Request Signature (What they're attesting to)
+    developerSignature:
+      type: apiKey
+      in: header
+      name: Signature
+      description: |
+        The IETF HTTP Signature (RFC 9421) used by B2B developers to ensure message
+        integrity and non-repudiation. This is passed in the `Signature` header.
+
+        Example Format:
+        Signature keyId="...",algorithm="...",created="...",expires="...",headers="...",signature="..."
+
+        Example Value:
+        Signature keyId="fcd8c50d-edf0-49f0-b322-4b9bc2bc6218",algorithm="ed25519",created="1760443594",expires="1760447194",headers="(created) (expires) digest",signature="enGs3APIGK7PFRbefP1hMQe/iPjBAwc6R4wjmcysafnEAK5q9/+aKr0Ohc4J6w4XexD1nLgnmSy21yTYDRkSDw=="'
