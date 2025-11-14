@@ -9,36 +9,6 @@ info:
 
 components:
   schemas:
-    EntityType:
-      type: string
-      description: Legal entity type enumeration for accounts
-      x-jsonld:
-        context: https://finternet.io/schema/account/v1/context.jsonld
-        type: finternet:EntityType
-      enum:
-        - PERSONAL
-        - BUSINESS
-      x-enumDescriptions:
-        PERSONAL: Individual person account
-        BUSINESS: Business or organizational account
-
-    ContactMethodType:
-      type: string
-      description: Type of contact method for recovery or notifications
-      x-jsonld:
-        context: https://finternet.io/schema/account/v1/context.jsonld
-        type: finternet:ContactMethodType
-      enum:
-        - EMAIL
-        - PHONE
-        - SMS
-        - WHATSAPP
-      x-enumDescriptions:
-        EMAIL: Email-based contact method
-        PHONE: Phone-based contact method
-        SMS: SMS-based contact method
-        WHATSAPP: WhatsApp-based contact method
-
     ContactMethod:
       type: object
       description: A contact method for account recovery or notifications
@@ -50,7 +20,15 @@ components:
         - value
       properties:
         type:
-          $ref: '#/components/schemas/ContactMethodType'
+          type: string
+          description: Type of contact method
+          enum:
+            - EMAIL
+            - MOBILE
+          x-enumDescriptions:
+            EMAIL: Email-based contact method
+            MOBILE: Mobile-based contact method (SMS, phone, WhatsApp)
+          x-jsonld: { "@id": "finternet:contactMethodType" }
         value:
           type: string
           description: The contact value (email, phone, etc.)
@@ -70,27 +48,34 @@ components:
 
     Flags:
       type: object
-      description: Account-specific preferences, permissions, and feature flags
+      description: Account-specific feature flags and permissions
       x-jsonld:
         context: https://finternet.io/schema/account/v1/context.jsonld
         type: finternet:Flags
       properties:
-        isWhatsAppSendingAllowed:
-          type: boolean
-          description: Whether WhatsApp messaging is allowed
-          default: true
-        isMarketingOptIn:
-          type: boolean
-          description: Whether user has opted in to marketing communications
-          default: false
-        isSMSAllowed:
-          type: boolean
-          description: Whether SMS messaging is allowed
-          default: true
-        isEmailAllowed:
-          type: boolean
-          description: Whether email communication is allowed
-          default: true
+        notificationPreferences:
+          type: object
+          description: Structured notification preferences
+          properties:
+            email:
+              type: boolean
+              default: true
+            push:
+              type: boolean
+              default: true
+            sms:
+              type: boolean
+              default: false
+          additionalProperties: false
+      additionalProperties: false
+
+    Preferences:
+      type: object
+      description: User preferences for UI and localization
+      x-jsonld:
+        context: https://finternet.io/schema/account/v1/context.jsonld
+        type: finternet:Preferences
+      properties:
         userDefinedTheme:
           type: string
           description: User's preferred UI theme
@@ -118,20 +103,7 @@ components:
             - America/New_York
             - Europe/London
             - Asia/Kolkata
-        notificationPreferences:
-          type: object
-          description: Structured notification preferences
-          properties:
-            email:
-              type: boolean
-              default: true
-            push:
-              type: boolean
-              default: true
-            sms:
-              type: boolean
-              default: false
-          additionalProperties: false
+      additionalProperties: false
 
     Account:
       type: object
@@ -198,12 +170,21 @@ components:
           description: The root cryptographic public key for the account
           example: "0x04ab3c5d7ef9..."
         entityType:
-          allOf:
-            - $ref: '#/components/schemas/EntityType'
+          type: string
           description: The type of entity (PERSONAL or BUSINESS)
+          enum:
+            - PERSONAL
+            - BUSINESS
+          x-enumDescriptions:
+            PERSONAL: Individual person account
+            BUSINESS: Business or organizational account
+          x-jsonld: { "@id": "finternet:entityType" }
         flags:
           $ref: '#/components/schemas/Flags'
-          description: Structured preferences and feature flags for the account
+          description: Structured feature flags and permissions for the account
+        preferences:
+          $ref: '#/components/schemas/Preferences'
+          description: User preferences for UI and localization
         controllers:
           type: array
           items:

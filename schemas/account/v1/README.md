@@ -93,7 +93,7 @@ The Account schema:
   "aliases": [
     {
       "identifierValue": "alice_temp",
-      "identifierDomain": "finternet"
+      "identifierDomain": "fin.act"
     }
   ]
 }

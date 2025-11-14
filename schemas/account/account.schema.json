@@ -34,49 +34,8 @@
     "Flags": {
       "$ref": "./v1/attributes.yaml#/components/schemas/Flags",
       "type": "object",
-      "description": "Structured preferences and feature flags",
+      "description": "Structured feature flags and permissions",
       "properties": {
-        "isWhatsAppSendingAllowed": {
-          "type": "boolean",
-          "description": "Whether WhatsApp messaging is allowed",
-          "default": true
-        },
-        "isMarketingOptIn": {
-          "type": "boolean",
-          "description": "Whether user has opted in to marketing communications",
-          "default": false
-        },
-        "isSMSAllowed": {
-          "type": "boolean",
-          "description": "Whether SMS messaging is allowed",
-          "default": true
-        },
-        "isEmailAllowed": {
-          "type": "boolean",
-          "description": "Whether email communication is allowed",
-          "default": true
-        },
-        "userDefinedTheme": {
-          "type": "string",
-          "description": "User's preferred UI theme",
-          "enum": [
-            "light",
-            "dark",
-            "auto"
-          ],
-          "default": "auto"
-        },
-        "language": {
-          "type": "string",
-          "description": "Preferred language code (ISO 639-1)",
-          "pattern": "^[a-z]{2}$",
-          "default": "en"
-        },
-        "timezone": {
-          "type": "string",
-          "description": "Preferred timezone (IANA timezone identifier)",
-          "default": "UTC"
-        },
         "notificationPreferences": {
           "type": "object",
           "description": "Structured notification preferences",
@@ -99,8 +58,35 @@
       },
       "additionalProperties": false
     },
+    "Preferences": {
+      "type": "object",
+      "description": "User preferences for UI and localization",
+      "properties": {
+        "userDefinedTheme": {
+          "type": "string",
+          "description": "User's preferred UI theme",
+          "enum": [
+            "light",
+            "dark",
+            "auto"
+          ],
+          "default": "auto"
+        },
+        "language": {
+          "type": "string",
+          "description": "Preferred language code (ISO 639-1)",
+          "pattern": "^[a-z]{2}$",
+          "default": "en"
+        },
+        "timezone": {
+          "type": "string",
+          "description": "Preferred timezone (IANA timezone identifier)",
+          "default": "UTC"
+        }
+      },
+      "additionalProperties": false
+    },
     "EntityType": {
-      "$ref": "./v1/attributes.yaml#/components/schemas/EntityType",
       "description": "Legal entity type enumeration (PERSONAL or BUSINESS)",
       "type": "string",
       "enum": [
@@ -109,14 +95,11 @@
       ]
     },
     "ContactMethodType": {
-      "$ref": "./v1/attributes.yaml#/components/schemas/ContactMethodType",
       "description": "Contact method type enumeration",
       "type": "string",
       "enum": [
         "EMAIL",
-        "PHONE",
-        "SMS",
-        "WHATSAPP"
+        "MOBILE"
       ]
     },
     "ContactMethod": {
@@ -243,7 +226,11 @@
     },
     "flags": {
       "$ref": "#/definitions/Flags",
-      "description": "Structured preferences and feature flags for the account."
+      "description": "Structured feature flags and permissions for the account."
+    },
+    "preferences": {
+      "$ref": "#/definitions/Preferences",
+      "description": "User preferences for UI and localization."
     },
     "controllers": {
       "description": "Array of controller DIDs for multi-sig or delegated control.",

@@ -5,7 +5,7 @@
         "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
         "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
         "xsd": "http://www.w3.org/2001/XMLSchema#",
-        "di": "https://www.w3.org/ns/did/v1#",
+        "didCore": "https://www.w3.org/ns/did/v1#",
         "sec": "https://w3id.org/security#"
     },
     "@graph": [
@@ -41,6 +41,14 @@
             "rdfs:range": "finternet:Flags"
         },
         {
+            "@id": "finternet:preferences",
+            "@type": "rdf:Property",
+            "rdfs:label": "preferences",
+            "rdfs:comment": "User preferences for UI and localization.",
+            "rdfs:domain": "finternet:Account",
+            "rdfs:range": "finternet:Preferences"
+        },
+        {
             "@id": "finternet:contactMethods",
             "@type": "rdf:Property",
             "rdfs:label": "contactMethods",
@@ -58,53 +66,67 @@
         },
         {
             "@id": "finternet:EntityType",
-            "@type": "rdfs:Class",
-            "rdfs:subClassOf": "schema:Enumeration",
-            "rdfs:label": "EntityType",
-            "rdfs:comment": "Enumeration of legal entity types for accounts."
+            "@type": "schema:Enumeration",
+            "schema:name": "Entity Type",
+            "rdfs:comment": "Enumeration of legal entity types for accounts.",
+            "schema:hasEnumerationMember": [
+                {
+                    "@id": "finternet:PERSONAL"
+                },
+                {
+                    "@id": "finternet:BUSINESS"
+                }
+            ]
         },
         {
             "@id": "finternet:PERSONAL",
-            "@type": "finternet:EntityType",
-            "rdfs:label": "PERSONAL",
-            "rdfs:comment": "Represents an individual person account."
+            "@type": [
+                "finternet:EntityType",
+                "schema:Enumeration"
+            ],
+            "schema:name": "Personal",
+            "schema:identifier": "PERSONAL"
         },
         {
             "@id": "finternet:BUSINESS",
-            "@type": "finternet:EntityType",
-            "rdfs:label": "BUSINESS",
-            "rdfs:comment": "Represents a business or organizational account."
+            "@type": [
+                "finternet:EntityType",
+                "schema:Enumeration"
+            ],
+            "schema:name": "Business",
+            "schema:identifier": "BUSINESS"
         },
         {
             "@id": "finternet:ContactMethodType",
-            "@type": "rdfs:Class",
-            "rdfs:subClassOf": "schema:Enumeration",
-            "rdfs:label": "ContactMethodType",
-            "rdfs:comment": "Enumeration of contact method types for account recovery and notifications."
+            "@type": "schema:Enumeration",
+            "schema:name": "Contact Method Type",
+            "rdfs:comment": "Enumeration of contact method types for account recovery and notifications.",
+            "schema:hasEnumerationMember": [
+                {
+                    "@id": "finternet:EMAIL"
+                },
+                {
+                    "@id": "finternet:MOBILE"
+                }
+            ]
         },
         {
             "@id": "finternet:EMAIL",
-            "@type": "finternet:ContactMethodType",
-            "rdfs:label": "EMAIL",
-            "rdfs:comment": "Email-based contact method."
+            "@type": [
+                "finternet:ContactMethodType",
+                "schema:Enumeration"
+            ],
+            "schema:name": "Email",
+            "schema:identifier": "EMAIL"
         },
         {
-            "@id": "finternet:PHONE",
-            "@type": "finternet:ContactMethodType",
-            "rdfs:label": "PHONE",
-            "rdfs:comment": "Phone-based contact method."
-        },
-        {
-            "@id": "finternet:SMS",
-            "@type": "finternet:ContactMethodType",
-            "rdfs:label": "SMS",
-            "rdfs:comment": "SMS-based contact method."
-        },
-        {
-            "@id": "finternet:WHATSAPP",
-            "@type": "finternet:ContactMethodType",
-            "rdfs:label": "WHATSAPP",
-            "rdfs:comment": "WhatsApp-based contact method."
+            "@id": "finternet:MOBILE",
+            "@type": [
+                "finternet:ContactMethodType",
+                "schema:Enumeration"
+            ],
+            "schema:name": "Mobile",
+            "schema:identifier": "MOBILE"
         },
         {
             "@id": "finternet:ContactMethod",
@@ -156,63 +178,7 @@
             "@id": "finternet:Flags",
             "@type": "rdfs:Class",
             "rdfs:label": "Flags",
-            "rdfs:comment": "Account-specific preferences, permissions, and feature flags."
-        },
-        {
-            "@id": "finternet:isWhatsAppSendingAllowed",
-            "@type": "rdf:Property",
-            "rdfs:label": "isWhatsAppSendingAllowed",
-            "rdfs:comment": "Indicates whether WhatsApp messaging is allowed for this account.",
-            "rdfs:domain": "finternet:Flags",
-            "rdfs:range": "xsd:boolean"
-        },
-        {
-            "@id": "finternet:isMarketingOptIn",
-            "@type": "rdf:Property",
-            "rdfs:label": "isMarketingOptIn",
-            "rdfs:comment": "Indicates whether the user has opted in to marketing communications.",
-            "rdfs:domain": "finternet:Flags",
-            "rdfs:range": "xsd:boolean"
-        },
-        {
-            "@id": "finternet:isSMSAllowed",
-            "@type": "rdf:Property",
-            "rdfs:label": "isSMSAllowed",
-            "rdfs:comment": "Indicates whether SMS messaging is allowed for this account.",
-            "rdfs:domain": "finternet:Flags",
-            "rdfs:range": "xsd:boolean"
-        },
-        {
-            "@id": "finternet:isEmailAllowed",
-            "@type": "rdf:Property",
-            "rdfs:label": "isEmailAllowed",
-            "rdfs:comment": "Indicates whether email communication is allowed for this account.",
-            "rdfs:domain": "finternet:Flags",
-            "rdfs:range": "xsd:boolean"
-        },
-        {
-            "@id": "finternet:userDefinedTheme",
-            "@type": "rdf:Property",
-            "rdfs:label": "userDefinedTheme",
-            "rdfs:comment": "User's preferred UI theme.",
-            "rdfs:domain": "finternet:Flags",
-            "rdfs:range": "xsd:string"
-        },
-        {
-            "@id": "finternet:language",
-            "@type": "rdf:Property",
-            "rdfs:label": "language",
-            "rdfs:comment": "Preferred language code (ISO 639-1).",
-            "rdfs:domain": "finternet:Flags",
-            "rdfs:range": "xsd:string"
-        },
-        {
-            "@id": "finternet:timezone",
-            "@type": "rdf:Property",
-            "rdfs:label": "timezone",
-            "rdfs:comment": "Preferred timezone (IANA timezone identifier).",
-            "rdfs:domain": "finternet:Flags",
-            "rdfs:range": "xsd:string"
+            "rdfs:comment": "Account-specific feature flags and permissions."
         },
         {
             "@id": "finternet:notificationPreferences",
@@ -221,6 +187,36 @@
             "rdfs:comment": "Structured notification preferences.",
             "rdfs:domain": "finternet:Flags",
             "rdfs:range": "rdf:JSON"
+        },
+        {
+            "@id": "finternet:Preferences",
+            "@type": "rdfs:Class",
+            "rdfs:label": "Preferences",
+            "rdfs:comment": "User preferences for UI and localization."
+        },
+        {
+            "@id": "finternet:userDefinedTheme",
+            "@type": "rdf:Property",
+            "rdfs:label": "userDefinedTheme",
+            "rdfs:comment": "User's preferred UI theme.",
+            "rdfs:domain": "finternet:Preferences",
+            "rdfs:range": "xsd:string"
+        },
+        {
+            "@id": "finternet:language",
+            "@type": "rdf:Property",
+            "rdfs:label": "language",
+            "rdfs:comment": "Preferred language code (ISO 639-1).",
+            "rdfs:domain": "finternet:Preferences",
+            "rdfs:range": "xsd:string"
+        },
+        {
+            "@id": "finternet:timezone",
+            "@type": "rdf:Property",
+            "rdfs:label": "timezone",
+            "rdfs:comment": "Preferred timezone (IANA timezone identifier).",
+            "rdfs:domain": "finternet:Preferences",
+            "rdfs:range": "xsd:string"
         }
     ]
 }
