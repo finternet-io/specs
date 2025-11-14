@@ -1,6 +1,6 @@
 {
     "@context": {
-        "finternet": "https://finternet.io/schema/account/v1#",
+        "finternet": "https://finternet-io.github.io/specs/schemas/account/v1#",
         "schema": "https://schema.org/",
         "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
         "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
@@ -12,7 +12,7 @@
         {
             "@id": "finternet:Account",
             "@type": "rdfs:Class",
-            "rdfs:subClassOf": "https://finternet.io/schema/core/v1#Entity",
+            "rdfs:subClassOf": "https://finternet-io.github.io/specs/schemas/core/v1#Entity",
             "rdfs:label": "Account",
             "rdfs:comment": "Represents a core Finternet Account, which is a top-level entity representing a user or organization with cryptographic identity and contact information."
         },
@@ -62,7 +62,7 @@
             "rdfs:label": "aliases",
             "rdfs:comment": "A set of alternative, non-primary addresses for the account.",
             "rdfs:domain": "finternet:Account",
-            "rdfs:range": "https://finternet.io/schema/core/v1#Identifier"
+            "rdfs:range": "https://finternet-io.github.io/specs/schemas/core/v1#Identifier"
         },
         {
             "@id": "finternet:EntityType",
@@ -217,6 +217,47 @@
             "rdfs:comment": "Preferred timezone (IANA timezone identifier).",
             "rdfs:domain": "finternet:Preferences",
             "rdfs:range": "xsd:string"
+        },
+        {
+            "@id": "finternet:accountStatus",
+            "@type": "rdf:Property",
+            "rdfs:subPropertyOf": "finternet:status",
+            "rdfs:label": "status",
+            "rdfs:comment": "The status of an account.",
+            "rdfs:domain": "finternet:Account",
+            "rdfs:range": "finternet:AccountStatus"
+        },
+        {
+            "@id": "finternet:AccountStatus",
+            "@type": "schema:Enumeration",
+            "schema:name": "Account Status",
+            "rdfs:comment": "Enumeration of account status values.",
+            "schema:hasEnumerationMember": [
+                {
+                    "@id": "finternet:ACTIVE"
+                },
+                {
+                    "@id": "finternet:SUSPENDED"
+                }
+            ]
+        },
+        {
+            "@id": "finternet:ACTIVE",
+            "@type": [
+                "finternet:AccountStatus",
+                "schema:Enumeration"
+            ],
+            "schema:name": "Active",
+            "schema:identifier": "ACTIVE"
+        },
+        {
+            "@id": "finternet:SUSPENDED",
+            "@type": [
+                "finternet:AccountStatus",
+                "schema:Enumeration"
+            ],
+            "schema:name": "Suspended",
+            "schema:identifier": "SUSPENDED"
         }
     ]
 }

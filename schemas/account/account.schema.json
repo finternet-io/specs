@@ -1,13 +1,13 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://finternet.io/schemas/account.schema.json",
+  "$id": "https://finternet-io.github.io/specs/schemas/account.schema.json",
   "title": "Finternet Account",
   "description": "Validation schema for a Finternet Account data object. References the account/v1 schema definitions.",
   "type": "object",
   "$comment": "This schema validates account instances. For full schema definitions including JSON-LD context, see v1/attributes.yaml",
   "definitions": {
     "Identifier": {
-      "$ref": "../core/v1/core.yaml#/components/schemas/Identifier",
+      "$ref": "https://finternet-io.github.io/specs/schemas/core/v1/core.yaml#/components/schemas/Identifier",
       "type": "object",
       "description": "Structured identifier for Finternet addressing",
       "required": [
@@ -32,7 +32,7 @@
       }
     },
     "Flags": {
-      "$ref": "./v1/attributes.yaml#/components/schemas/Flags",
+      "$ref": "https://finternet-io.github.io/specs/schemas/account/v1/attributes.yaml#/components/schemas/Flags",
       "type": "object",
       "description": "Structured feature flags and permissions",
       "properties": {
@@ -103,7 +103,7 @@
       ]
     },
     "ContactMethod": {
-      "$ref": "./v1/attributes.yaml#/components/schemas/ContactMethod",
+      "$ref": "https://finternet-io.github.io/specs/schemas/account/v1/attributes.yaml#/components/schemas/ContactMethod",
       "type": "object",
       "description": "A contact method for recovery or notifications",
       "required": [
@@ -136,14 +136,23 @@
         }
       }
     },
+    "AccountStatus": {
+      "description": "Account status enumeration (ACTIVE or SUSPENDED)",
+      "type": "string",
+      "enum": [
+        "ACTIVE",
+        "SUSPENDED"
+      ],
+      "default": "ACTIVE"
+    },
   },
   "properties": {
     "@context": {
-      "description": "The JSON-LD context, should reference https://finternet.io/schema/account/v1/context.jsonld",
+      "description": "The JSON-LD context, should reference https://finternet-io.github.io/specs/schemas/account/v1/context.jsonld",
       "oneOf": [
         {
           "type": "string",
-          "const": "https://finternet.io/schema/account/v1/context.jsonld"
+          "const": "https://finternet-io.github.io/specs/schemas/account/v1/context.jsonld"
         },
         {
           "type": "object"
@@ -196,20 +205,20 @@
         "Alice Smith"
       ]
     },
+    "mobile": {
+      "description": "The optional primary mobile phone number (E.164 format).",
+      "type": "string",
+      "pattern": "^\\+[1-9]\\d{1,14}$",
+      "examples": [
+        "+919876543210"
+      ]
+    },
     "email": {
       "description": "The primary contact email for the account.",
       "type": "string",
       "format": "email",
       "examples": [
         "alice.smith@example.com"
-      ]
-    },
-    "phone": {
-      "description": "The optional primary contact phone number (E.164 format).",
-      "type": "string",
-      "pattern": "^\\+[1-9]\\d{1,14}$",
-      "examples": [
-        "+919876543210"
       ]
     },
     "publicKey": {
@@ -223,6 +232,10 @@
     "entityType": {
       "$ref": "#/definitions/EntityType",
       "description": "The type of entity (PERSONAL or BUSINESS)."
+    },
+    "status": {
+      "$ref": "#/definitions/AccountStatus",
+      "description": "The current status of the account."
     },
     "flags": {
       "$ref": "#/definitions/Flags",

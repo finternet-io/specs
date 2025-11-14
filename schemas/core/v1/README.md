@@ -51,6 +51,6 @@ Domain-specific schemas (like Account) should:
 
 ## Namespace
 
-The core namespace is: `https://finternet.io/schema/core/v1#`
+The core namespace is: `https://finternet-io.github.io/specs/schemas/core/v1#`
 
 Prefix: `finternet`

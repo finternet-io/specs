@@ -4,15 +4,16 @@ This directory contains JSON-LD schema definitions for the Finternet protocol, f
 
 ## Architecture
 
-The schema follows a **core-extension pattern** inspired by protocol-specifications-new:
+The schema follows a **core-extension pattern**:
 
 ```
 schema/
-├── core/v1/           # Base schema with common types and enumerations
-│   ├── context.jsonld # Core JSON-LD context mappings
-│   ├── vocab.jsonld   # RDF vocabulary definitions
-│   ├── core.yaml      # OpenAPI 3.1 schema definitions
-│   └── README.md      # Core schema documentation
+├── core/              # Core schema domain
+│   └── v1/            # Version 1 of core schema
+│       ├── context.jsonld # Core JSON-LD context mappings
+│       ├── vocab.jsonld   # RDF vocabulary definitions
+│       ├── core.yaml      # OpenAPI 3.1 schema definitions
+│       └── README.md      # Core schema documentation
 │
 └── account/           # Account domain schema
     ├── v1/            # Version 1 of account schema
@@ -81,9 +82,10 @@ Extends core Entity to represent user and organizational accounts:
 ### Key Features
 - **Decentralized Identity** - DID support with cryptographic keys
 - **Finternet Address** - `primaryAddress` using core `Identifier` type (e.g., `{identifierValue: "alice", identifierDomain: "finternet"}`)
-- **Contact Information** - Primary email/phone plus secondary contact methods with verification timestamps
+- **Contact Information** - Primary mobile/email plus secondary contact methods with verification timestamps
 - **Entity Classification** - Account-specific `EntityType` enumeration (PERSONAL/BUSINESS)
-- **Contact Methods** - Account-specific `ContactMethod` type with `ContactMethodType` enum (EMAIL/PHONE/SMS/WHATSAPP)
+- **Account Status** - Account-specific `AccountStatus` enumeration (ACTIVE/SUSPENDED)
+- **Contact Methods** - Account-specific `ContactMethod` type with `ContactMethodType` enum (EMAIL/MOBILE)
 - **Preferences & Permissions** - Account-specific `Flags` type with messaging permissions, UI preferences, and notification settings
 - **Aliases** - Alternative addresses using core `Identifier` type
 - **Multi-Signature Support** - `controllers` array for delegated control
@@ -91,7 +93,8 @@ Extends core Entity to represent user and organizational accounts:
 ### Account-Specific Types
 The account schema defines its own types that are specific to account management:
 - `EntityType` - PERSONAL or BUSINESS classification
-- `ContactMethodType` - EMAIL, PHONE, SMS, WHATSAPP
+- `AccountStatus` - ACTIVE or SUSPENDED status
+- `ContactMethodType` - EMAIL, MOBILE
 - `ContactMethod` - Structured contact with verification
 - `Flags` - Account preferences and feature flags
 
@@ -99,7 +102,7 @@ The account schema defines its own types that are specific to account management
 
 ```json
 {
-  "@context": "https://finternet.io/schema/account/v1/context.jsonld",
+  "@context": "https://finternet-io.github.io/specs/schemas/account/v1/context.jsonld",
   "@type": "Account",
   "@id": "urn:uuid:...",
   "did": "did:key:...",
@@ -108,6 +111,7 @@ The account schema defines its own types that are specific to account management
     "identifierDomain": "finternet"
   },
   "entityType": "PERSONAL",
+  "status": "ACTIVE",
   "contactMethods": [
     {
       "type": "EMAIL",
@@ -137,10 +141,10 @@ To create a new domain schema:
 
 | Prefix | Namespace | Purpose |
 |--------|-----------|---------|
-| `finternet` | `https://finternet.io/schema/account/v1#` | Account-specific terms |
-| `finternet` | `https://finternet.io/schema/core/v1#` | Core Finternet terms |
+| `finternet` | `https://finternet-io.github.io/specs/schemas/account/v1#` | Account-specific terms |
+| `finternet` | `https://finternet-io.github.io/specs/schemas/core/v1#` | Core Finternet terms |
 | `schema` | `https://schema.org/` | Schema.org vocabulary |
-| `di` | `https://www.w3.org/ns/did/v1#` | W3C Decentralized Identifiers |
+| `didCore` | `https://www.w3.org/ns/did/v1#` | W3C Decentralized Identifiers |
 | `sec` | `https://w3id.org/security#` | W3C Security vocabulary |
 | `rdf` | `http://www.w3.org/1999/02/22-rdf-syntax-ns#` | RDF vocabulary |
 | `rdfs` | `http://www.w3.org/2000/01/rdf-schema#` | RDF Schema |
@@ -182,30 +186,7 @@ riot --output=turtle account/account.jsonld
 6. **Think semantically** - Map to established vocabularies when possible
 7. **Use URNs for IDs** - Prefer `urn:uuid:` for entity identifiers
 8. **Enable discovery** - Include proper `@type` and `@id` in all instances
-
-## Migration from Previous Schema
-
-Previous schema used:
-- Snake_case properties (`primary_address`, `entity_type`)
-- Inline vocabulary definitions in context
-- No versioning structure
-
-New schema uses:
-- CamelCase properties (`primaryAddress`, `entityType`)
-- Separate vocabulary files with proper RDF definitions
-- Version directories for evolution
-- Strict typing with enumeration classes
-- References to core shared types
-
-To migrate existing data:
-1. Rename properties from snake_case to camelCase
-2. Update `@context` to reference versioned context URL
-3. Convert `primaryAddress` from string to Identifier object: `"alice@finternet"` → `{"identifierValue": "alice", "identifierDomain": "finternet"}`
-4. Ensure enum values match defined vocabulary (e.g., `PERSONAL`, `BUSINESS`)
-5. Rename `masterPublicKey` to `publicKey`
-6. Remove `verificationLevel`, `nationality`, `countryOfResidence`, `countryOfIncorporation` (these are runtime attributes, not core schema)
-7. Update `contact_methods` to `contactMethods` with `verifiedAt` timestamp
-8. Update `flags` to use strict schema with defined properties
+9. **Follow naming conventions** - Use PascalCase for class names (Account, Entity), camelCase for property names (primaryAddress, entityType)
 
 ## References
 

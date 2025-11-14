@@ -13,7 +13,7 @@ components:
       type: object
       description: A contact method for account recovery or notifications
       x-jsonld:
-        context: https://finternet.io/schema/account/v1/context.jsonld
+        context: https://finternet-io.github.io/specs/schemas/account/v1/context.jsonld
         type: finternet:ContactMethod
       required:
         - type
@@ -50,7 +50,7 @@ components:
       type: object
       description: Account-specific feature flags and permissions
       x-jsonld:
-        context: https://finternet.io/schema/account/v1/context.jsonld
+        context: https://finternet-io.github.io/specs/schemas/account/v1/context.jsonld
         type: finternet:Flags
       properties:
         notificationPreferences:
@@ -73,7 +73,7 @@ components:
       type: object
       description: User preferences for UI and localization
       x-jsonld:
-        context: https://finternet.io/schema/account/v1/context.jsonld
+        context: https://finternet-io.github.io/specs/schemas/account/v1/context.jsonld
         type: finternet:Preferences
       properties:
         userDefinedTheme:
@@ -109,7 +109,7 @@ components:
       type: object
       description: A Finternet Account representing a user or organization
       x-jsonld:
-        context: https://finternet.io/schema/account/v1/context.jsonld
+        context: https://finternet-io.github.io/specs/schemas/account/v1/context.jsonld
         type: finternet:Account
       required:
         - '@context'
@@ -125,7 +125,7 @@ components:
         '@context':
           oneOf:
             - type: string
-              const: https://finternet.io/schema/account/v1/context.jsonld
+              const: https://finternet-io.github.io/specs/schemas/account/v1/context.jsonld
             - type: array
               items:
                 oneOf:
@@ -154,16 +154,16 @@ components:
           minLength: 1
           description: The legal name of the individual or business
           example: "Alice Smith"
+        mobile:
+          type: string
+          pattern: "^\\+[1-9]\\d{1,14}$"
+          description: The primary mobile phone number (E.164 format)
+          example: "+919876543210"
         email:
           type: string
           format: email
           description: The primary contact email for the account
           example: "alice.smith@example.com"
-        phone:
-          type: string
-          pattern: "^\\+[1-9]\\d{1,14}$"
-          description: The primary contact phone number (E.164 format)
-          example: "+919876543210"
         publicKey:
           type: string
           minLength: 10
@@ -179,6 +179,14 @@ components:
             PERSONAL: Individual person account
             BUSINESS: Business or organizational account
           x-jsonld: { "@id": "finternet:entityType" }
+        status:
+          type: string
+          description: The current status of the account
+          enum:
+            - ACTIVE
+            - SUSPENDED
+          default: ACTIVE
+          x-jsonld: { "@id": "finternet:accountStatus" }
         flags:
           $ref: '#/components/schemas/Flags'
           description: Structured feature flags and permissions for the account

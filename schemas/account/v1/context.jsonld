@@ -1,8 +1,8 @@
 {
     "@context": [
-        "https://finternet.io/schema/core/v1/context.jsonld",
+        "https://finternet-io.github.io/specs/schemas/core/v1/context.jsonld",
         {
-            "finternet": "https://finternet.io/schema/account/v1#",
+            "finternet": "https://finternet-io.github.io/specs/schemas/account/v1#",
             "schema": "https://schema.org/",
             "didCore": "https://www.w3.org/ns/did/v1#",
             "sec": "https://w3id.org/security#",
@@ -50,6 +50,10 @@
                 "@id": "finternet:entityType",
                 "@type": "@vocab"
             },
+            "status": {
+                "@id": "finternet:accountStatus",
+                "@type": "@vocab"
+            },
             "flags": {
                 "@id": "finternet:flags",
                 "@type": "@id"
@@ -76,10 +80,13 @@
                 "@id": "schema:email",
                 "@type": "xsd:string"
             },
-            "phone": {
+            "mobile": {
                 "@id": "schema:telephone",
                 "@type": "xsd:string"
-            }
+            },
+            "AccountStatus": "finternet:AccountStatus",
+            "ACTIVE": "finternet:ACTIVE",
+            "SUSPENDED": "finternet:SUSPENDED"
         }
     ]
 }

@@ -62,7 +62,7 @@ The Account schema:
 
 ```json
 {
-  "@context": "https://finternet.io/schema/account/v1/context.jsonld",
+  "@context": "https://finternet-io.github.io/specs/schemas/account/v1/context.jsonld",
   "@type": "Account",
   "@id": "urn:uuid:018b41f8-37c8-7c83-9429-7a670d8a598a",
   "did": "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBa82SsoPfnH4Ujp",
@@ -71,8 +71,8 @@ The Account schema:
     "identifierDomain": "finternet"
   },
   "name": "Alice Smith",
+  "mobile": "+919876543210",
   "email": "alice.smith@example.com",
-  "phone": "+919876543210",
   "publicKey": "0x04ab3c5d7ef9a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6",
   "entityType": "PERSONAL",
   "flags": {
@@ -101,10 +101,10 @@ The Account schema:
 
 ## Namespace
 
-The account namespace is: `https://finternet.io/schema/account/v1#`
+The account namespace is: `https://finternet-io.github.io/specs/schemas/account/v1#`
 
 Prefix: `finternet`
 
-Core namespace: `https://finternet.io/schema/core/v1#`
+Core namespace: `https://finternet-io.github.io/specs/schemas/core/v1#`
 
 Core prefix: `finternet` (referenced via full URL in vocab.jsonld)
