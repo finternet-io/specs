@@ -144,7 +144,7 @@
         "SUSPENDED"
       ],
       "default": "ACTIVE"
-    },
+    }
   },
   "properties": {
     "@context": {
@@ -193,7 +193,7 @@
         "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBa82SsoPfnH4Ujp"
       ]
     },
-    "primaryAddress": {
+    "address": {
       "$ref": "#/definitions/Identifier",
       "description": "The unique, human-readable identifier for the account."
     },
@@ -219,14 +219,6 @@
       "format": "email",
       "examples": [
         "alice.smith@example.com"
-      ]
-    },
-    "publicKey": {
-      "description": "The root cryptographic public key for the account.",
-      "type": "string",
-      "minLength": 10,
-      "examples": [
-        "0x04ab3c5d7ef9a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6"
       ]
     },
     "entityType": {
@@ -285,14 +277,10 @@
     }
   },
   "required": [
-    "@context",
-    "@type",
-    "@id",
     "did",
-    "primaryAddress",
+    "address",
     "name",
     "email",
-    "publicKey",
     "entityType"
   ],
   "additionalProperties": false

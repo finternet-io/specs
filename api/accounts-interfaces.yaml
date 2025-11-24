@@ -668,20 +668,19 @@ components:
     # --- Core Data Schemas (Payloads) ---
     RegistrationRequest:
       type: object
-      required: [address, email, password, name, publicKey, entityType]
+      required: [address, email, password, name, entityType]
       properties:
         address: { type: string, example: "alice@finternet" }
         email: { type: string, format: email }
         password: { type: string, format: password }
         name: { type: string, example: "Alice Smith" }
-        phoneNumber: { type: string, example: "+919876543210", nullable: true }
-        publicKey: { type: string, example: "0x04..." }
+        mobile: { type: string, example: "+919876543210", nullable: true }
         entityType: { type: string, enum: [Individual, Business] }
     UpdateAccountRequest:
       type: object
       properties:
         name: { type: string, example: "Alice Smith-Jones" }
-        phoneNumber: { type: string, example: "+919876543211", nullable: true }
+        mobile: { type: string, example: "+919876543211", nullable: true }
     RegistrationSuccessResponse:
       type: object
       properties:
@@ -697,11 +696,12 @@ components:
       required: [address]
       properties:
         address: { type: string, example: "alice@finternet" }
+        purpose: { type: string, enum: [authentication, assertion, keyAgreement, capabilityInvocation, capabilityDelegation], nullable: true, description: "Filter keys by purpose" }
     LookupRequest:
       type: object
       properties:
         email: { type: string, format: email }
-        phoneNumber: { type: string, example: "+919876543210" }
+        mobile: { type: string, example: "+919876543210" }
       description: "Must provide at least one lookup field."
     LoginRequest:
       type: object

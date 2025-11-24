@@ -13,8 +13,8 @@ components:
       type: object
       description: A contact method for account recovery or notifications
       x-jsonld:
-        context: https://finternet-io.github.io/specs/schemas/account/v1/context.jsonld
-        type: finternet:ContactMethod
+        "@context": https://finternet-io.github.io/specs/schemas/account/v1/context.jsonld
+        "@type": finternet:ContactMethod
       required:
         - type
         - value
@@ -50,8 +50,8 @@ components:
       type: object
       description: Account-specific feature flags and permissions
       x-jsonld:
-        context: https://finternet-io.github.io/specs/schemas/account/v1/context.jsonld
-        type: finternet:Flags
+        "@context": https://finternet-io.github.io/specs/schemas/account/v1/context.jsonld
+        "@type": finternet:Flags
       properties:
         notificationPreferences:
           type: object
@@ -67,14 +67,22 @@ components:
               type: boolean
               default: false
           additionalProperties: false
+        piiEncryptionEnabled:
+          type: boolean
+          default: false
+          description: Whether PII data should be encrypted
+        piiMaskingEnabled:
+          type: boolean
+          default: true
+          description: Whether PII data should be masked in responses
       additionalProperties: false
 
     Preferences:
       type: object
       description: User preferences for UI and localization
       x-jsonld:
-        context: https://finternet-io.github.io/specs/schemas/account/v1/context.jsonld
-        type: finternet:Preferences
+        "@context": https://finternet-io.github.io/specs/schemas/account/v1/context.jsonld
+        "@type": finternet:Preferences
       properties:
         userDefinedTheme:
           type: string
@@ -89,7 +97,7 @@ components:
           description: Preferred language code (ISO 639-1)
           pattern: "^[a-z]{2}$"
           default: en
-          examples:
+          example:
             - en
             - es
             - fr
@@ -98,7 +106,7 @@ components:
           type: string
           description: Preferred timezone (IANA timezone identifier)
           default: UTC
-          examples:
+          example:
             - UTC
             - America/New_York
             - Europe/London
@@ -109,46 +117,25 @@ components:
       type: object
       description: A Finternet Account representing a user or organization
       x-jsonld:
-        context: https://finternet-io.github.io/specs/schemas/account/v1/context.jsonld
-        type: finternet:Account
+        "@context": https://finternet-io.github.io/specs/schemas/account/v1/context.jsonld
+        "@type": finternet:Account
       required:
-        - '@context'
-        - '@type'
-        - '@id'
         - did
-        - primaryAddress
+        - address
         - name
         - email
-        - publicKey
         - entityType
       properties:
-        '@context':
-          oneOf:
-            - type: string
-              const: https://finternet-io.github.io/specs/schemas/account/v1/context.jsonld
-            - type: array
-              items:
-                oneOf:
-                  - type: string
-                  - type: object
-          description: JSON-LD context referencing account and core schemas
-        '@type':
-          type: string
-          const: Account
-          description: JSON-LD type must be 'Account'
-        '@id':
-          type: string
-          format: uri
-          description: Unique URN identifier for the account (e.g., urn:uuid:...)
-          example: "urn:uuid:018b41f8-37c8-7c83-9429-7a670d8a598a"
         did:
           type: string
           pattern: "^did:"
           description: Decentralized Identifier (DID) for the account
           example: "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBa82SsoPfnH4Ujp"
-        primaryAddress:
-          $ref: '../core/v1/core.yaml#/components/schemas/Identifier'
-          description: The unique, human-readable identifier for the account
+        address:
+          type: string
+          minLength: 1
+          description: The unique, human-readable identifier for the account (e.g., alice@example.com)
+          example: "alice@example.com"
         name:
           type: string
           minLength: 1
@@ -164,11 +151,7 @@ components:
           format: email
           description: The primary contact email for the account
           example: "alice.smith@example.com"
-        publicKey:
-          type: string
-          minLength: 10
-          description: The root cryptographic public key for the account
-          example: "0x04ab3c5d7ef9..."
+
         entityType:
           type: string
           description: The type of entity (PERSONAL or BUSINESS)
@@ -219,5 +202,3 @@ components:
           type: string
           format: date-time
           description: Last modification timestamp
-
-
