@@ -77,8 +77,8 @@ paths:
             schema:
               $ref: '#/components/schemas/ApiRequest_RegistrationRequest'
             examples:
-              IndividualRegistration:
-                summary: "Example for registering an Individual"
+              PersonalRegistration:
+                summary: "Example for registering an PERSONAL"
                 value:
                   context:
                     id: "api.account.create"
@@ -91,11 +91,10 @@ paths:
                     email: "alice.smith@example.com"
                     password: "securePassword123"
                     name: "Alice Smith"
-                    phoneNumber: "+919876543210"
-                    publicKey: "0x04..." # Master Controller Key
-                    entityType: "Individual"
+                    mobile: "+919876543210"
+                    entityType: "PERSONAL"
               BusinessRegistration:
-                summary: "Example for registering a Business"
+                summary: "Example for registering a BUSINESS"
                 value:
                   context:
                     id: "api.account.create"
@@ -106,10 +105,9 @@ paths:
                   payload:
                     address: "acmecorp@finternet"
                     email: "contact@acmecorp.example.com"
-                    password: "strongBusinessPassword456"
+                    password: "strongBUSINESSPassword456"
                     name: "Acme Corporation"
-                    publicKey: "0x05..."
-                    entityType: "Business"
+                    entityType: "BUSINESS"
       responses:
         '201':
           description: "Account registered successfully."
@@ -193,7 +191,7 @@ paths:
                 authorization: "Bearer <End_User_JWT_Token>"
               payload:
                 name: "Alice Smith-Jones"
-                phoneNumber: "+919876543211"
+                mobile: "+919876543211"
       responses:
         '200':
           description: "Account profile updated successfully."
@@ -505,7 +503,6 @@ paths:
                 developer_token: "dev_pk_..."
                 authorization: "Bearer eyJ..."
               payload:
-                publicKey: "0x07..."
                 keyType: "DEVICE_MOBILE"
                 role: "TRANSACT"
               signature:
@@ -675,7 +672,7 @@ components:
         password: { type: string, format: password }
         name: { type: string, example: "Alice Smith" }
         mobile: { type: string, example: "+919876543210", nullable: true }
-        entityType: { type: string, enum: [Individual, Business] }
+        entityType: { type: string, enum: [PERSONAL, BUSINESS] }
     UpdateAccountRequest:
       type: object
       properties:
@@ -728,20 +725,18 @@ components:
       type: object
       properties:
         address: { type: string, example: "alice@finternet" }
-        publicKey: { type: string, example: "0x04..." }
         did: { type: string, example: "did:key:z..." }
     AccountProfile:
       type: object
-      required: [did, address, email, name, publicKey, entityType]
+      required: [did, address, email, name, entityType]
       properties:
         did: { type: string, example: "did:key:z..." }
         address: { type: string, example: "alice@finternet" }
         email: { type: string, format: email }
         name: { type: string, example: "Alice Smith" }
-        phoneNumber: { type: string, example: "+919876543210", nullable: true }
-        publicKey: { type: string, example: "0x04..." }
+        mobile: { type: string, example: "+919876543210", nullable: true }
         verificationLevel: { type: string, enum: [Tier0_Unverified, Tier1_Verified, Tier2_InstitutionVerified], example: "Tier0_Unverified", description: "Dynamically generated based on credential tokens" }
-        entityType: { type: string, enum: [Individual, Business] }
+        entityType: { type: string, enum: [PERSONAL, BUSINESS] }
     AddControllerRequest:
       type: object
       required: [publicKey, keyType, role]

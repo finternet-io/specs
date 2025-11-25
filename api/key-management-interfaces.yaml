@@ -1,0 +1,486 @@
+openapi: 3.0.4
+info:
+  title: "Finternet API - Key Management Service"
+  description: |
+    The official API specification for the Finternet Key Management service.
+
+    ### Protocol-Agnostic Envelope
+    All API interactions use a standard JSON envelope.
+
+    **Request Envelope:**
+    ```json
+    {
+      "context": { ... },
+      "payload": { ... },
+      "signature": { ... } // Optional
+    }
+    ```
+
+    **Response Envelope (Success):**
+    ```json
+    {
+      "context": { ..., "status": "successful" },
+      "response": { ... }
+    }
+    ```
+
+    **Response Envelope (Error):**
+    ```json
+    {
+      "context": { ..., "status": "failed", "error": {"code": "...", "message": "..." }},
+      "response": {} // Empty on error
+    }
+    ```
+
+    ### Authentication and Authorization
+    This API uses a two-level authorization model:
+
+    1.  **Platform-Level (Developer) Authentication:**
+        * `context.developer_token`: The B2B Developer's API Key/Token.
+
+    2.  **User-Level (End-User) Authorization:**
+        * `context.authorization`: The end-user's JWT session token (required for all key operations).
+
+    ### Key Types Supported
+    - `ethereum`: ECDSA P-256 keys for Ethereum
+    - `solana`: ECDSA P-256 keys for Solana
+    - `base`: ECDSA P-256 keys for Base chain
+
+  version: "1.0.0"
+servers:
+  - url: "https://foundry.finternetlab.io"
+    description: "Development Environment"
+  - url: "http://localhost:3000"
+    description: "Local Development"
+tags:
+  - name: "KeyManagement"
+    description: "Endpoints for cryptographic key generation, signing, and retrieval."
+
+# ===============================================================
+#   PATHS
+# ===============================================================
+
+paths:
+  /v1/keys/generate:
+    post:
+      tags:
+        - "KeyManagement"
+      summary: "Generate a new signing key"
+      description: "Generates a new cryptographic signing key for the authenticated user. The key is stored securely in Vault and associated with the user's account."
+      security:
+        - developerToken: []
+        - userToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_GenerateKeyRequest'
+            examples:
+              EthereumKey:
+                summary: "Generate Ethereum key"
+                value:
+                  context:
+                    id: "api.keys.generate"
+                    version: "1.0"
+                    ts: "2025-11-25T12:00:00Z"
+                    msg_id: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                    developer_token: "dev-token-12345"
+                    authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  payload:
+                    key_type: "ethereum"
+                    entity_id: "" # Optional - will use account ID from JWT if not provided
+              SolanaKey:
+                summary: "Generate Solana key"
+                value:
+                  context:
+                    id: "api.keys.generate"
+                    version: "1.0"
+                    ts: "2025-11-25T12:00:00Z"
+                    msg_id: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
+                    developer_token: "dev-token-12345"
+                    authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  payload:
+                    key_type: "solana"
+      responses:
+        '200':
+          description: "Key generated successfully."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_KeyReference'
+              example:
+                context:
+                  id: "api.keys.generate"
+                  version: "1.0"
+                  ts: "2025-11-25T12:00:01Z"
+                  msg_id: "c1b2c3d4-e5f6-7890-1234-567890abcdef"
+                  status: "successful"
+                response:
+                  key_reference: "019ab8e9-0636-74fd-b5c4-192fc68b71e3-ethereum-12345678-1234-1234-1234-123456789abc"
+                  public_key: "0x04..."
+                  key_type: "ethereum"
+                  created_at: "2025-11-25T12:00:01Z"
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/keys/sign:
+    post:
+      tags:
+        - "KeyManagement"
+      summary: "Sign a message hash"
+      description: "Signs a pre-hashed message using the user's specified key. The signing operation is performed securely in Vault using the user's authenticated session."
+      security:
+        - developerToken: []
+        - userToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_SignMessageRequest'
+            example:
+              context:
+                id: "api.keys.sign"
+                version: "1.0"
+                ts: "2025-11-25T12:05:00Z"
+                msg_id: "d1e2f3a4-b5c6-7890-1234-567890abcdef"
+                developer_token: "dev-token-12345"
+                authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+              payload:
+                key_reference: "019ab8e9-0636-74fd-b5c4-192fc68b71e3-ethereum-12345678-1234-1234-1234-123456789abc"
+                hash: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+      responses:
+        '200':
+          description: "Message signed successfully."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_SignatureResponse'
+              example:
+                context:
+                  id: "api.keys.sign"
+                  version: "1.0"
+                  ts: "2025-11-25T12:05:01Z"
+                  msg_id: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
+                  status: "successful"
+                response:
+                  signature: "0x3045022100..."
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: "Key reference not found."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/keys/public:
+    post:
+      tags:
+        - "KeyManagement"
+      summary: "Get public key"
+      description: "Retrieves the public key for a given key reference. This is a read-only operation."
+      security:
+        - developerToken: []
+        - userToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_GetPublicKeyRequest'
+            example:
+              context:
+                id: "api.keys.public"
+                version: "1.0"
+                ts: "2025-11-25T12:10:00Z"
+                msg_id: "f1a2b3c4-d5e6-7890-1234-567890abcdef"
+                developer_token: "dev-token-12345"
+                authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+              payload:
+                key_reference: "019ab8e9-0636-74fd-b5c4-192fc68b71e3-ethereum-12345678-1234-1234-1234-123456789abc"
+      responses:
+        '200':
+          description: "Public key retrieved successfully."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_PublicKeyResponse'
+              example:
+                context:
+                  id: "api.keys.public"
+                  version: "1.0"
+                  ts: "2025-11-25T12:10:01Z"
+                  msg_id: "a2b3c4d5-e6f7-8901-2345-67890abcdef"
+                  status: "successful"
+                response:
+                  public_key: "0x04..."
+                  address: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1"
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: "Key reference not found."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+# ===============================================================
+#   COMPONENTS
+# ===============================================================
+
+components:
+  # -------------------- Schemas --------------------
+  schemas:
+    # --- API Envelope Schemas ---
+    Context:
+      type: object
+      required: [id, version, ts, msg_id]
+      properties:
+        id: { type: string, example: "api.keys.generate" }
+        version: { type: string, example: "1.0" }
+        ts: { type: string, format: date-time }
+        msg_id: { type: string, format: uuid }
+        transaction_id: { type: string, format: uuid, nullable: true }
+        developer_token: { type: string, example: "dev-token-12345", nullable: true }
+        authorization: { type: string, example: "Bearer eyJ...", nullable: true, description: "End-user's JWT session token" }
+
+    ResponseContext:
+      type: object
+      required: [id, version, ts, msg_id, status]
+      properties:
+        id: { type: string, example: "api.keys.generate" }
+        version: { type: string, example: "1.0" }
+        ts: { type: string, format: date-time }
+        msg_id: { type: string, format: uuid }
+        transaction_id: { type: string, format: uuid, nullable: true }
+        status: { type: string, enum: [successful, failed, pending] }
+        error: { $ref: '#/components/schemas/ErrorPayload', nullable: true }
+
+    ErrorPayload:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, example: "INVALID_INPUT" }
+        message: { type: string }
+        fields:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              message: { type: string }
+
+    # --- Base Request/Response Schemas ---
+    RequestContext:
+      type: object
+      required: [context, payload]
+      properties:
+        context: { $ref: '#/components/schemas/Context' }
+        payload: { type: object }
+
+    ApiResponse:
+      type: object
+      required: [context, response]
+      properties:
+        context: { $ref: '#/components/schemas/ResponseContext' }
+        response: { type: object }
+
+    ApiError:
+      type: object
+      required: [context, response]
+      properties:
+        context: { $ref: '#/components/schemas/ResponseContext' }
+        response: { type: object, description: "Always empty on error.", example: {} }
+
+    # --- Specific Request Envelopes ---
+    ApiRequest_GenerateKeyRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/GenerateKeyRequest' }
+
+    ApiRequest_SignMessageRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/SignMessageRequest' }
+
+    ApiRequest_GetPublicKeyRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/GetPublicKeyRequest' }
+
+    # --- Specific Response Envelopes ---
+    ApiResponse_KeyReference:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/KeyReference' }
+
+    ApiResponse_SignatureResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/SignatureResponse' }
+
+    ApiResponse_PublicKeyResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/PublicKeyResponse' }
+
+    # --- Core Data Schemas (Payloads) ---
+    GenerateKeyRequest:
+      type: object
+      required: [key_type]
+      properties:
+        key_type:
+          type: string
+          enum: [ethereum, solana, base]
+          description: "Type of cryptographic key to generate"
+        entity_id:
+          type: string
+          nullable: true
+          description: "Optional entity ID. If not provided, will use account ID from JWT"
+
+    SignMessageRequest:
+      type: object
+      required: [key_reference, hash]
+      properties:
+        key_reference:
+          type: string
+          description: "Reference to the key to use for signing"
+          example: "019ab8e9-0636-74fd-b5c4-192fc68b71e3-ethereum-12345678-1234-1234-1234-123456789abc"
+        hash:
+          type: string
+          description: "Pre-hashed message to sign (hex-encoded)"
+          example: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+
+    GetPublicKeyRequest:
+      type: object
+      required: [key_reference]
+      properties:
+        key_reference:
+          type: string
+          description: "Reference to the key"
+          example: "019ab8e9-0636-74fd-b5c4-192fc68b71e3-ethereum-12345678-1234-1234-1234-123456789abc"
+
+    KeyReference:
+      type: object
+      properties:
+        key_reference:
+          type: string
+          description: "Unique reference to the generated key"
+        public_key:
+          type: string
+          description: "Public key in hex format"
+        key_type:
+          type: string
+          enum: [ethereum, solana, base]
+        created_at:
+          type: string
+          format: date-time
+
+    SignatureResponse:
+      type: object
+      properties:
+        signature:
+          type: string
+          description: "Cryptographic signature in hex format"
+          example: "0x3045022100..."
+
+    PublicKeyResponse:
+      type: object
+      properties:
+        public_key:
+          type: string
+          description: "Public key in hex format"
+        address:
+          type: string
+          description: "Blockchain address derived from the public key"
+
+  # -------------------- Responses --------------------
+  responses:
+    UnauthorizedError:
+      description: "Authentication failed. Invalid Developer Token OR invalid User JWT."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context:
+              id: "api.keys.generate"
+              version: "1.0"
+              ts: "2025-11-25T12:00:00Z"
+              msg_id: "..."
+              status: "failed"
+              error:
+                code: "UNAUTHORIZED"
+                message: "Unauthorized. The JWT is missing, invalid, or expired"
+            response: {}
+
+    BadRequestError:
+      description: "Invalid request parameters."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context:
+              id: "api.keys.generate"
+              version: "1.0"
+              ts: "2025-11-25T12:00:00Z"
+              msg_id: "..."
+              status: "failed"
+              error:
+                code: "INVALID_INPUT"
+                message: "EntityID is required"
+            response: {}
+
+    InternalServerError:
+      description: "Internal server error."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context:
+              id: "api.keys.generate"
+              version: "1.0"
+              ts: "2025-11-25T12:00:00Z"
+              msg_id: "..."
+              status: "failed"
+              error:
+                code: "INTERNAL_ERROR"
+                message: "An unexpected error occurred"
+            response: {}
+
+  # -------------------- Security --------------------
+  securitySchemes:
+    developerToken:
+      type: http
+      scheme: bearer
+      bearerFormat: "JWT or Opaque"
+      description: |
+        A JWT or Opaque token that identifies the calling B2B developer/backend service.
+        This is passed in the `context.developer_token` field.
+
+    userToken:
+      type: http
+      scheme: bearer
+      bearerFormat: "JWT"
+      description: |
+        The end-user's JWT session token obtained from the login endpoint.
+        This is passed in the `context.authorization` field.
