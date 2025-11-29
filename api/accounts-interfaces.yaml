@@ -37,14 +37,14 @@ info:
     This API uses a two-level authorization model contained within the `context`:
 
     1.  **Platform-Level (Developer) Authentication:**
-        * `context.developer_token`: The B2B Developer's API Key/Token.
-        * `context.developer_signature`: The B2B Developer's signature (e.g., RFC 9421) of the payload.
+        * `context.developerToken`: The B2B Developer's API Key/Token.
+        * `context.developerSignature`: The B2B Developer's signature (e.g., RFC 9421) of the payload.
 
     2.  **User-Level (End-User) Authorization:**
         * `context.authorization`: The end-user's JWT session token (for session-based calls).
         * `signature` (top-level): The end-user's JWS for critical, cryptographically-signed operations.
 
-    *Note for HTTP Clients:* As a convenience, the `developer_token` may be provided in the standard `Authorization: Bearer <token>` HTTP header, and the `developer_signature` in an `X-Finternet-Signature` header. The server will check the headers first, then fall back to the `context` object.
+    *Note for HTTP Clients:* As a convenience, the `developerToken` may be provided in the standard `Authorization: Bearer <token>` HTTP header, and the `developerSignature` in an `X-Finternet-Signature` header. The server will check the headers first, then fall back to the `context` object.
   version: "1.0.0"
 servers:
   - url: "https://foundry.finternetlab.io"
@@ -84,8 +84,8 @@ paths:
                     id: "api.account.create"
                     version: "1.0"
                     ts: "2025-09-08T12:00:00Z"
-                    msg_id: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
-                    developer_token: "dev_pk_..."
+                    msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                    developerToken: "dev_pk_..."
                   payload:
                     address: "alice@finternet" # Primary Address
                     email: "alice.smith@example.com"
@@ -100,8 +100,8 @@ paths:
                     id: "api.account.create"
                     version: "1.0"
                     ts: "2025-09-08T12:01:00Z"
-                    msg_id: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
-                    developer_token: "dev_pk_..."
+                    msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
+                    developerToken: "dev_pk_..."
                   payload:
                     address: "acmecorp@finternet"
                     email: "contact@acmecorp.example.com"
@@ -120,7 +120,7 @@ paths:
                   id: "api.account.create"
                   version: "1.0"
                   ts: "2025-09-08T12:00:01Z"
-                  msg_id: "c1b2c3d4-e5f6-7890-1234-567890abcdef"
+                  msgId: "c1b2c3d4-e5f6-7890-1234-567890abcdef"
                   status: "successful"
                 response:
                   did: "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBa82SsoPfnH4Ujp"
@@ -139,7 +139,7 @@ paths:
                       id: "api.account.create"
                       version: "1.0"
                       ts: "2025-09-08T12:00:00Z"
-                      msg_id: "a1b2c3d4..."
+                      msgId: "a1b2c3d4..."
                       status: "failed"
                       error:
                         code: "BAD_REQUEST"
@@ -159,7 +159,7 @@ paths:
                       id: "api.account.create"
                       version: "1.0"
                       ts: "2025-09-08T12:00:00Z"
-                      msg_id: "a1b2c3d4..."
+                      msgId: "a1b2c3d4..."
                       status: "failed"
                       error:
                         code: "IDENTIFIER_TAKEN"
@@ -186,8 +186,8 @@ paths:
                 id: "api.account.update"
                 version: "1.0"
                 ts: "2025-09-09T10:00:00Z"
-                msg_id: "d1e2f3a4-b5c6-7890-1234-567890abcdef"
-                developer_token: "dev_pk_..."
+                msgId: "d1e2f3a4-b5c6-7890-1234-567890abcdef"
+                developerToken: "dev_pk_..."
                 authorization: "Bearer <End_User_JWT_Token>"
               payload:
                 name: "Alice Smith-Jones"
@@ -212,7 +212,7 @@ paths:
                   id: "api.account.update"
                   version: "1.0"
                   ts: "2025-09-08T12:00:00Z"
-                  msg_id: "a1b2c3d4..."
+                  msgId: "a1b2c3d4..."
                   status: "failed"
                   error:
                     code: "PHONE_NUMBER_IN_USE"
@@ -239,8 +239,8 @@ paths:
                 id: "api.address.checkAvailability"
                 version: "1.0"
                 ts: "2025-09-08T11:00:00Z"
-                msg_id: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
-                developer_token: "dev_pk_..."
+                msgId: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
+                developerToken: "dev_pk_..."
               payload:
                 address: "newuser@finternet"
       responses:
@@ -255,7 +255,7 @@ paths:
                   id: "api.address.checkAvailability"
                   version: "1.0"
                   ts: "2025-09-08T11:00:01Z"
-                  msg_id: "f1a2b3c4-d5e6-7890-1234-567890abcdef"
+                  msgId: "f1a2b3c4-d5e6-7890-1234-567890abcdef"
                   status: "successful"
                 response:
                   available: true
@@ -280,8 +280,8 @@ paths:
                 id: "api.account.login"
                 version: "1.0"
                 ts: "2025-09-09T09:00:00Z"
-                msg_id: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
-                developer_token: "dev_pk_..."
+                msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                developerToken: "dev_pk_..."
               payload:
                 username: "alice@finternet"
                 password: "securePassword123"
@@ -296,11 +296,11 @@ paths:
                 context:
                   id: "api.account.login"
                   version: "1.0"
-                  ts: "2025-09-09T09:00:01Z"
-                  msg_id: "b1c2d3e4-f5a6-7890-1234-567890abcdef"
+                  ts: "2025-11-25T12:05:01Z"
+                  msgId: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
                   status: "successful"
                 response:
-                  accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  access_token: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
                   tokenType: "Bearer"
                   expiresIn: 3600
         '401':
@@ -326,8 +326,8 @@ paths:
                 id: "api.account.logout"
                 version: "1.0"
                 ts: "2025-09-09T10:30:00Z"
-                msg_id: "c1d2e3f4-a5b6-7890-1234-567890abcdef"
-                developer_token: "dev_pk_..."
+                msgId: "c1d2e3f4-a5b6-7890-1234-567890abcdef"
+                developerToken: "dev_pk_..."
                 authorization: "Bearer eyJ..."
               payload: {}
       responses:
@@ -360,8 +360,8 @@ paths:
                 id: "api.account.resetPassword"
                 version: "1.0"
                 ts: "2025-09-09T11:00:00Z"
-                msg_id: "d1e2f3a4-b5c6-7890-1234-567890abcdef"
-                developer_token: "dev_pk_..."
+                msgId: "d1e2f3a4-b5c6-7890-1234-567890abcdef"
+                developerToken: "dev_pk_..."
               payload:
                 email: "alice.smith@example.com"
       responses:
@@ -394,8 +394,8 @@ paths:
                 id: "api.account.get"
                 version: "1.0"
                 ts: "2025-09-09T09:05:00Z"
-                msg_id: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
-                developer_token: "dev_pk_..."
+                msgId: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
+                developerToken: "dev_pk_..."
                 authorization: "Bearer eyJ..."
               payload: {}
       responses:
@@ -428,8 +428,8 @@ paths:
   #               id: "api.account.lookup"
   #               version: "1.0"
   #               ts: "2025-09-09T09:06:00Z"
-  #               msg_id: "e2f3a4b5-c6d7-8901-2345-67890abcdef"
-  #               developer_token: "dev_pk_..."
+  #               msgId: "e2f3a4b5-c6d7-8901-2345-67890abcdef"
+  #               developerToken: "dev_pk_..."
   #               authorization: "Bearer eyJ..."
   #             payload:
   #               email: "bob.smith@example.com"
@@ -449,7 +449,7 @@ paths:
     post:
       tags:
         - "Address"
-      summary: "Resolve an Address"
+      summary: "[Placeholder] Resolve an Address"
       description: "Publicly resolves a human-readable address. Requires Developer auth."
       security:
         - developerToken: []
@@ -465,8 +465,8 @@ paths:
                 id: "api.address.resolve"
                 version: "1.0"
                 ts: "2025-09-09T11:05:00Z"
-                msg_id: "f1a2b3c4-d5e6-7890-1234-567890abcdef"
-                developer_token: "dev_pk_..."
+                msgId: "f1a2b3c4-d5e6-7890-1234-567890abcdef"
+                developerToken: "dev_pk_..."
               payload:
                 address: "alice@finternet"
       responses:
@@ -499,8 +499,8 @@ paths:
                 id: "api.account.addController"
                 version: "1.0"
                 ts: "2025-09-09T11:10:00Z"
-                msg_id: "a2b3c4d5-e6f7-8901-2345-67890abcdef"
-                developer_token: "dev_pk_..."
+                msgId: "a2b3c4d5-e6f7-8901-2345-67890abcdef"
+                developerToken: "dev_pk_..."
                 authorization: "Bearer eyJ..."
               payload:
                 keyType: "DEVICE_MOBILE"
@@ -542,8 +542,8 @@ paths:
                 id: "api.account.removeController"
                 version: "1.0"
                 ts: "2025-09-09T11:15:00Z"
-                msg_id: "b3c4d5e6-f7a8-9012-3456-7890abcdef"
-                developer_token: "dev_pk_..."
+                msgId: "b3c4d5e6-f7a8-9012-3456-7890abcdef"
+                developerToken: "dev_pk_..."
                 authorization: "Bearer eyJ..."
               payload:
                 publicKeyToRemove: "0x07..."
@@ -574,25 +574,25 @@ components:
     # --- API Envelope Schemas ---
     Context:
       type: object
-      required: [id, version, ts, msg_id]
+      required: [id, version, ts, msgId]
       properties:
         id: { type: string, example: "api.account.create" }
         version: { type: string, example: "1.0" }
         ts: { type: string, format: date-time }
-        msg_id: { type: string, format: uuid }
-        transaction_id: { type: string, format: uuid, nullable: true, description: "ID for async operations" }
-        developer_token: { type: string, example: "dev_pk_...", nullable: true, description: "B2B Developer API Key/Token" }
-        developer_signature: { type: string, example: "t=...,v1=...", nullable: true, description: "B2B Developer Signature (e.g., HMAC)" }
+        msgId: { type: string, format: uuid }
+        transactionId: { type: string, format: uuid, nullable: true, description: "ID for async operations" }
+        developerToken: { type: string, example: "dev_pk_...", nullable: true, description: "B2B Developer API Key/Token" }
+        developerSignature: { type: string, example: "t=...,v1=...", nullable: true, description: "B2B Developer Signature (e.g., HMAC)" }
         authorization: { type: string, example: "Bearer eyJ...", nullable: true, description: "End-user's session token." }
     ResponseContext:
       type: object
-      required: [id, version, ts, msg_id, status]
+      required: [id, version, ts, msgId, status]
       properties:
         id: { type: string, example: "api.account.create" }
         version: { type: string, example: "1.0" }
         ts: { type: string, format: date-time }
-        msg_id: { type: string, format: uuid }
-        transaction_id: { type: string, format: uuid, nullable: true }
+        msgId: { type: string, format: uuid }
+        transactionId: { type: string, format: uuid, nullable: true }
         status: { type: string, enum: [successful, failed, pending] }
         error: { $ref: '#/components/schemas/ErrorPayload', nullable: true }
     Signature:
@@ -766,7 +766,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msg_id: "...", transaction_id: "...", status: "failed", error: { code: "AUTHENTICATION_FAILED", message: "Token invalid or expired." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "AUTHENTICATION_FAILED", message: "Token invalid or expired." } }
             response: {}
     UnauthorizedDeveloperError:
       description: "Developer authentication failed (HTTP 401)."
@@ -774,7 +774,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msg_id: "...", transaction_id: "...", status: "failed", error: { code: "DEVELOPER_AUTH_FAILED", message: "Invalid developer token." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "DEVELOPER_AUTH_FAILED", message: "Invalid developer token." } }
             response: {}
     ForbiddenError:
       description: "Forbidden. Insufficient permissions."
@@ -782,7 +782,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msg_id: "...", transaction_id: "...", status: "failed", error: { code: "PERMISSION_DENIED", message: "Insufficient permissions to perform this action." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "PERMISSION_DENIED", message: "Insufficient permissions to perform this action." } }
             response: {}
     NotFoundError:
       description: "Resource not found."
@@ -790,7 +790,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msg_id: "...", transaction_id: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "The requested resource was not found." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "The requested resource was not found." } }
             response: {}
     BadRequestError:
       description: "Invalid request."
@@ -798,7 +798,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msg_id: "...", transaction_id: "...", status: "failed", error: { code: "INVALID_REQUEST", message: "Invalid request parameters." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "INVALID_REQUEST", message: "Invalid request parameters." } }
             response: {}
     ConflictError:
       description: "Conflict with existing resource."
@@ -806,7 +806,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msg_id: "...", transaction_id: "...", status: "failed", error: { code: "RESOURCE_CONFLICT", message: "An account with this identifier already exists." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "RESOURCE_CONFLICT", message: "An account with this identifier already exists." } }
             response: {}
 
   # -------------------- Security --------------------
@@ -822,7 +822,7 @@ components:
       description: |
         A JWT or Opaque token that identifies the calling B2B developer/backend service.
         This is passed in the standard `Authorization: Bearer <token>` header.
-        (This can also be passed in the `context.developer_token` as a fallback).
+        (This can also be passed in the `context.developerToken` as a fallback).
 
     # 2. The Developer's Request Signature (What they're attesting to)
     developerSignature:

@@ -36,7 +36,7 @@ info:
     This API uses a two-level authorization model:
 
     1.  **Platform-Level (Developer) Authentication:**
-        * `context.developer_token`: The B2B Developer's API Key/Token.
+        * `context.developerToken`: The B2B Developer's API Key/Token.
 
     2.  **User-Level (End-User) Authorization:**
         * `context.authorization`: The end-user's JWT session token (required for all key operations).
@@ -84,8 +84,8 @@ paths:
                     id: "api.keys.generate"
                     version: "1.0"
                     ts: "2025-11-25T12:00:00Z"
-                    msg_id: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
-                    developer_token: "dev-token-12345"
+                    msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                    developerToken: "dev-token-12345"
                     authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                   payload:
                     key_type: "ethereum"
@@ -97,8 +97,8 @@ paths:
                     id: "api.keys.generate"
                     version: "1.0"
                     ts: "2025-11-25T12:00:00Z"
-                    msg_id: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
-                    developer_token: "dev-token-12345"
+                    msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
+                    developerToken: "dev-token-12345"
                     authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                   payload:
                     key_type: "solana"
@@ -114,7 +114,7 @@ paths:
                   id: "api.keys.generate"
                   version: "1.0"
                   ts: "2025-11-25T12:00:01Z"
-                  msg_id: "c1b2c3d4-e5f6-7890-1234-567890abcdef"
+                  msgId: "c1b2c3d4-e5f6-7890-1234-567890abcdef"
                   status: "successful"
                 response:
                   key_reference: "019ab8e9-0636-74fd-b5c4-192fc68b71e3-ethereum-12345678-1234-1234-1234-123456789abc"
@@ -148,8 +148,8 @@ paths:
                 id: "api.keys.sign"
                 version: "1.0"
                 ts: "2025-11-25T12:05:00Z"
-                msg_id: "d1e2f3a4-b5c6-7890-1234-567890abcdef"
-                developer_token: "dev-token-12345"
+                msgId: "d1e2f3a4-b5c6-7890-1234-567890abcdef"
+                developerToken: "dev-token-12345"
                 authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
               payload:
                 key_reference: "019ab8e9-0636-74fd-b5c4-192fc68b71e3-ethereum-12345678-1234-1234-1234-123456789abc"
@@ -166,7 +166,7 @@ paths:
                   id: "api.keys.sign"
                   version: "1.0"
                   ts: "2025-11-25T12:05:01Z"
-                  msg_id: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
+                  msgId: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
                   status: "successful"
                 response:
                   signature: "0x3045022100..."
@@ -203,8 +203,8 @@ paths:
                 id: "api.keys.public"
                 version: "1.0"
                 ts: "2025-11-25T12:10:00Z"
-                msg_id: "f1a2b3c4-d5e6-7890-1234-567890abcdef"
-                developer_token: "dev-token-12345"
+                msgId: "f1a2b3c4-d5e6-7890-1234-567890abcdef"
+                developerToken: "dev-token-12345"
                 authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
               payload:
                 key_reference: "019ab8e9-0636-74fd-b5c4-192fc68b71e3-ethereum-12345678-1234-1234-1234-123456789abc"
@@ -220,7 +220,7 @@ paths:
                   id: "api.keys.public"
                   version: "1.0"
                   ts: "2025-11-25T12:10:01Z"
-                  msg_id: "a2b3c4d5-e6f7-8901-2345-67890abcdef"
+                  msgId: "a2b3c4d5-e6f7-8901-2345-67890abcdef"
                   status: "successful"
                 response:
                   public_key: "0x04..."
@@ -248,25 +248,25 @@ components:
     # --- API Envelope Schemas ---
     Context:
       type: object
-      required: [id, version, ts, msg_id]
+      required: [id, version, ts, msgId]
       properties:
         id: { type: string, example: "api.keys.generate" }
         version: { type: string, example: "1.0" }
         ts: { type: string, format: date-time }
-        msg_id: { type: string, format: uuid }
-        transaction_id: { type: string, format: uuid, nullable: true }
-        developer_token: { type: string, example: "dev-token-12345", nullable: true }
+        msgId: { type: string, format: uuid }
+        transactionId: { type: string, format: uuid, nullable: true }
+        developerToken: { type: string, example: "dev-token-12345", nullable: true }
         authorization: { type: string, example: "Bearer eyJ...", nullable: true, description: "End-user's JWT session token" }
 
     ResponseContext:
       type: object
-      required: [id, version, ts, msg_id, status]
+      required: [id, version, ts, msgId, status]
       properties:
         id: { type: string, example: "api.keys.generate" }
         version: { type: string, example: "1.0" }
         ts: { type: string, format: date-time }
-        msg_id: { type: string, format: uuid }
-        transaction_id: { type: string, format: uuid, nullable: true }
+        msgId: { type: string, format: uuid }
+        transactionId: { type: string, format: uuid, nullable: true }
         status: { type: string, enum: [successful, failed, pending] }
         error: { $ref: '#/components/schemas/ErrorPayload', nullable: true }
 
@@ -426,7 +426,7 @@ components:
               id: "api.keys.generate"
               version: "1.0"
               ts: "2025-11-25T12:00:00Z"
-              msg_id: "..."
+              msgId: "..."
               status: "failed"
               error:
                 code: "UNAUTHORIZED"
@@ -443,7 +443,7 @@ components:
               id: "api.keys.generate"
               version: "1.0"
               ts: "2025-11-25T12:00:00Z"
-              msg_id: "..."
+              msgId: "..."
               status: "failed"
               error:
                 code: "INVALID_INPUT"
@@ -460,7 +460,7 @@ components:
               id: "api.keys.generate"
               version: "1.0"
               ts: "2025-11-25T12:00:00Z"
-              msg_id: "..."
+              msgId: "..."
               status: "failed"
               error:
                 code: "INTERNAL_ERROR"
@@ -475,7 +475,7 @@ components:
       bearerFormat: "JWT or Opaque"
       description: |
         A JWT or Opaque token that identifies the calling B2B developer/backend service.
-        This is passed in the `context.developer_token` field.
+        This is passed in the `context.developerToken` field.
 
     userToken:
       type: http
