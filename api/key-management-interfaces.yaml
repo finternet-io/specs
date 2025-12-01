@@ -42,9 +42,9 @@ info:
         * `context.authorization`: The end-user's JWT session token (required for all key operations).
 
     ### Key Types Supported
-    - `ethereum`: ECDSA P-256 keys for Ethereum
-    - `solana`: ECDSA P-256 keys for Solana
-    - `base`: ECDSA P-256 keys for Base chain
+    - `ethereum`: ECDSA secp256k1 keys for Ethereum
+    - `solana`: Ed25519 keys for Solana
+    - `base`: ECDSA secp256k1 keys for Base chain
 
   version: "1.0.0"
 servers:
@@ -88,8 +88,7 @@ paths:
                     developerToken: "dev-token-12345"
                     authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                   payload:
-                    key_type: "ethereum"
-                    entity_id: "" # Optional - will use account ID from JWT if not provided
+                    keyType: "ethereum"
               SolanaKey:
                 summary: "Generate Solana key"
                 value:
@@ -101,7 +100,7 @@ paths:
                     developerToken: "dev-token-12345"
                     authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                   payload:
-                    key_type: "solana"
+                    keyType: "solana"
       responses:
         '200':
           description: "Key generated successfully."
@@ -117,10 +116,10 @@ paths:
                   msgId: "c1b2c3d4-e5f6-7890-1234-567890abcdef"
                   status: "successful"
                 response:
-                  key_reference: "019ab8e9-0636-74fd-b5c4-192fc68b71e3-ethereum-12345678-1234-1234-1234-123456789abc"
-                  public_key: "0x04..."
-                  key_type: "ethereum"
-                  created_at: "2025-11-25T12:00:01Z"
+                  keyReference: "019ab8e9-0636-74fd-b5c4-192fc68b71e3-ethereum-12345678-1234-1234-1234-123456789abc"
+                  publicKey: "0x04..."
+                  keyType: "ethereum"
+                  createdAt: "2025-11-25T12:00:01Z"
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -152,7 +151,7 @@ paths:
                 developerToken: "dev-token-12345"
                 authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
               payload:
-                key_reference: "019ab8e9-0636-74fd-b5c4-192fc68b71e3-ethereum-12345678-1234-1234-1234-123456789abc"
+                keyReference: "019ab8e9-0636-74fd-b5c4-192fc68b71e3-ethereum-12345678-1234-1234-1234-123456789abc"
                 hash: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
       responses:
         '200':
@@ -207,7 +206,7 @@ paths:
                 developerToken: "dev-token-12345"
                 authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
               payload:
-                key_reference: "019ab8e9-0636-74fd-b5c4-192fc68b71e3-ethereum-12345678-1234-1234-1234-123456789abc"
+                keyReference: "019ab8e9-0636-74fd-b5c4-192fc68b71e3-ethereum-12345678-1234-1234-1234-123456789abc"
       responses:
         '200':
           description: "Public key retrieved successfully."
@@ -223,7 +222,7 @@ paths:
                   msgId: "a2b3c4d5-e6f7-8901-2345-67890abcdef"
                   status: "successful"
                 response:
-                  public_key: "0x04..."
+                  publicKey: "0x04..."
                   address: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1"
         '400':
           $ref: '#/components/responses/BadRequestError'
@@ -347,22 +346,18 @@ components:
     # --- Core Data Schemas (Payloads) ---
     GenerateKeyRequest:
       type: object
-      required: [key_type]
+      required: [keyType]
       properties:
-        key_type:
+        keyType:
           type: string
           enum: [ethereum, solana, base]
           description: "Type of cryptographic key to generate"
-        entity_id:
-          type: string
-          nullable: true
-          description: "Optional entity ID. If not provided, will use account ID from JWT"
 
     SignMessageRequest:
       type: object
-      required: [key_reference, hash]
+      required: [keyReference, hash]
       properties:
-        key_reference:
+        keyReference:
           type: string
           description: "Reference to the key to use for signing"
           example: "019ab8e9-0636-74fd-b5c4-192fc68b71e3-ethereum-12345678-1234-1234-1234-123456789abc"
@@ -373,9 +368,9 @@ components:
 
     GetPublicKeyRequest:
       type: object
-      required: [key_reference]
+      required: [keyReference]
       properties:
-        key_reference:
+        keyReference:
           type: string
           description: "Reference to the key"
           example: "019ab8e9-0636-74fd-b5c4-192fc68b71e3-ethereum-12345678-1234-1234-1234-123456789abc"
@@ -383,16 +378,16 @@ components:
     KeyReference:
       type: object
       properties:
-        key_reference:
+        keyReference:
           type: string
           description: "Unique reference to the generated key"
-        public_key:
+        publicKey:
           type: string
           description: "Public key in hex format"
-        key_type:
+        keyType:
           type: string
           enum: [ethereum, solana, base]
-        created_at:
+        createdAt:
           type: string
           format: date-time
 
@@ -407,7 +402,7 @@ components:
     PublicKeyResponse:
       type: object
       properties:
-        public_key:
+        publicKey:
           type: string
           description: "Public key in hex format"
         address:
