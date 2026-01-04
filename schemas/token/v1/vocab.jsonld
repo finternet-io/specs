@@ -1,0 +1,371 @@
+{
+    "@context": {
+        "finternet": "https://finternet-io.github.io/specs/schemas/token/v1#",
+        "schema": "https://schema.org/",
+        "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+        "xsd": "http://www.w3.org/2001/XMLSchema#",
+        "sec": "https://w3id.org/security#",
+        "vc": "https://www.w3.org/2018/credentials#"
+    },
+    "@graph": [
+        {
+            "@id": "finternet:Token",
+            "@type": "rdfs:Class",
+            "rdfs:subClassOf": "https://finternet-io.github.io/specs/schemas/core/v1#Entity",
+            "rdfs:label": "Token",
+            "rdfs:comment": "Represents a universal Finternet Token (UNITS) - a tokenized asset, contract, or entitlement."
+        },
+        {
+            "@id": "finternet:metadata",
+            "@type": "rdf:Property",
+            "rdfs:label": "metadata",
+            "rdfs:comment": "Static descriptive identity and behavioral profile of the token.",
+            "rdfs:domain": "finternet:Token",
+            "rdfs:range": "finternet:TokenMetadata"
+        },
+        {
+            "@id": "finternet:data",
+            "@type": "rdf:Property",
+            "rdfs:label": "data",
+            "rdfs:comment": "Type-specific, extensible domain data for the token.",
+            "rdfs:domain": "finternet:Token",
+            "rdfs:range": "rdf:JSON"
+        },
+        {
+            "@id": "finternet:claims",
+            "@type": "rdf:Property",
+            "rdfs:label": "claims",
+            "rdfs:comment": "Verifiable credentials and attestations about the token.",
+            "rdfs:domain": "finternet:Token",
+            "rdfs:range": "vc:VerifiableCredential"
+        },
+        {
+            "@id": "finternet:state",
+            "@type": "rdf:Property",
+            "rdfs:label": "state",
+            "rdfs:comment": "Runtime lifecycle and status of the token.",
+            "rdfs:domain": "finternet:Token",
+            "rdfs:range": "finternet:TokenState"
+        },
+        {
+            "@id": "finternet:TokenMetadata",
+            "@type": "rdfs:Class",
+            "rdfs:label": "TokenMetadata",
+            "rdfs:comment": "Static descriptive identity and behavioral profile."
+        },
+        {
+            "@id": "finternet:tokenStandard",
+            "@type": "rdf:Property",
+            "rdfs:label": "tokenStandard",
+            "rdfs:comment": "Token standard identifier (e.g., UNITS-FT, ERC20).",
+            "rdfs:domain": "finternet:TokenMetadata",
+            "rdfs:range": "xsd:string"
+        },
+        {
+            "@id": "finternet:symbol",
+            "@type": "rdf:Property",
+            "rdfs:label": "symbol",
+            "rdfs:comment": "Short ticker symbol for the token.",
+            "rdfs:domain": "finternet:TokenMetadata",
+            "rdfs:range": "xsd:string"
+        },
+        {
+            "@id": "finternet:decimals",
+            "@type": "rdf:Property",
+            "rdfs:label": "decimals",
+            "rdfs:comment": "Number of decimal places (0 for NFTs).",
+            "rdfs:domain": "finternet:TokenMetadata",
+            "rdfs:range": "xsd:integer"
+        },
+        {
+            "@id": "finternet:fungibility",
+            "@type": "rdf:Property",
+            "rdfs:label": "fungibility",
+            "rdfs:comment": "Token fungibility type.",
+            "rdfs:domain": "finternet:TokenMetadata",
+            "rdfs:range": "finternet:Fungibility"
+        },
+        {
+            "@id": "finternet:Fungibility",
+            "@type": "schema:Enumeration",
+            "schema:name": "Fungibility",
+            "rdfs:comment": "Enumeration of token fungibility types.",
+            "schema:hasEnumerationMember": [
+                { "@id": "finternet:fungible" },
+                { "@id": "finternet:nonFungible" },
+                { "@id": "finternet:semiFungible" }
+            ]
+        },
+        {
+            "@id": "finternet:fungible",
+            "@type": ["finternet:Fungibility", "schema:Enumeration"],
+            "schema:name": "Fungible",
+            "schema:identifier": "fungible"
+        },
+        {
+            "@id": "finternet:nonFungible",
+            "@type": ["finternet:Fungibility", "schema:Enumeration"],
+            "schema:name": "Non-Fungible",
+            "schema:identifier": "nonFungible"
+        },
+        {
+            "@id": "finternet:semiFungible",
+            "@type": ["finternet:Fungibility", "schema:Enumeration"],
+            "schema:name": "Semi-Fungible",
+            "schema:identifier": "semiFungible"
+        },
+        {
+            "@id": "finternet:valuationType",
+            "@type": "rdf:Property",
+            "rdfs:label": "valuationType",
+            "rdfs:comment": "Valuation model for the token.",
+            "rdfs:domain": "finternet:TokenMetadata",
+            "rdfs:range": "finternet:ValuationType"
+        },
+        {
+            "@id": "finternet:ValuationType",
+            "@type": "schema:Enumeration",
+            "schema:name": "Valuation Type",
+            "rdfs:comment": "Enumeration of token valuation types.",
+            "schema:hasEnumerationMember": [
+                { "@id": "finternet:fixed" },
+                { "@id": "finternet:pegged" },
+                { "@id": "finternet:market" }
+            ]
+        },
+        {
+            "@id": "finternet:fixed",
+            "@type": ["finternet:ValuationType", "schema:Enumeration"],
+            "schema:name": "Fixed",
+            "schema:identifier": "fixed"
+        },
+        {
+            "@id": "finternet:pegged",
+            "@type": ["finternet:ValuationType", "schema:Enumeration"],
+            "schema:name": "Pegged",
+            "schema:identifier": "pegged"
+        },
+        {
+            "@id": "finternet:market",
+            "@type": ["finternet:ValuationType", "schema:Enumeration"],
+            "schema:name": "Market",
+            "schema:identifier": "market"
+        },
+        {
+            "@id": "finternet:stateModel",
+            "@type": "rdf:Property",
+            "rdfs:label": "stateModel",
+            "rdfs:comment": "Whether token state is native or proxied from another system.",
+            "rdfs:domain": "finternet:TokenMetadata",
+            "rdfs:range": "finternet:StateModel"
+        },
+        {
+            "@id": "finternet:StateModel",
+            "@type": "schema:Enumeration",
+            "schema:name": "State Model",
+            "rdfs:comment": "Enumeration of token state models.",
+            "schema:hasEnumerationMember": [
+                { "@id": "finternet:native" },
+                { "@id": "finternet:proxy" }
+            ]
+        },
+        {
+            "@id": "finternet:native",
+            "@type": ["finternet:StateModel", "schema:Enumeration"],
+            "schema:name": "Native",
+            "schema:identifier": "native"
+        },
+        {
+            "@id": "finternet:proxy",
+            "@type": ["finternet:StateModel", "schema:Enumeration"],
+            "schema:name": "Proxy",
+            "schema:identifier": "proxy"
+        },
+        {
+            "@id": "finternet:TokenFlags",
+            "@type": "rdfs:Class",
+            "rdfs:label": "TokenFlags",
+            "rdfs:comment": "Behavioral flags for the token."
+        },
+        {
+            "@id": "finternet:flags",
+            "@type": "rdf:Property",
+            "rdfs:label": "flags",
+            "rdfs:comment": "Behavioral flags for the token.",
+            "rdfs:domain": "finternet:TokenMetadata",
+            "rdfs:range": "finternet:TokenFlags"
+        },
+        {
+            "@id": "finternet:transactable",
+            "@type": "rdf:Property",
+            "rdfs:label": "transactable",
+            "rdfs:comment": "Whether the token can be transacted.",
+            "rdfs:domain": "finternet:TokenFlags",
+            "rdfs:range": "xsd:boolean"
+        },
+        {
+            "@id": "finternet:transferable",
+            "@type": "rdf:Property",
+            "rdfs:label": "transferable",
+            "rdfs:comment": "Whether ownership can be transferred.",
+            "rdfs:domain": "finternet:TokenFlags",
+            "rdfs:range": "xsd:boolean"
+        },
+        {
+            "@id": "finternet:locked",
+            "@type": "rdf:Property",
+            "rdfs:label": "locked",
+            "rdfs:comment": "High-level lock flag.",
+            "rdfs:domain": "finternet:TokenFlags",
+            "rdfs:range": "xsd:boolean"
+        },
+        {
+            "@id": "finternet:revocable",
+            "@type": "rdf:Property",
+            "rdfs:label": "revocable",
+            "rdfs:comment": "Whether the issuer can revoke this token.",
+            "rdfs:domain": "finternet:TokenFlags",
+            "rdfs:range": "xsd:boolean"
+        },
+        {
+            "@id": "finternet:TokenState",
+            "@type": "rdfs:Class",
+            "rdfs:label": "TokenState",
+            "rdfs:comment": "Runtime lifecycle and status of the token."
+        },
+        {
+            "@id": "finternet:lifecycleStatus",
+            "@type": "rdf:Property",
+            "rdfs:label": "lifecycleStatus",
+            "rdfs:comment": "Current lifecycle status of the token.",
+            "rdfs:domain": "finternet:TokenState",
+            "rdfs:range": "finternet:LifecycleStatus"
+        },
+        {
+            "@id": "finternet:LifecycleStatus",
+            "@type": "schema:Enumeration",
+            "schema:name": "Lifecycle Status",
+            "rdfs:comment": "Enumeration of token lifecycle statuses.",
+            "schema:hasEnumerationMember": [
+                { "@id": "finternet:active" },
+                { "@id": "finternet:frozen" },
+                { "@id": "finternet:redeemed" },
+                { "@id": "finternet:burned" },
+                { "@id": "finternet:expired" }
+            ]
+        },
+        {
+            "@id": "finternet:active",
+            "@type": ["finternet:LifecycleStatus", "schema:Enumeration"],
+            "schema:name": "Active",
+            "schema:identifier": "active"
+        },
+        {
+            "@id": "finternet:frozen",
+            "@type": ["finternet:LifecycleStatus", "schema:Enumeration"],
+            "schema:name": "Frozen",
+            "schema:identifier": "frozen"
+        },
+        {
+            "@id": "finternet:redeemed",
+            "@type": ["finternet:LifecycleStatus", "schema:Enumeration"],
+            "schema:name": "Redeemed",
+            "schema:identifier": "redeemed"
+        },
+        {
+            "@id": "finternet:burned",
+            "@type": ["finternet:LifecycleStatus", "schema:Enumeration"],
+            "schema:name": "Burned",
+            "schema:identifier": "burned"
+        },
+        {
+            "@id": "finternet:expired",
+            "@type": ["finternet:LifecycleStatus", "schema:Enumeration"],
+            "schema:name": "Expired",
+            "schema:identifier": "expired"
+        },
+        {
+            "@id": "finternet:Supply",
+            "@type": "rdfs:Class",
+            "rdfs:label": "Supply",
+            "rdfs:comment": "Supply information for fungible tokens."
+        },
+        {
+            "@id": "finternet:supply",
+            "@type": "rdf:Property",
+            "rdfs:label": "supply",
+            "rdfs:comment": "Supply information.",
+            "rdfs:domain": "finternet:TokenState",
+            "rdfs:range": "finternet:Supply"
+        },
+        {
+            "@id": "finternet:totalSupply",
+            "@type": "rdf:Property",
+            "rdfs:label": "totalSupply",
+            "rdfs:comment": "Total supply of the token.",
+            "rdfs:domain": "finternet:Supply",
+            "rdfs:range": "xsd:string"
+        },
+        {
+            "@id": "finternet:circulatingSupply",
+            "@type": "rdf:Property",
+            "rdfs:label": "circulatingSupply",
+            "rdfs:comment": "Circulating supply of the token.",
+            "rdfs:domain": "finternet:Supply",
+            "rdfs:range": "xsd:string"
+        },
+        {
+            "@id": "finternet:LockState",
+            "@type": "rdfs:Class",
+            "rdfs:label": "LockState",
+            "rdfs:comment": "Detailed lock state information."
+        },
+        {
+            "@id": "finternet:lockState",
+            "@type": "rdf:Property",
+            "rdfs:label": "lockState",
+            "rdfs:comment": "Detailed lock state.",
+            "rdfs:domain": "finternet:TokenState",
+            "rdfs:range": "finternet:LockState"
+        },
+        {
+            "@id": "finternet:isLocked",
+            "@type": "rdf:Property",
+            "rdfs:label": "isLocked",
+            "rdfs:comment": "Whether the token is locked.",
+            "rdfs:domain": "finternet:LockState",
+            "rdfs:range": "xsd:boolean"
+        },
+        {
+            "@id": "finternet:ClaimStatus",
+            "@type": "schema:Enumeration",
+            "schema:name": "Claim Status",
+            "rdfs:comment": "Enumeration of claim status values.",
+            "schema:hasEnumerationMember": [
+                { "@id": "finternet:asserted" },
+                { "@id": "finternet:verified" },
+                { "@id": "finternet:revoked" },
+                { "@id": "finternet:expired" }
+            ]
+        },
+        {
+            "@id": "finternet:asserted",
+            "@type": ["finternet:ClaimStatus", "schema:Enumeration"],
+            "schema:name": "Asserted",
+            "schema:identifier": "asserted"
+        },
+        {
+            "@id": "finternet:verified",
+            "@type": ["finternet:ClaimStatus", "schema:Enumeration"],
+            "schema:name": "Verified",
+            "schema:identifier": "verified"
+        },
+        {
+            "@id": "finternet:revoked",
+            "@type": ["finternet:ClaimStatus", "schema:Enumeration"],
+            "schema:name": "Revoked",
+            "schema:identifier": "revoked"
+        }
+    ]
+}

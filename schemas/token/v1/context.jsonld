@@ -1,0 +1,249 @@
+{
+    "@context": [
+        "https://finternet-io.github.io/specs/schemas/core/v1/context.jsonld",
+        {
+            "finternet": "https://finternet-io.github.io/specs/schemas/token/v1#",
+            "schema": "https://schema.org/",
+            "xsd": "http://www.w3.org/2001/XMLSchema#",
+            "sec": "https://w3id.org/security#",
+            "vc": "https://www.w3.org/2018/credentials#",
+
+            "Token": "finternet:Token",
+            "TokenMetadata": "finternet:TokenMetadata",
+            "TokenState": "finternet:TokenState",
+            "TokenFlags": "finternet:TokenFlags",
+
+            "metadata": {
+                "@id": "finternet:metadata",
+                "@type": "@id"
+            },
+            "data": {
+                "@id": "finternet:data",
+                "@type": "@json"
+            },
+            "claims": {
+                "@id": "finternet:claims",
+                "@type": "@id",
+                "@container": "@set"
+            },
+            "state": {
+                "@id": "finternet:state",
+                "@type": "@id"
+            },
+
+            "tokenStandard": "finternet:tokenStandard",
+            "symbol": "finternet:symbol",
+            "decimals": {
+                "@id": "finternet:decimals",
+                "@type": "xsd:integer"
+            },
+            "fungibility": {
+                "@id": "finternet:fungibility",
+                "@type": "@vocab"
+            },
+            "tokenClass": "finternet:tokenClass",
+
+            "Fungibility": "finternet:Fungibility",
+            "fungible": "finternet:fungible",
+            "nonFungible": "finternet:nonFungible",
+            "semiFungible": "finternet:semiFungible",
+
+            "valuationType": {
+                "@id": "finternet:valuationType",
+                "@type": "@vocab"
+            },
+            "ValuationType": "finternet:ValuationType",
+            "fixed": "finternet:fixed",
+            "pegged": "finternet:pegged",
+            "market": "finternet:market",
+
+            "stateModel": {
+                "@id": "finternet:stateModel",
+                "@type": "@vocab"
+            },
+            "StateModel": "finternet:StateModel",
+            "native": "finternet:native",
+            "proxy": "finternet:proxy",
+
+            "StateProvider": "finternet:StateProvider",
+            "stateProvider": {
+                "@id": "finternet:stateProvider",
+                "@type": "@id"
+            },
+            "stateProviderType": {
+                "@id": "finternet:stateProviderType",
+                "@type": "@vocab"
+            },
+            "StateProviderType": "finternet:StateProviderType",
+            "chain": "finternet:chain",
+            "registry": "finternet:registry",
+            "custodian": "finternet:custodian",
+            "network": "finternet:network",
+            "contract": "finternet:contract",
+            "externalTokenId": "finternet:externalTokenId",
+            "proofFormat": {
+                "@id": "finternet:proofFormat",
+                "@type": "@vocab"
+            },
+
+            "ValuationModel": "finternet:ValuationModel",
+            "valuationModel": {
+                "@id": "finternet:valuationModel",
+                "@type": "@id"
+            },
+            "ParValue": "finternet:ParValue",
+            "parValue": {
+                "@id": "finternet:parValue",
+                "@type": "@id"
+            },
+            "parValueAmount": "finternet:parValueAmount",
+            "currency": "finternet:currency",
+            "redeemableBy": "finternet:redeemableBy",
+
+            "PeggedTo": "finternet:PeggedTo",
+            "peggedTo": {
+                "@id": "finternet:peggedTo",
+                "@type": "@id"
+            },
+            "assetCode": "finternet:assetCode",
+            "source": "finternet:source",
+
+            "ValuationPolicy": "finternet:ValuationPolicy",
+            "valuationPolicy": {
+                "@id": "finternet:valuationPolicy",
+                "@type": "@id"
+            },
+            "requiresExternalClaims": {
+                "@id": "finternet:requiresExternalClaims",
+                "@type": "xsd:boolean"
+            },
+            "recommendedClaimTypes": {
+                "@id": "finternet:recommendedClaimTypes",
+                "@container": "@set"
+            },
+
+            "flags": {
+                "@id": "finternet:flags",
+                "@type": "@id"
+            },
+            "transactable": {
+                "@id": "finternet:transactable",
+                "@type": "xsd:boolean"
+            },
+            "transferable": {
+                "@id": "finternet:transferable",
+                "@type": "xsd:boolean"
+            },
+            "locked": {
+                "@id": "finternet:locked",
+                "@type": "xsd:boolean"
+            },
+            "revocable": {
+                "@id": "finternet:revocable",
+                "@type": "xsd:boolean"
+            },
+
+            "metadataStatus": {
+                "@id": "finternet:metadataStatus",
+                "@type": "@vocab"
+            },
+            "MetadataStatus": "finternet:MetadataStatus",
+            "active": "finternet:active",
+            "inactive": "finternet:inactive",
+            "deprecated": "finternet:deprecated",
+            "test": "finternet:test",
+
+            "lifecycleStatus": {
+                "@id": "finternet:lifecycleStatus",
+                "@type": "@vocab"
+            },
+            "LifecycleStatus": "finternet:LifecycleStatus",
+            "frozen": "finternet:frozen",
+            "redeemed": "finternet:redeemed",
+            "burned": "finternet:burned",
+            "expired": "finternet:expired",
+
+            "effectiveFrom": {
+                "@id": "finternet:effectiveFrom",
+                "@type": "xsd:dateTime"
+            },
+            "effectiveUntil": {
+                "@id": "finternet:effectiveUntil",
+                "@type": "xsd:dateTime"
+            },
+
+            "Supply": "finternet:Supply",
+            "supply": {
+                "@id": "finternet:supply",
+                "@type": "@id"
+            },
+            "totalSupply": "finternet:totalSupply",
+            "circulatingSupply": "finternet:circulatingSupply",
+
+            "currentOwner": {
+                "@id": "finternet:currentOwner",
+                "@type": "@id"
+            },
+
+            "LockState": "finternet:LockState",
+            "lockState": {
+                "@id": "finternet:lockState",
+                "@type": "@id"
+            },
+            "isLocked": {
+                "@id": "finternet:isLocked",
+                "@type": "xsd:boolean"
+            },
+            "lockReason": "finternet:lockReason",
+            "lockedBy": {
+                "@id": "finternet:lockedBy",
+                "@type": "@id"
+            },
+            "lockedAt": {
+                "@id": "finternet:lockedAt",
+                "@type": "xsd:dateTime"
+            },
+
+            "Restrictions": "finternet:Restrictions",
+            "restrictions": {
+                "@id": "finternet:restrictions",
+                "@type": "@id"
+            },
+            "jurisdiction": {
+                "@id": "finternet:jurisdiction",
+                "@container": "@set"
+            },
+            "allowedUseCases": {
+                "@id": "finternet:allowedUseCases",
+                "@container": "@set"
+            },
+
+            "customState": {
+                "@id": "finternet:customState",
+                "@type": "@json"
+            },
+            "stateCommitment": "finternet:stateCommitment",
+
+            "Claim": "vc:VerifiableCredential",
+            "visibility": {
+                "@id": "finternet:visibility",
+                "@type": "@vocab"
+            },
+            "ClaimVisibility": "finternet:ClaimVisibility",
+            "public": "finternet:public",
+            "private": "finternet:private",
+            "protected": "finternet:protected",
+
+            "claimStatus": {
+                "@id": "finternet:claimStatus",
+                "@type": "@vocab"
+            },
+            "ClaimStatus": "finternet:ClaimStatus",
+            "asserted": "finternet:asserted",
+            "verified": "finternet:verified",
+            "revoked": "finternet:revoked",
+
+            "Proof": "sec:Proof"
+        }
+    ]
+}

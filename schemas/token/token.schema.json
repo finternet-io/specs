@@ -1,0 +1,553 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://finternet-io.github.io/specs/schemas/token.schema.json",
+  "title": "Finternet Token (UNITS)",
+  "description": "Validation schema for a Finternet UNITS Token - a universal token specification for representing any asset, contract, or entitlement.",
+  "type": "object",
+  "$comment": "This schema validates token instances following the UNITS Token Specification. For full schema definitions including JSON-LD context, see v1/attributes.yaml",
+  "definitions": {
+    "TokenStandard": {
+      "description": "Token standard identifier",
+      "type": "string",
+      "examples": ["ERC20", "ERC721", "ERC1155", "UNITS-FT", "UNITS-NFT"]
+    },
+    "Fungibility": {
+      "description": "Token fungibility type",
+      "type": "string",
+      "enum": ["fungible", "nonFungible", "semiFungible"]
+    },
+    "MetadataStatus": {
+      "description": "Metadata-level status of the token",
+      "type": "string",
+      "enum": ["active", "inactive", "deprecated", "test"]
+    },
+    "ValuationType": {
+      "description": "Valuation model for the token",
+      "type": "string",
+      "enum": ["fixed", "pegged", "market"]
+    },
+    "StateModelType": {
+      "description": "Whether token state is native or proxied from another system",
+      "type": "string",
+      "enum": ["native", "proxy"]
+    },
+    "StateProviderType": {
+      "description": "Type of state provider for proxy tokens",
+      "type": "string",
+      "enum": ["chain", "registry", "custodian"]
+    },
+    "StateProvider": {
+      "description": "State provider configuration for proxy tokens",
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/StateProviderType"
+        },
+        "network": {
+          "type": "string",
+          "description": "Network identifier (e.g., ethereum, solana, btc)"
+        },
+        "contract": {
+          "type": "string",
+          "description": "Contract address or identifier"
+        },
+        "tokenId": {
+          "type": "string",
+          "description": "Token ID for NFTs or non-standard tokens"
+        },
+        "proofFormat": {
+          "type": "string",
+          "description": "Proof format used",
+          "enum": ["merkle-proof", "zk-proof", "signature-chain", "registry-based"]
+        }
+      }
+    },
+    "ParValue": {
+      "description": "Par value configuration for fixed-value tokens",
+      "type": "object",
+      "required": ["amount", "currency"],
+      "properties": {
+        "amount": {
+          "type": "string",
+          "description": "Immutable face value per token unit (string for big numbers)"
+        },
+        "currency": {
+          "type": "string",
+          "description": "Currency code (ISO 4217 or similar)"
+        }
+      }
+    },
+    "PeggedTo": {
+      "description": "Peg configuration for pegged tokens",
+      "type": "object",
+      "required": ["assetCode"],
+      "properties": {
+        "assetCode": {
+          "type": "string",
+          "description": "Target reference asset code"
+        },
+        "source": {
+          "type": "string",
+          "description": "Source authority (central bank, price index)"
+        }
+      }
+    },
+    "ValuationPolicy": {
+      "description": "Valuation policy for market-priced tokens",
+      "type": "object",
+      "properties": {
+        "requiresExternalClaims": {
+          "type": "boolean",
+          "description": "Whether value must come from claims"
+        },
+        "recommendedClaimTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Recommended claim types for valuation",
+          "examples": [["PriceQuote", "NAV"]]
+        }
+      }
+    },
+    "ValuationModel": {
+      "description": "Detailed valuation model configuration",
+      "type": "object",
+      "properties": {
+        "parValue": {
+          "$ref": "#/definitions/ParValue"
+        },
+        "redeemableBy": {
+          "type": "string",
+          "description": "Entity responsible for redemption"
+        },
+        "peggedTo": {
+          "$ref": "#/definitions/PeggedTo"
+        },
+        "valuationPolicy": {
+          "$ref": "#/definitions/ValuationPolicy"
+        }
+      }
+    },
+    "Flags": {
+      "description": "Behavioral flags for the token",
+      "type": "object",
+      "properties": {
+        "transactable": {
+          "type": "boolean",
+          "description": "Whether the token can be transacted",
+          "default": true
+        },
+        "transferable": {
+          "type": "boolean",
+          "description": "Whether ownership can be transferred",
+          "default": true
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "High-level lock flag",
+          "default": false
+        },
+        "revocable": {
+          "type": "boolean",
+          "description": "Whether the issuer can revoke this token",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "Metadata": {
+      "description": "Static descriptive identity and behavioral profile of the token",
+      "type": "object",
+      "required": ["tokenStandard", "name", "symbol", "decimals", "fungibility", "issuer"],
+      "properties": {
+        "tokenStandard": {
+          "$ref": "#/definitions/TokenStandard"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable token name",
+          "minLength": 1
+        },
+        "symbol": {
+          "type": "string",
+          "description": "Short ticker symbol",
+          "minLength": 1,
+          "maxLength": 10
+        },
+        "decimals": {
+          "type": "integer",
+          "description": "Number of decimal places (0 for NFTs)",
+          "minimum": 0,
+          "maximum": 18
+        },
+        "fungibility": {
+          "$ref": "#/definitions/Fungibility"
+        },
+        "tokenClass": {
+          "type": "string",
+          "description": "Identifier for the token class/template"
+        },
+        "version": {
+          "type": "string",
+          "description": "Version of the token specification",
+          "default": "1.0.0"
+        },
+        "issuer": {
+          "type": "string",
+          "description": "DID, URI, or identifier of issuer",
+          "format": "uri-reference"
+        },
+        "creator": {
+          "type": "string",
+          "description": "DID, URI, or identifier of creator",
+          "format": "uri-reference"
+        },
+        "owner": {
+          "type": "string",
+          "description": "Current logical owner (for NFTs)",
+          "format": "uri-reference"
+        },
+        "status": {
+          "$ref": "#/definitions/MetadataStatus"
+        },
+        "valuationType": {
+          "$ref": "#/definitions/ValuationType"
+        },
+        "stateModel": {
+          "$ref": "#/definitions/StateModelType"
+        },
+        "stateProvider": {
+          "$ref": "#/definitions/StateProvider"
+        },
+        "valuationModel": {
+          "$ref": "#/definitions/ValuationModel"
+        },
+        "flags": {
+          "$ref": "#/definitions/Flags"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Classification tags"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description"
+        },
+        "externalUrls": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri"
+          },
+          "description": "URLs to off-chain resources"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ClaimStatus": {
+      "description": "Status of a verifiable claim",
+      "type": "string",
+      "enum": ["asserted", "verified", "revoked", "expired"]
+    },
+    "ClaimVisibility": {
+      "description": "Visibility/privacy level of a claim",
+      "type": "string",
+      "enum": ["public", "private", "protected"]
+    },
+    "Proof": {
+      "description": "Cryptographic proof for a claim",
+      "type": "object",
+      "required": ["type", "created", "verificationMethod", "proofPurpose"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Proof type",
+          "examples": ["Ed25519Signature2018", "EcdsaSecp256k1Signature2019", "JsonWebSignature2020"]
+        },
+        "created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Proof creation timestamp"
+        },
+        "verificationMethod": {
+          "type": "string",
+          "format": "uri",
+          "description": "URI for public key/verification method"
+        },
+        "proofPurpose": {
+          "type": "string",
+          "description": "Purpose of the proof",
+          "examples": ["assertionMethod", "authentication"]
+        },
+        "jws": {
+          "type": "string",
+          "description": "Compact JWS or signature encoding"
+        }
+      }
+    },
+    "Claim": {
+      "description": "Verifiable credential or attestation about the token",
+      "type": "object",
+      "required": ["id", "@context", "type", "issuer", "issuanceDate", "credentialSubject"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uri",
+          "description": "Unique identifier for this claim"
+        },
+        "@context": {
+          "description": "JSON-LD context for the claim",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "type": {
+          "description": "Claim types",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "issuer": {
+          "type": "string",
+          "format": "uri-reference",
+          "description": "DID/URI of claim issuer"
+        },
+        "issuanceDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Claim issuance date"
+        },
+        "expirationDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Claim expiration date"
+        },
+        "visibility": {
+          "$ref": "#/definitions/ClaimVisibility"
+        },
+        "credentialSubject": {
+          "type": "object",
+          "description": "Subject of the claim",
+          "required": ["id"],
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uri-reference",
+              "description": "Subject identifier (typically the token id)"
+            }
+          },
+          "additionalProperties": true
+        },
+        "proof": {
+          "$ref": "#/definitions/Proof"
+        },
+        "status": {
+          "$ref": "#/definitions/ClaimStatus"
+        }
+      }
+    },
+    "LifecycleStatus": {
+      "description": "Lifecycle status of the token",
+      "type": "string",
+      "enum": ["active", "frozen", "redeemed", "burned", "expired"]
+    },
+    "Supply": {
+      "description": "Supply information for fungible tokens",
+      "type": "object",
+      "properties": {
+        "totalSupply": {
+          "type": "string",
+          "description": "Total supply (string for big numbers)"
+        },
+        "circulatingSupply": {
+          "type": "string",
+          "description": "Circulating supply (string for big numbers)"
+        }
+      }
+    },
+    "LockState": {
+      "description": "Detailed lock state information",
+      "type": "object",
+      "required": ["locked"],
+      "properties": {
+        "locked": {
+          "type": "boolean",
+          "description": "Whether the token is locked"
+        },
+        "lockReason": {
+          "type": "string",
+          "description": "Reason or code for the lock"
+        },
+        "lockedBy": {
+          "type": "string",
+          "format": "uri-reference",
+          "description": "Entity that applied the lock"
+        },
+        "lockedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Lock timestamp"
+        }
+      }
+    },
+    "Restrictions": {
+      "description": "High-level restrictions on token use/transfer",
+      "type": "object",
+      "properties": {
+        "jurisdiction": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Allowed/disallowed jurisdictions (ISO 3166-1 alpha-2)"
+        },
+        "allowedUseCases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Allowed use cases",
+          "examples": [["collateral", "payment"]]
+        }
+      }
+    },
+    "State": {
+      "description": "Runtime lifecycle and status of the token",
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/LifecycleStatus"
+        },
+        "effectiveFrom": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Effective start date"
+        },
+        "effectiveUntil": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Effective end date"
+        },
+        "supply": {
+          "$ref": "#/definitions/Supply"
+        },
+        "currentOwner": {
+          "type": "string",
+          "format": "uri-reference",
+          "description": "Current owner identifier (for NFTs)"
+        },
+        "lockState": {
+          "$ref": "#/definitions/LockState"
+        },
+        "restrictions": {
+          "$ref": "#/definitions/Restrictions"
+        },
+        "customState": {
+          "type": "object",
+          "description": "Token-class-specific state fields",
+          "additionalProperties": true
+        },
+        "stateCommitment": {
+          "type": "string",
+          "description": "Hash/commitment representing this state (for proofs)"
+        }
+      }
+    }
+  },
+  "properties": {
+    "@context": {
+      "description": "The JSON-LD context, should reference https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld",
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld"
+        },
+        {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "@type": {
+      "description": "The JSON-LD type",
+      "type": "string",
+      "examples": ["FinancialProduct", "DigitalDocument", "Token"]
+    },
+    "id": {
+      "description": "Globally unique identifier for this token",
+      "type": "string",
+      "format": "uri-reference",
+      "examples": [
+        "urn:uuid:018b41f8-37c8-7c83-9429-7a670d8a598a",
+        "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBa82SsoPfnH4Ujp"
+      ]
+    },
+    "metadata": {
+      "$ref": "#/definitions/Metadata",
+      "description": "Static descriptive identity and behavioral profile"
+    },
+    "data": {
+      "type": "object",
+      "description": "Type-specific/domain data (extensible)",
+      "additionalProperties": true
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Claim"
+      },
+      "description": "Verifiable credentials and attestations"
+    },
+    "state": {
+      "$ref": "#/definitions/State",
+      "description": "Runtime lifecycle and status"
+    }
+  },
+  "required": [
+    "id",
+    "metadata",
+    "state"
+  ],
+  "additionalProperties": false
+}

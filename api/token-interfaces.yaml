@@ -1,0 +1,750 @@
+openapi: 3.0.4
+info:
+  title: "Finternet API - Token Service"
+  description: |
+    The official API specification for the Finternet Token (UNITS) service.
+
+    This API enables creation, management, and lifecycle operations for universal tokens
+    following the UNITS Token Specification.
+
+    ### Protocol-Agnostic Envelope
+    All API interactions use a standard JSON envelope.
+
+    **Request Envelope:**
+    ```json
+    {
+      "context": { ... },
+      "payload": { ... },
+      "signature": { ... } // Optional
+    }
+    ```
+
+    **Response Envelope (Success):**
+    ```json
+    {
+      "context": { ..., "status": "successful" },
+      "response": { ... }
+    }
+    ```
+
+    **Response Envelope (Error):**
+    ```json
+    {
+      "context": { ..., "status": "failed", "error": {"code": "...", "message": "..." }},
+      "response": {} // Empty on error
+    }
+    ```
+    (Error details are in the context.error object)
+
+    ### Authentication and Authorization
+    This API uses the same two-level authorization model as the Account service:
+
+    1.  **Platform-Level (Developer) Authentication:**
+        * `context.developerToken`: The B2B Developer's API Key/Token.
+        * `context.developerSignature`: The B2B Developer's signature (e.g., RFC 9421) of the payload.
+
+    2.  **User-Level (End-User) Authorization:**
+        * `context.authorization`: The end-user's JWT session token (for session-based calls).
+        * `signature` (top-level): The end-user's JWS for critical, cryptographically-signed operations.
+
+    *Note for HTTP Clients:* As a convenience, the `developerToken` may be provided in the standard `Authorization: Bearer <token>` HTTP header, and the `developerSignature` in an `X-Finternet-Signature` header.
+  version: "1.0.0"
+servers:
+  - url: "https://foundry.finternetlab.io"
+    description: "Development Environment"
+  - url: "http://localhost:3000"
+    description: "Local Server"
+tags:
+  - name: "Token"
+    description: "Endpoints for token creation, querying, and lifecycle management."
+
+# ===============================================================
+#   PATHS
+# ===============================================================
+
+paths:
+  # -------------------- Token --------------------
+  /v1/token/get:
+    post:
+      tags:
+        - "Token"
+      summary: "Get token details"
+      description: "Retrieves detailed information about a specific token by its ID. Requires Developer auth."
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_GetTokenRequest'
+            example:
+              context:
+                id: "api.token.get"
+                version: "1.0"
+                ts: "2025-01-04T10:00:00Z"
+                msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                developerToken: "dev_pk_..."
+              payload:
+                tokenId: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+      responses:
+        '200':
+          description: "Token details retrieved successfully."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TokenDetails'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /v1/token/list:
+    post:
+      tags:
+        - "Token"
+      summary: "List tokens"
+      description: "Lists tokens with optional filters (owner, type, status, etc.). Supports pagination. Requires Developer auth."
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_ListTokensRequest'
+            example:
+              context:
+                id: "api.token.list"
+                version: "1.0"
+                ts: "2025-01-04T10:00:00Z"
+                msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
+                developerToken: "dev_pk_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                filters:
+                  owner: "did:web:alice.example"
+                  tokenStandard: "UNITS-FT"
+                  status: "active"
+                pagination:
+                  limit: 50
+                  offset: 0
+      responses:
+        '200':
+          description: "Token list retrieved successfully."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TokenList'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /v1/token/transact:
+    post:
+      tags:
+        - "Token"
+      summary: "Execute token operation"
+      description: |
+        Unified endpoint for all token write operations. The operation is specified in the payload.
+
+        **Supported Operations:**
+        - `mint` - Create new token instance
+        - `burn` - Burn/destroy token (terminal state)
+        - `freeze` - Freeze token (compliance/regulatory hold)
+        - `unfreeze` - Unfreeze token
+        - `lock` - Lock token (for escrow/collateral)
+        - `unlock` - Unlock token
+        - `redeem` - Redeem token (for redeemable assets)
+        - `transfer` - Transfer token ownership
+        - `updateData` - Update the data section
+        - `updateMetadata` - Update mutable metadata fields
+        - `addClaim` - Add verifiable credential/attestation
+        - `revokeClaim` - Revoke a claim
+        - `updateClaimStatus` - Update claim status
+
+        Critical operations (mint, burn, transfer, addClaim, etc.) require end-user signature.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_TransactRequest'
+            examples:
+              MintToken:
+                summary: "Mint a new fungible token"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "c1d2e3f4-a5b6-7890-1234-567890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "mint"
+                    metadata:
+                      tokenStandard: "UNITS-FT"
+                      name: "Finternet Dollar"
+                      symbol: "FUSD"
+                      decimals: 6
+                      fungibility: "fungible"
+                      issuer: "did:web:finternet-bank.example"
+                      valuationType: "fixed"
+                      valuationModel:
+                        parValue:
+                          amount: "1.00"
+                          currency: "USD"
+                    data:
+                      reserveAccount: "did:web:finternet-bank.example:accounts:reserve-001"
+                      jurisdiction: "US"
+                    initialSupply: "1000000000000"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              BurnToken:
+                summary: "Burn tokens"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:05:00Z"
+                    msgId: "d1e2f3a4-b5c6-7890-1234-567890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "burn"
+                    tokenId: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                    amount: "100000000"
+                    reason: "Token redemption"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              FreezeToken:
+                summary: "Freeze a token"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:10:00Z"
+                    msgId: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "freeze"
+                    tokenId: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                    reason: "Compliance hold"
+                    frozenBy: "did:web:regulator.example"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              TransferToken:
+                summary: "Transfer token ownership"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:15:00Z"
+                    msgId: "f1a2b3c4-d5e6-7890-1234-567890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "transfer"
+                    tokenId: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                    to: "did:web:bob.example"
+                    amount: "500000000"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              UpdateData:
+                summary: "Update token data section"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:20:00Z"
+                    msgId: "a2b3c4d5-e6f7-8901-2345-67890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "updateData"
+                    tokenId: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                    data:
+                      auditReport: "https://auditor.example/reports/fusd-2025-q2"
+                      lastAuditDate: "2025-04-01T00:00:00Z"
+              AddClaim:
+                summary: "Add a verifiable claim"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:25:00Z"
+                    msgId: "b3c4d5e6-f7a8-9012-3456-7890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "addClaim"
+                    tokenId: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                    claim:
+                      id: "urn:uuid:claim-002"
+                      "@context": ["https://www.w3.org/2018/credentials/v1"]
+                      type: ["VerifiableCredential", "ComplianceCertificate"]
+                      issuer: "did:web:regulator.example"
+                      issuanceDate: "2025-01-04T00:00:00Z"
+                      credentialSubject:
+                        id: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                        compliant: true
+                        jurisdiction: "US"
+                      proof:
+                        type: "Ed25519Signature2018"
+                        created: "2025-01-04T00:00:00Z"
+                        verificationMethod: "did:web:regulator.example#key-1"
+                        proofPurpose: "assertionMethod"
+                        jws: "eyJhbGciOiJFZERTQSJ9..."
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+      responses:
+        '200':
+          description: "Operation executed successfully."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TransactSuccess'
+              examples:
+                MintSuccess:
+                  summary: "Token minted successfully"
+                  value:
+                    context:
+                      id: "api.token.transact"
+                      version: "1.0"
+                      ts: "2025-01-04T10:00:01Z"
+                      msgId: "c1d2e3f4-a5b6-7890-1234-567890abcdef"
+                      status: "successful"
+                    response:
+                      tokenId: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                      operation: "mint"
+                      message: "Token minted successfully"
+                BurnSuccess:
+                  summary: "Token burned successfully"
+                  value:
+                    context:
+                      id: "api.token.transact"
+                      version: "1.0"
+                      ts: "2025-01-04T10:05:01Z"
+                      msgId: "d1e2f3a4-b5c6-7890-1234-567890abcdef"
+                      status: "successful"
+                    response:
+                      tokenId: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                      operation: "burn"
+                      message: "Token burned successfully"
+                      newState:
+                        status: "burned"
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
+# ===============================================================
+#   COMPONENTS
+# ===============================================================
+
+components:
+  # -------------------- Schemas --------------------
+  schemas:
+    # --- API Envelope Schemas (reusing from account API) ---
+    Context:
+      type: object
+      required: [id, version, ts, msgId]
+      properties:
+        id: { type: string, example: "api.token.get" }
+        version: { type: string, example: "1.0" }
+        ts: { type: string, format: date-time }
+        msgId: { type: string, format: uuid }
+        transactionId: { type: string, format: uuid, nullable: true, description: "ID for async operations" }
+        developerToken: { type: string, example: "dev_pk_...", nullable: true, description: "B2B Developer API Key/Token" }
+        developerSignature: { type: string, example: "t=...,v1=...", nullable: true, description: "B2B Developer Signature" }
+        authorization: { type: string, example: "Bearer eyJ...", nullable: true, description: "End-user's session token" }
+    ResponseContext:
+      type: object
+      required: [id, version, ts, msgId, status]
+      properties:
+        id: { type: string, example: "api.token.get" }
+        version: { type: string, example: "1.0" }
+        ts: { type: string, format: date-time }
+        msgId: { type: string, format: uuid }
+        transactionId: { type: string, format: uuid, nullable: true }
+        status: { type: string, enum: [successful, failed, pending] }
+        error: { $ref: '#/components/schemas/ErrorPayload', nullable: true }
+    Signature:
+      type: object
+      required: [type, jws]
+      properties:
+        type: { type: string, example: "JsonWebSignature2020" }
+        jws: { type: string, example: "eyJ...", description: "End-user's JWS of the payload object" }
+    ErrorPayload:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, example: "RESOURCE_NOT_FOUND" }
+        message: { type: string }
+
+    # --- Base Request/Response Schemas ---
+    RequestContext:
+      type: object
+      required: [context, payload]
+      properties:
+        context: { $ref: '#/components/schemas/Context' }
+        payload: { type: object }
+        signature: { $ref: '#/components/schemas/Signature', nullable: true }
+    ApiResponse:
+      type: object
+      required: [context, response]
+      properties:
+        context: { $ref: '#/components/schemas/ResponseContext' }
+        response: { type: object }
+    ApiError:
+      type: object
+      required: [context, response]
+      properties:
+        context: { $ref: '#/components/schemas/ResponseContext' }
+        response: { type: object, description: "Always empty on error", example: {} }
+
+    # --- Token-Specific Schemas ---
+
+    # Token Metadata
+    TokenMetadata:
+      type: object
+      required: [tokenStandard, name, symbol, decimals, fungibility, issuer]
+      properties:
+        tokenStandard: { type: string, example: "UNITS-FT" }
+        name: { type: string, example: "Finternet Dollar" }
+        symbol: { type: string, example: "FUSD" }
+        decimals: { type: integer, example: 6 }
+        fungibility: { type: string, enum: [fungible, nonFungible, semiFungible] }
+        tokenClass: { type: string, example: "stablecoin" }
+        version: { type: string, example: "1.0.0" }
+        issuer: { type: string, format: uri-reference, example: "did:web:finternet-bank.example" }
+        creator: { type: string, format: uri-reference }
+        owner: { type: string, format: uri-reference }
+        status: { type: string, enum: [active, inactive, deprecated, test] }
+        valuationType: { type: string, enum: [fixed, pegged, market] }
+        stateModel: { type: string, enum: [native, proxy] }
+        flags:
+          type: object
+          properties:
+            transactable: { type: boolean, default: true }
+            transferable: { type: boolean, default: true }
+            locked: { type: boolean, default: false }
+            revocable: { type: boolean, default: false }
+        tags: { type: array, items: { type: string } }
+        description: { type: string }
+        externalUrls: { type: array, items: { type: string, format: uri } }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    # Token State
+    TokenState:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [active, frozen, redeemed, burned, expired] }
+        effectiveFrom: { type: string, format: date-time }
+        effectiveUntil: { type: string, format: date-time, nullable: true }
+        supply:
+          type: object
+          properties:
+            totalSupply: { type: string }
+            circulatingSupply: { type: string }
+        currentOwner: { type: string, format: uri-reference }
+        lockState:
+          type: object
+          properties:
+            locked: { type: boolean }
+            lockReason: { type: string }
+            lockedBy: { type: string, format: uri-reference }
+            lockedAt: { type: string, format: date-time }
+        restrictions:
+          type: object
+          properties:
+            jurisdiction: { type: array, items: { type: string } }
+            allowedUseCases: { type: array, items: { type: string } }
+        customState: { type: object, additionalProperties: true }
+        stateCommitment: { type: string }
+
+    # Verifiable Claim
+    Claim:
+      type: object
+      required: [id, "@context", type, issuer, issuanceDate, credentialSubject]
+      properties:
+        id: { type: string, format: uri }
+        "@context":
+          oneOf:
+            - type: string
+            - type: array
+              items: { type: string }
+        type:
+          oneOf:
+            - type: string
+            - type: array
+              items: { type: string }
+        issuer: { type: string, format: uri-reference }
+        issuanceDate: { type: string, format: date-time }
+        expirationDate: { type: string, format: date-time }
+        visibility: { type: string, enum: [public, private, protected] }
+        credentialSubject:
+          type: object
+          required: [id]
+          properties:
+            id: { type: string, format: uri-reference }
+          additionalProperties: true
+        proof:
+          type: object
+          properties:
+            type: { type: string }
+            created: { type: string, format: date-time }
+            verificationMethod: { type: string, format: uri }
+            proofPurpose: { type: string }
+            jws: { type: string }
+        status: { type: string, enum: [asserted, verified, revoked, expired] }
+
+    # Token Details (full representation)
+    Token:
+      type: object
+      required: [id, metadata, state]
+      properties:
+        "@context":
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                oneOf:
+                  - type: string
+                  - type: object
+        "@type": { type: string, example: "FinancialProduct" }
+        id: { type: string, format: uri-reference }
+        metadata: { $ref: '#/components/schemas/TokenMetadata' }
+        data: { type: object, additionalProperties: true }
+        claims: { type: array, items: { $ref: '#/components/schemas/Claim' } }
+        state: { $ref: '#/components/schemas/TokenState' }
+
+    # --- Request Payloads ---
+    GetTokenRequest:
+      type: object
+      required: [tokenId]
+      properties:
+        tokenId: { type: string, format: uri-reference, example: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab" }
+
+    ListTokensRequest:
+      type: object
+      properties:
+        filters:
+          type: object
+          properties:
+            owner: { type: string, format: uri-reference }
+            issuer: { type: string, format: uri-reference }
+            tokenStandard: { type: string }
+            fungibility: { type: string, enum: [fungible, nonFungible, semiFungible] }
+            status: { type: string, enum: [active, frozen, redeemed, burned, expired] }
+            tags: { type: array, items: { type: string } }
+        pagination:
+          type: object
+          properties:
+            limit: { type: integer, default: 50, minimum: 1, maximum: 100 }
+            offset: { type: integer, default: 0, minimum: 0 }
+        sort:
+          type: object
+          properties:
+            field: { type: string, enum: [createdAt, updatedAt, name], default: "createdAt" }
+            order: { type: string, enum: [asc, desc], default: "desc" }
+
+    TransactRequest:
+      type: object
+      required: [operation]
+      description: |
+        Request payload for token operations. The structure varies by operation:
+
+        **For mint:** `operation`, `metadata`, `data` (optional), `claims` (optional), `initialSupply`
+        **For updateData:** `operation`, `tokenId`, `data`
+        **For updateMetadata:** `operation`, `tokenId`, `metadata`
+        **For addClaim:** `operation`, `tokenId`, `claim`
+        **For revokeClaim:** `operation`, `tokenId`, `claimId`
+        **For burn/freeze/transfer:** `operation`, `tokenId`, plus operation-specific params at root level
+      properties:
+        operation:
+          type: string
+          enum: [mint, burn, freeze, unfreeze, lock, unlock, redeem, transfer, updateData, updateMetadata, addClaim, revokeClaim, updateClaimStatus]
+        tokenId:
+          type: string
+          format: uri-reference
+          description: "Required for all operations except mint"
+        metadata:
+          type: object
+          description: "Token metadata (for mint, updateMetadata operations)"
+          additionalProperties: true
+        data:
+          type: object
+          description: "Token data section (for mint, updateData operations)"
+          additionalProperties: true
+        claim:
+          type: object
+          description: "Verifiable credential to add (for addClaim operation)"
+          additionalProperties: true
+        claimId:
+          type: string
+          description: "Claim ID to revoke (for revokeClaim operation)"
+        amount:
+          type: string
+          description: "Amount for burn/transfer operations"
+        to:
+          type: string
+          format: uri-reference
+          description: "Recipient for transfer operation"
+        reason:
+          type: string
+          description: "Reason for burn/freeze operations"
+        frozenBy:
+          type: string
+          format: uri-reference
+          description: "Entity performing freeze operation"
+        initialSupply:
+          type: string
+          description: "Initial supply for mint operation (fungible tokens)"
+
+    # --- Response Payloads ---
+    TokenDetails:
+      allOf:
+        - $ref: '#/components/schemas/Token'
+
+    TokenList:
+      type: object
+      properties:
+        tokens:
+          type: array
+          items:
+            $ref: '#/components/schemas/Token'
+        pagination:
+          type: object
+          properties:
+            total: { type: integer }
+            limit: { type: integer }
+            offset: { type: integer }
+
+    TransactSuccess:
+      type: object
+      properties:
+        tokenId: { type: string, format: uri-reference }
+        operation: { type: string }
+        message: { type: string }
+        newState: { $ref: '#/components/schemas/TokenState', nullable: true }
+
+    # --- Specific Request Envelopes ---
+    ApiRequest_GetTokenRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/GetTokenRequest' }
+
+    ApiRequest_ListTokensRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/ListTokensRequest' }
+
+    ApiRequest_TransactRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/TransactRequest' }
+            signature: { $ref: '#/components/schemas/Signature' }
+
+    # --- Specific Response Envelopes ---
+    ApiResponse_TokenDetails:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/TokenDetails' }
+
+    ApiResponse_TokenList:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/TokenList' }
+
+    ApiResponse_TransactSuccess:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/TransactSuccess' }
+
+  # -------------------- Responses --------------------
+  responses:
+    UnauthorizedError:
+      description: "Authentication failed. Can be invalid Developer Token OR invalid User JWT."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "AUTHENTICATION_FAILED", message: "Token invalid or expired." } }
+            response: {}
+    ForbiddenError:
+      description: "Forbidden. Insufficient permissions."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "PERMISSION_DENIED", message: "Insufficient permissions to perform this action." } }
+            response: {}
+    NotFoundError:
+      description: "Resource not found."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "The requested token was not found." } }
+            response: {}
+    BadRequestError:
+      description: "Invalid request."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "INVALID_REQUEST", message: "Invalid request parameters." } }
+            response: {}
+    ConflictError:
+      description: "Conflict with existing resource or state."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "RESOURCE_CONFLICT", message: "Operation conflicts with current token state." } }
+            response: {}
+
+  # -------------------- Security --------------------
+  securitySchemes:
+    developerToken:
+      type: http
+      scheme: bearer
+      bearerFormat: "JWT or Opaque"
+      description: |
+        A JWT or Opaque token that identifies the calling B2B developer/backend service.
+        This is passed in the standard `Authorization: Bearer <token>` header.
+        (This can also be passed in the `context.developerToken` as a fallback).
+
+    developerSignature:
+      type: apiKey
+      in: header
+      name: Signature
+      description: |
+        The IETF HTTP Signature (RFC 9421) used by B2B developers to ensure message
+        integrity and non-repudiation. This is passed in the `Signature` header.

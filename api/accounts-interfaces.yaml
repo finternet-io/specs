@@ -49,6 +49,8 @@ info:
 servers:
   - url: "https://foundry.finternetlab.io"
     description: "Development Environment"
+  - url: "http://localhost:3000"
+    description: "Local Server"
 tags:
   - name: "Account"
     description: "Endpoints for user registration, authentication, and account management."
