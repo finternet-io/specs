@@ -1,0 +1,228 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://finternet-io.github.io/specs/schemas/token-transaction.schema.json",
+  "title": "Finternet TokenTransaction",
+  "description": "Per-token record of a state change applied to that token (state transition).",
+  "type": "object",
+  "$comment": "This schema validates token transaction instances. For full schema definitions including JSON-LD context, see v1/attributes.yaml",
+  "definitions": {
+    "OperationType": {
+      "description": "Type of operation performed on the token",
+      "type": "string",
+      "enum": [
+        "mint",
+        "burn",
+        "transfer",
+        "freeze",
+        "unfreeze",
+        "lock",
+        "unlock",
+        "redeem",
+        "read",
+        "updateData",
+        "updateMetadata",
+        "addClaim",
+        "revokeClaim"
+      ]
+    },
+    "StateReference": {
+      "description": "Reference to token state with commitment",
+      "type": "object",
+      "required": ["stateCommitment"],
+      "properties": {
+        "stateCommitment": {
+          "type": "string",
+          "description": "Cryptographic hash/commitment of the token state"
+        },
+        "stateVersion": {
+          "type": "integer",
+          "description": "Version number of the state"
+        },
+        "stateSnapshot": {
+          "type": "object",
+          "description": "Optional snapshot of the actual state",
+          "additionalProperties": true
+        }
+      }
+    },
+    "Participant": {
+      "description": "Participant in the transaction",
+      "type": "object",
+      "required": ["accountId", "role"],
+      "properties": {
+        "accountId": {
+          "type": "string",
+          "format": "uri-reference",
+          "description": "Account identifier"
+        },
+        "role": {
+          "type": "string",
+          "description": "Role in the transaction",
+          "enum": ["sender", "receiver", "operator", "approver"]
+        }
+      }
+    },
+    "AmountTransferred": {
+      "description": "Amount or units transferred/affected",
+      "type": "object",
+      "properties": {
+        "amount": {
+          "type": "string",
+          "description": "Amount (string for big numbers)"
+        },
+        "unit": {
+          "type": "string",
+          "description": "Unit of measurement",
+          "default": "token"
+        },
+        "decimals": {
+          "type": "integer",
+          "description": "Decimal places for the amount"
+        }
+      }
+    }
+  },
+  "properties": {
+    "@context": {
+      "description": "The JSON-LD context, should reference https://finternet-io.github.io/specs/schemas/transaction/v1/context.jsonld",
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "https://finternet-io.github.io/specs/schemas/transaction/v1/context.jsonld"
+        },
+        {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "@type": {
+      "description": "The JSON-LD type",
+      "type": "string",
+      "const": "TokenTransaction"
+    },
+    "tokenTxId": {
+      "description": "Unique identifier for this token transaction",
+      "type": "string",
+      "format": "uri-reference",
+      "examples": [
+        "urn:uuid:tokentx-a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+      ]
+    },
+    "txId": {
+      "description": "Reference to the parent TransactionLog",
+      "type": "string",
+      "format": "uri-reference",
+      "examples": [
+        "urn:uuid:tx-a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+      ]
+    },
+    "tokenId": {
+      "description": "Token that this transaction operates on",
+      "type": "string",
+      "format": "uri-reference",
+      "examples": [
+        "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+      ]
+    },
+    "operation": {
+      "$ref": "#/definitions/OperationType",
+      "description": "Type of operation performed"
+    },
+    "participants": {
+      "description": "Participants involved in this transaction",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Participant"
+      }
+    },
+    "fromAccount": {
+      "description": "Source account (for transfers)",
+      "type": "string",
+      "format": "uri-reference"
+    },
+    "toAccount": {
+      "description": "Destination account (for transfers)",
+      "type": "string",
+      "format": "uri-reference"
+    },
+    "amount": {
+      "$ref": "#/definitions/AmountTransferred",
+      "description": "Amount or units affected by this transaction"
+    },
+    "stateBefore": {
+      "$ref": "#/definitions/StateReference",
+      "description": "Token state before this transaction"
+    },
+    "stateAfter": {
+      "$ref": "#/definitions/StateReference",
+      "description": "Token state after this transaction"
+    },
+    "proofId": {
+      "description": "Reference to proof validating this state change",
+      "type": "string",
+      "format": "uri-reference"
+    },
+    "timestamp": {
+      "description": "When this transaction was executed",
+      "type": "string",
+      "format": "date-time"
+    },
+    "metadata": {
+      "description": "Additional transaction metadata",
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Reason for the transaction"
+        },
+        "reference": {
+          "type": "string",
+          "description": "External reference or correlation ID"
+        },
+        "custom": {
+          "type": "object",
+          "description": "Custom metadata",
+          "additionalProperties": true
+        }
+      }
+    },
+    "signature": {
+      "description": "Cryptographic signature over this transaction",
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Signature type"
+        },
+        "value": {
+          "type": "string",
+          "description": "Signature value"
+        },
+        "signer": {
+          "type": "string",
+          "format": "uri-reference",
+          "description": "Who signed this transaction"
+        }
+      }
+    }
+  },
+  "required": [
+    "tokenTxId",
+    "txId",
+    "tokenId",
+    "operation",
+    "stateAfter",
+    "timestamp"
+  ],
+  "additionalProperties": false
+}

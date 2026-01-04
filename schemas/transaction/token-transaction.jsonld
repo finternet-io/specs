@@ -1,0 +1,64 @@
+{
+  "@context": "https://finternet-io.github.io/specs/schemas/transaction/v1/context.jsonld",
+  "@type": "TokenTransaction",
+  "tokenTxId": "urn:uuid:tokentx-c8d4e5f6-a7b8-9012-3456-7890abcdef01",
+  "txId": "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd",
+  "tokenId": "urn:uuid:token-fusd-a1b2c3d4",
+  "operation": "transfer",
+  "participants": [
+    {
+      "accountId": "did:web:alice.example",
+      "role": "sender"
+    },
+    {
+      "accountId": "did:web:bob.example",
+      "role": "receiver"
+    }
+  ],
+  "fromAccount": "did:web:alice.example",
+  "toAccount": "did:web:bob.example",
+  "amount": {
+    "amount": "100000000",
+    "unit": "token",
+    "decimals": 6
+  },
+  "stateBefore": {
+    "stateCommitment": "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+    "stateVersion": 42,
+    "stateSnapshot": {
+      "status": "active",
+      "currentOwner": "did:web:alice.example",
+      "supply": {
+        "totalSupply": "10000000000000",
+        "circulatingSupply": "8500000000000"
+      }
+    }
+  },
+  "stateAfter": {
+    "stateCommitment": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+    "stateVersion": 43,
+    "stateSnapshot": {
+      "status": "active",
+      "currentOwner": "did:web:bob.example",
+      "supply": {
+        "totalSupply": "10000000000000",
+        "circulatingSupply": "8500000000000"
+      }
+    }
+  },
+  "proofId": "urn:uuid:proof-a1b2c3d4-e5f6-7890",
+  "timestamp": "2025-01-04T14:30:03Z",
+  "metadata": {
+    "reason": "Payment for services",
+    "reference": "invoice-2025-001",
+    "custom": {
+      "invoiceId": "INV-2025-001",
+      "serviceType": "consulting"
+    }
+  },
+  "signature": {
+    "type": "Ed25519Signature2018",
+    "value": "eyJhbGciOiJFZERTQSJ9...",
+    "signer": "did:web:alice.example#key-1"
+  }
+}

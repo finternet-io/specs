@@ -1,0 +1,277 @@
+{
+    "@context": [
+        "https://finternet-io.github.io/specs/schemas/core/v1/context.jsonld",
+        {
+            "finternet": "https://finternet-io.github.io/specs/schemas/transaction/v1#",
+            "schema": "https://schema.org/",
+            "xsd": "http://www.w3.org/2001/XMLSchema#",
+            "sec": "https://w3id.org/security#",
+
+            "TransactionLog": "finternet:TransactionLog",
+            "TokenTransaction": "finternet:TokenTransaction",
+
+            "txId": {
+                "@id": "finternet:txId",
+                "@type": "@id"
+            },
+            "tokenTxId": {
+                "@id": "finternet:tokenTxId",
+                "@type": "@id"
+            },
+            "correlationId": "finternet:correlationId",
+            "initiator": {
+                "@id": "finternet:initiator",
+                "@type": "@id"
+            },
+            "tokenId": {
+                "@id": "finternet:tokenId",
+                "@type": "@id"
+            },
+
+            "tokenTransactions": {
+                "@id": "finternet:tokenTransactions",
+                "@type": "@id",
+                "@container": "@set"
+            },
+            "TokenTransactionReference": "finternet:TokenTransactionReference",
+            "operation": "finternet:operation",
+
+            "workflowInstanceId": {
+                "@id": "finternet:workflowInstanceId",
+                "@type": "@id"
+            },
+
+            "executionStatus": {
+                "@id": "finternet:executionStatus",
+                "@type": "@vocab"
+            },
+            "ExecutionStatus": "finternet:ExecutionStatus",
+            "submitted": "finternet:submitted",
+            "pending": "finternet:pending",
+            "executing": "finternet:executing",
+            "completed": "finternet:completed",
+            "failed": "finternet:failed",
+            "rolled_back": "finternet:rolled_back",
+
+            "ExecutionTimestamps": "finternet:ExecutionTimestamps",
+            "timestamps": {
+                "@id": "finternet:timestamps",
+                "@type": "@id"
+            },
+            "submittedAt": {
+                "@id": "finternet:submittedAt",
+                "@type": "xsd:dateTime"
+            },
+            "startedAt": {
+                "@id": "finternet:startedAt",
+                "@type": "xsd:dateTime"
+            },
+            "completedAt": {
+                "@id": "finternet:completedAt",
+                "@type": "xsd:dateTime"
+            },
+            "finalizedAt": {
+                "@id": "finternet:finalizedAt",
+                "@type": "xsd:dateTime"
+            },
+
+            "proofId": {
+                "@id": "finternet:proofId",
+                "@type": "@id"
+            },
+            "proofProfile": {
+                "@id": "finternet:proofProfile",
+                "@type": "@vocab"
+            },
+            "ProofProfile": "finternet:ProofProfile",
+            "zk-snark": "finternet:zk-snark",
+            "zk-stark": "finternet:zk-stark",
+            "merkle": "finternet:merkle",
+            "tee-attestation": "finternet:tee-attestation",
+            "signature-bundle": "finternet:signature-bundle",
+            "none": "finternet:none",
+
+            "batchId": "finternet:batchId",
+
+            "ledgerAnchors": {
+                "@id": "finternet:ledgerAnchors",
+                "@container": "@set"
+            },
+            "LedgerAnchor": "finternet:LedgerAnchor",
+            "chain": "finternet:chain",
+            "network": "finternet:network",
+            "txHash": "finternet:txHash",
+            "blockId": "finternet:blockId",
+            "anchorTimestamp": {
+                "@id": "finternet:anchorTimestamp",
+                "@type": "xsd:dateTime"
+            },
+
+            "operationType": {
+                "@id": "finternet:operationType",
+                "@type": "@vocab"
+            },
+            "OperationType": "finternet:OperationType",
+            "mint": "finternet:mint",
+            "burn": "finternet:burn",
+            "transfer": "finternet:transfer",
+            "freeze": "finternet:freeze",
+            "unfreeze": "finternet:unfreeze",
+            "lock": "finternet:lock",
+            "unlock": "finternet:unlock",
+            "redeem": "finternet:redeem",
+            "read": "finternet:read",
+            "updateData": "finternet:updateData",
+            "updateMetadata": "finternet:updateMetadata",
+            "addClaim": "finternet:addClaim",
+            "revokeClaim": "finternet:revokeClaim",
+
+            "participants": {
+                "@id": "finternet:participants",
+                "@container": "@set"
+            },
+            "Participant": "finternet:Participant",
+            "accountId": {
+                "@id": "finternet:accountId",
+                "@type": "@id"
+            },
+            "role": {
+                "@id": "finternet:role",
+                "@type": "@vocab"
+            },
+            "ParticipantRole": "finternet:ParticipantRole",
+            "sender": "finternet:sender",
+            "receiver": "finternet:receiver",
+            "operator": "finternet:operator",
+            "approver": "finternet:approver",
+
+            "fromAccount": {
+                "@id": "finternet:fromAccount",
+                "@type": "@id"
+            },
+            "toAccount": {
+                "@id": "finternet:toAccount",
+                "@type": "@id"
+            },
+
+            "amount": "finternet:amount",
+            "AmountTransferred": "finternet:AmountTransferred",
+            "unit": "finternet:unit",
+            "decimals": {
+                "@id": "finternet:decimals",
+                "@type": "xsd:integer"
+            },
+
+            "stateBefore": {
+                "@id": "finternet:stateBefore",
+                "@type": "@id"
+            },
+            "stateAfter": {
+                "@id": "finternet:stateAfter",
+                "@type": "@id"
+            },
+            "StateReference": "finternet:StateReference",
+            "stateCommitment": "finternet:stateCommitment",
+            "stateVersion": {
+                "@id": "finternet:stateVersion",
+                "@type": "xsd:integer"
+            },
+            "stateSnapshot": {
+                "@id": "finternet:stateSnapshot",
+                "@type": "@json"
+            },
+
+            "executedAt": {
+                "@id": "finternet:executedAt",
+                "@type": "xsd:dateTime"
+            },
+
+            "metadata": {
+                "@id": "finternet:metadata",
+                "@type": "@id"
+            },
+            "TransactionMetadata": "finternet:TransactionMetadata",
+            "TokenTransactionMetadata": "finternet:TokenTransactionMetadata",
+            "reason": "finternet:reason",
+            "reference": "finternet:reference",
+            "customMetadata": {
+                "@id": "finternet:customMetadata",
+                "@type": "@json"
+            },
+
+            "signature": {
+                "@id": "finternet:signature",
+                "@type": "@id"
+            },
+            "TransactionSignature": "sec:Signature",
+
+            "AuditEvent": "finternet:AuditEvent",
+            "auditEventId": {
+                "@id": "finternet:auditEventId",
+                "@type": "@id"
+            },
+            "actor": {
+                "@id": "finternet:actor",
+                "@type": "@id"
+            },
+            "eventType": {
+                "@id": "finternet:auditEventType",
+                "@type": "@vocab"
+            },
+            "AuditEventType": "finternet:AuditEventType",
+            "MetadataUpdated": "finternet:MetadataUpdated",
+            "DataCorrected": "finternet:DataCorrected",
+            "ClaimAttached": "finternet:ClaimAttached",
+            "ClaimRevoked": "finternet:ClaimRevoked",
+            "StateOverride": "finternet:StateOverride",
+            "PermissionChanged": "finternet:PermissionChanged",
+
+            "changeDetails": {
+                "@id": "finternet:changeDetails",
+                "@type": "@id"
+            },
+            "ChangeDetails": "finternet:ChangeDetails",
+            "fieldPath": "finternet:fieldPath",
+            "before": {
+                "@id": "finternet:beforeValue",
+                "@type": "@json"
+            },
+            "after": {
+                "@id": "finternet:afterValue",
+                "@type": "@json"
+            },
+            "changeType": {
+                "@id": "finternet:changeType",
+                "@type": "@vocab"
+            },
+
+            "approvals": {
+                "@id": "finternet:approvals",
+                "@container": "@set"
+            },
+            "Approval": "finternet:Approval",
+            "approver": {
+                "@id": "finternet:approver",
+                "@type": "@id"
+            },
+            "approved": {
+                "@id": "finternet:approved",
+                "@type": "xsd:boolean"
+            },
+            "approvalTimestamp": {
+                "@id": "finternet:approvalTimestamp",
+                "@type": "xsd:dateTime"
+            },
+            "approvalSignature": "finternet:approvalSignature",
+
+            "auditTimestamp": {
+                "@id": "finternet:auditTimestamp",
+                "@type": "xsd:dateTime"
+            },
+            "AuditMetadata": "finternet:AuditMetadata",
+            "ipAddress": "finternet:ipAddress",
+            "userAgent": "finternet:userAgent",
+            "sessionId": "finternet:sessionId"
+        }
+    ]
+}

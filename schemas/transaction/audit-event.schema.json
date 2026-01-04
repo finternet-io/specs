@@ -1,0 +1,177 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://finternet-io.github.io/specs/schemas/audit-event.schema.json",
+  "title": "Finternet Token Audit Event",
+  "description": "Audit event tracking administrative changes to token metadata, data, and claims",
+  "type": "object",
+  "required": [
+    "@context",
+    "@type",
+    "auditEventId",
+    "tokenId",
+    "actor",
+    "eventType",
+    "timestamp"
+  ],
+  "properties": {
+    "@context": {
+      "description": "JSON-LD context",
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "https://finternet-io.github.io/specs/schemas/transaction/v1/context.jsonld"
+        },
+        {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "object" }
+            ]
+          }
+        }
+      ]
+    },
+    "@type": {
+      "type": "string",
+      "const": "AuditEvent"
+    },
+    "auditEventId": {
+      "type": "string",
+      "format": "uri-reference",
+      "description": "Globally unique audit event identifier"
+    },
+    "tokenId": {
+      "type": "string",
+      "format": "uri-reference",
+      "description": "Token that was modified"
+    },
+    "txId": {
+      "type": "string",
+      "format": "uri-reference",
+      "description": "Optional reference to associated TransactionLog"
+    },
+    "actor": {
+      "type": "string",
+      "format": "uri-reference",
+      "description": "Account or system that performed the action"
+    },
+    "eventType": {
+      "type": "string",
+      "enum": [
+        "MetadataUpdated",
+        "DataCorrected",
+        "ClaimAttached",
+        "ClaimRevoked",
+        "StateOverride",
+        "PermissionChanged"
+      ],
+      "description": "Type of administrative action"
+    },
+    "changeDetails": {
+      "type": "object",
+      "description": "Details of what changed",
+      "properties": {
+        "fieldPath": {
+          "type": "string",
+          "description": "JSON path to the changed field (e.g., 'metadata.name', 'data.jurisdiction')"
+        },
+        "before": {
+          "description": "Value before the change"
+        },
+        "after": {
+          "description": "Value after the change"
+        },
+        "changeType": {
+          "type": "string",
+          "enum": ["created", "updated", "deleted"],
+          "description": "Type of change operation"
+        }
+      }
+    },
+    "reason": {
+      "type": "string",
+      "description": "Human-readable justification for the change"
+    },
+    "approvals": {
+      "type": "array",
+      "description": "Approvals required for this change",
+      "items": {
+        "type": "object",
+        "required": ["approver", "approved"],
+        "properties": {
+          "approver": {
+            "type": "string",
+            "format": "uri-reference",
+            "description": "Account that approved"
+          },
+          "approved": {
+            "type": "boolean",
+            "description": "Whether approved or rejected"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the approval was granted"
+          },
+          "signature": {
+            "type": "string",
+            "description": "Cryptographic signature of approval"
+          }
+        }
+      }
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this audit event occurred"
+    },
+    "proofId": {
+      "type": "string",
+      "format": "uri-reference",
+      "description": "Optional cryptographic proof of the audit event"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional audit metadata",
+      "properties": {
+        "ipAddress": {
+          "type": "string",
+          "description": "IP address of the actor"
+        },
+        "userAgent": {
+          "type": "string",
+          "description": "User agent string"
+        },
+        "sessionId": {
+          "type": "string",
+          "description": "Session identifier"
+        },
+        "custom": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Custom metadata"
+        }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "description": "Cryptographic signature over this audit event",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Signature type"
+        },
+        "value": {
+          "type": "string",
+          "description": "Signature value"
+        },
+        "signer": {
+          "type": "string",
+          "format": "uri-reference",
+          "description": "Who signed this audit event"
+        }
+      }
+    }
+  }
+}

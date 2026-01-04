@@ -309,41 +309,42 @@ paths:
                     type: "JsonWebSignature2020"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
       responses:
-        '200':
-          description: "Operation executed successfully."
+        '202':
+          description: "Transaction accepted for processing (async)."
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse_TransactSuccess'
+                $ref: '#/components/schemas/ApiResponse_TransactAccepted'
               examples:
-                MintSuccess:
-                  summary: "Token minted successfully"
+                MintAccepted:
+                  summary: "Mint transaction accepted"
                   value:
                     context:
                       id: "api.token.transact"
                       version: "1.0"
-                      ts: "2025-01-04T10:00:01Z"
+                      ts: "2025-01-04T10:00:00Z"
                       msgId: "c1d2e3f4-a5b6-7890-1234-567890abcdef"
-                      status: "successful"
+                      status: "accepted"
+                      transactionId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
                     response:
-                      tokenId: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
-                      operation: "mint"
-                      message: "Token minted successfully"
-                BurnSuccess:
-                  summary: "Token burned successfully"
+                      txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+                      status: "submitted"
+                      message: "Transaction submitted for processing"
+                      estimatedCompletionTime: "2025-01-04T10:00:05Z"
+                TransferAccepted:
+                  summary: "Transfer transaction accepted"
                   value:
                     context:
                       id: "api.token.transact"
                       version: "1.0"
-                      ts: "2025-01-04T10:05:01Z"
-                      msgId: "d1e2f3a4-b5c6-7890-1234-567890abcdef"
-                      status: "successful"
+                      ts: "2025-01-04T10:15:00Z"
+                      msgId: "f1a2b3c4-d5e6-7890-1234-567890abcdef"
+                      status: "accepted"
+                      transactionId: "urn:uuid:tx-d8e5f6a7-b8c9-0123-4567-890abcdef123"
                     response:
-                      tokenId: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
-                      operation: "burn"
-                      message: "Token burned successfully"
-                      newState:
-                        status: "burned"
+                      txId: "urn:uuid:tx-d8e5f6a7-b8c9-0123-4567-890abcdef123"
+                      status: "submitted"
+                      message: "Transfer submitted for processing"
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -354,6 +355,239 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '409':
           $ref: '#/components/responses/ConflictError'
+
+  # -------------------- Transaction APIs --------------------
+  /v1/transaction/status:
+    post:
+      tags:
+        - "Transaction"
+      summary: "Get transaction status"
+      description: |
+        Polls the status of an asynchronous transaction.
+
+        **Status Progression:**
+        submitted → pending → executing → completed/failed/rolled_back
+
+        Use this endpoint to poll for transaction completion after submitting via /v1/token/transact.
+      security:
+        - developerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_TransactionStatusRequest'
+            example:
+              context:
+                id: "api.transaction.status"
+                version: "1.0"
+                ts: "2025-01-04T10:00:02Z"
+                msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                developerToken: "dev_pk_..."
+              payload:
+                txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+      responses:
+        '200':
+          description: "Status retrieved successfully"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TransactionStatus'
+              examples:
+                Executing:
+                  summary: "Transaction in progress"
+                  value:
+                    context:
+                      id: "api.transaction.status"
+                      version: "1.0"
+                      ts: "2025-01-04T10:00:02Z"
+                      msgId: "..."
+                      status: "successful"
+                    response:
+                      txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+                      status: "executing"
+                      progress:
+                        currentStep: "Generating proof"
+                        completedSteps: 2
+                        totalSteps: 4
+                      timestamps:
+                        submitted: "2025-01-04T10:00:00Z"
+                        started: "2025-01-04T10:00:01Z"
+                Completed:
+                  summary: "Transaction completed"
+                  value:
+                    context:
+                      id: "api.transaction.status"
+                      version: "1.0"
+                      ts: "2025-01-04T10:00:05Z"
+                      msgId: "..."
+                      status: "successful"
+                    response:
+                      txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+                      status: "completed"
+                      timestamps:
+                        submitted: "2025-01-04T10:00:00Z"
+                        started: "2025-01-04T10:00:01Z"
+                        completed: "2025-01-04T10:00:03Z"
+                        finalized: "2025-01-04T10:00:05Z"
+                      summary:
+                        operation: "transfer"
+                        tokenCount: 1
+                        proofId: "urn:uuid:proof-a1b2c3d4"
+                Failed:
+                  summary: "Transaction failed"
+                  value:
+                    context:
+                      id: "api.transaction.status"
+                      version: "1.0"
+                      ts: "2025-01-04T10:00:02Z"
+                      msgId: "..."
+                      status: "successful"
+                    response:
+                      txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+                      status: "failed"
+                      error:
+                        code: "INSUFFICIENT_BALANCE"
+                        message: "Insufficient token balance for transfer"
+                        details:
+                          required: "100000000"
+                          available: "50000000"
+                      timestamps:
+                        submitted: "2025-01-04T10:00:00Z"
+                        started: "2025-01-04T10:00:01Z"
+                        failed: "2025-01-04T10:00:02Z"
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /v1/transaction/get:
+    post:
+      tags:
+        - "Transaction"
+      summary: "Get transaction details"
+      description: |
+        Retrieves complete details of a transaction including all token transactions,
+        proofs, and ledger anchors.
+
+        Use this after transaction completion to get full audit trail.
+      security:
+        - developerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_GetTransactionRequest'
+            example:
+              context:
+                id: "api.transaction.get"
+                version: "1.0"
+                ts: "2025-01-04T10:00:10Z"
+                msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef"
+                developerToken: "dev_pk_..."
+              payload:
+                txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+      responses:
+        '200':
+          description: "Transaction details retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TransactionDetails'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /v1/transaction/list:
+    post:
+      tags:
+        - "Transaction"
+      summary: "List transactions"
+      description: |
+        Lists transactions with optional filters and pagination.
+        Useful for transaction history, reconciliation, and reporting.
+      security:
+        - developerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_ListTransactionsRequest'
+            example:
+              context:
+                id: "api.transaction.list"
+                version: "1.0"
+                ts: "2025-01-04T10:00:00Z"
+                msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
+                developerToken: "dev_pk_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                filters:
+                  initiator: "did:web:alice.example"
+                  status: "completed"
+                  dateRange:
+                    from: "2025-01-01T00:00:00Z"
+                    to: "2025-01-31T23:59:59Z"
+                pagination:
+                  limit: 50
+                  offset: 0
+      responses:
+        '200':
+          description: "Transaction list retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TransactionList'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /v1/token/transactions:
+    post:
+      tags:
+        - "Token"
+      summary: "Get token transaction history"
+      description: |
+        Retrieves all transactions that affected a specific token.
+        Provides complete audit trail and state history for the token.
+      security:
+        - developerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_TokenTransactionsRequest'
+            example:
+              context:
+                id: "api.token.transactions"
+                version: "1.0"
+                ts: "2025-01-04T10:00:00Z"
+                msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef"
+                developerToken: "dev_pk_..."
+              payload:
+                tokenId: "urn:uuid:token-fusd-a1b2c3d4"
+                filters:
+                  operation: "transfer"
+                  dateRange:
+                    from: "2025-01-01T00:00:00Z"
+                    to: "2025-01-31T23:59:59Z"
+                pagination:
+                  limit: 100
+                  offset: 0
+      responses:
+        '200':
+          description: "Token transaction history retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TokenTransactionList'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
 
 # ===============================================================
 #   COMPONENTS
@@ -640,13 +874,399 @@ components:
             limit: { type: integer }
             offset: { type: integer }
 
-    TransactSuccess:
+    TransactAccepted:
+      type: object
+      description: "Async transaction submission response"
+      required: [txId, status, message]
+      properties:
+        txId:
+          type: string
+          format: uri-reference
+          description: "Transaction ID for tracking"
+        status:
+          type: string
+          enum: [submitted, queued]
+          description: "Initial status"
+        message:
+          type: string
+          description: "Confirmation message"
+        estimatedCompletionTime:
+          type: string
+          format: date-time
+          description: "Estimated completion time (optional)"
+
+    # --- Transaction Schemas ---
+
+    ExecutionStatus:
+      type: string
+      description: "Transaction execution status"
+      enum: [submitted, pending, executing, completed, failed, rolled_back]
+
+    ExecutionTimestamps:
+      type: object
+      description: "Transaction lifecycle timestamps"
+      properties:
+        submitted:
+          type: string
+          format: date-time
+          description: "When transaction was submitted"
+        started:
+          type: string
+          format: date-time
+          description: "When execution started"
+        completed:
+          type: string
+          format: date-time
+          description: "When execution completed"
+        finalized:
+          type: string
+          format: date-time
+          description: "When transaction was finalized"
+        failed:
+          type: string
+          format: date-time
+          description: "When transaction failed (if applicable)"
+
+    TransactionProgress:
+      type: object
+      description: "Progress information for in-flight transactions"
+      properties:
+        currentStep:
+          type: string
+          description: "Current step being executed"
+        completedSteps:
+          type: integer
+          description: "Number of completed steps"
+        totalSteps:
+          type: integer
+          description: "Total number of steps"
+
+    TransactionSummary:
+      type: object
+      description: "High-level transaction summary"
+      properties:
+        operation:
+          type: string
+          description: "Primary operation type"
+        tokenCount:
+          type: integer
+          description: "Number of tokens affected"
+        proofId:
+          type: string
+          format: uri-reference
+          description: "Reference to proof record"
+
+    TransactionError:
+      type: object
+      description: "Error details for failed transactions"
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: "Error code"
+        message:
+          type: string
+          description: "Error message"
+        details:
+          type: object
+          description: "Additional error details"
+          additionalProperties: true
+
+    TransactionStatus:
+      type: object
+      description: "Transaction status response"
+      required: [txId, status, timestamps]
+      properties:
+        txId:
+          type: string
+          format: uri-reference
+        status:
+          $ref: '#/components/schemas/ExecutionStatus'
+        progress:
+          $ref: '#/components/schemas/TransactionProgress'
+        timestamps:
+          $ref: '#/components/schemas/ExecutionTimestamps'
+        summary:
+          $ref: '#/components/schemas/TransactionSummary'
+        error:
+          $ref: '#/components/schemas/TransactionError'
+
+    TransactionLog:
+      type: object
+      description: "Complete transaction log with all details"
+      required: [txId, initiator, tokenTransactions, status, timestamps]
+      properties:
+        txId:
+          type: string
+          format: uri-reference
+        correlationId:
+          type: string
+          description: "External correlation ID"
+        initiator:
+          type: string
+          format: uri-reference
+          description: "Account that initiated the transaction"
+        tokenTransactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TokenTransactionReference'
+          description: "References to token transactions"
+        workflowInstanceId:
+          type: string
+          format: uri-reference
+          description: "Workflow instance reference"
+        status:
+          $ref: '#/components/schemas/ExecutionStatus'
+        timestamps:
+          $ref: '#/components/schemas/ExecutionTimestamps'
+        proofId:
+          type: string
+          format: uri-reference
+        proofProfile:
+          type: string
+          enum: [zk-snark, zk-stark, merkle, tee-attestation, signature-bundle, none]
+        batchId:
+          type: string
+        ledgerAnchors:
+          type: array
+          items:
+            $ref: '#/components/schemas/LedgerAnchor'
+        metadata:
+          type: object
+          additionalProperties: true
+
+    TokenTransactionReference:
+      type: object
+      description: "Reference to a token transaction"
+      required: [tokenTxId, tokenId, operation]
+      properties:
+        tokenTxId:
+          type: string
+          format: uri-reference
+        tokenId:
+          type: string
+          format: uri-reference
+        operation:
+          type: string
+
+    TokenTransaction:
+      type: object
+      description: "Detailed token transaction record"
+      required: [tokenTxId, txId, tokenId, operation, stateAfter, timestamp]
+      properties:
+        tokenTxId:
+          type: string
+          format: uri-reference
+        txId:
+          type: string
+          format: uri-reference
+        tokenId:
+          type: string
+          format: uri-reference
+        operation:
+          type: string
+          enum: [mint, burn, transfer, freeze, unfreeze, lock, unlock, redeem, updateData, updateMetadata, addClaim, revokeClaim]
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/Participant'
+        fromAccount:
+          type: string
+          format: uri-reference
+        toAccount:
+          type: string
+          format: uri-reference
+        amount:
+          $ref: '#/components/schemas/AmountTransferred'
+        stateBefore:
+          $ref: '#/components/schemas/StateReference'
+        stateAfter:
+          $ref: '#/components/schemas/StateReference'
+        proofId:
+          type: string
+          format: uri-reference
+        timestamp:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+
+    Participant:
+      type: object
+      description: "Transaction participant"
+      required: [accountId, role]
+      properties:
+        accountId:
+          type: string
+          format: uri-reference
+        role:
+          type: string
+          enum: [sender, receiver, operator, approver]
+
+    AmountTransferred:
+      type: object
+      description: "Amount transferred/affected"
+      properties:
+        amount:
+          type: string
+          description: "Amount (string for big numbers)"
+        unit:
+          type: string
+          default: "token"
+        decimals:
+          type: integer
+
+    StateReference:
+      type: object
+      description: "State reference with commitment"
+      required: [stateCommitment]
+      properties:
+        stateCommitment:
+          type: string
+          description: "Cryptographic hash of state"
+        stateVersion:
+          type: integer
+        stateSnapshot:
+          type: object
+          additionalProperties: true
+
+    LedgerAnchor:
+      type: object
+      description: "External blockchain anchor"
+      properties:
+        chain:
+          type: string
+          examples: [ethereum, bitcoin, solana]
+        network:
+          type: string
+          examples: [mainnet, sepolia]
+        txHash:
+          type: string
+        blockId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    # --- Transaction Request Payloads ---
+
+    TransactionStatusRequest:
+      type: object
+      required: [txId]
+      properties:
+        txId:
+          type: string
+          format: uri-reference
+
+    GetTransactionRequest:
+      type: object
+      required: [txId]
+      properties:
+        txId:
+          type: string
+          format: uri-reference
+
+    ListTransactionsRequest:
       type: object
       properties:
-        tokenId: { type: string, format: uri-reference }
-        operation: { type: string }
-        message: { type: string }
-        newState: { $ref: '#/components/schemas/TokenState', nullable: true }
+        filters:
+          type: object
+          properties:
+            initiator:
+              type: string
+              format: uri-reference
+            status:
+              $ref: '#/components/schemas/ExecutionStatus'
+            tokenId:
+              type: string
+              format: uri-reference
+            dateRange:
+              type: object
+              properties:
+                from:
+                  type: string
+                  format: date-time
+                to:
+                  type: string
+                  format: date-time
+        pagination:
+          type: object
+          properties:
+            limit:
+              type: integer
+              default: 50
+              minimum: 1
+              maximum: 100
+            offset:
+              type: integer
+              default: 0
+              minimum: 0
+
+    TokenTransactionsRequest:
+      type: object
+      required: [tokenId]
+      properties:
+        tokenId:
+          type: string
+          format: uri-reference
+        filters:
+          type: object
+          properties:
+            operation:
+              type: string
+            dateRange:
+              type: object
+              properties:
+                from:
+                  type: string
+                  format: date-time
+                to:
+                  type: string
+                  format: date-time
+        pagination:
+          type: object
+          properties:
+            limit:
+              type: integer
+              default: 100
+            offset:
+              type: integer
+              default: 0
+
+    # --- Transaction Response Payloads ---
+
+    TransactionDetails:
+      allOf:
+        - $ref: '#/components/schemas/TransactionLog'
+
+    TransactionList:
+      type: object
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionLog'
+        pagination:
+          type: object
+          properties:
+            total: { type: integer }
+            limit: { type: integer }
+            offset: { type: integer }
+
+    TokenTransactionList:
+      type: object
+      properties:
+        tokenTransactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TokenTransaction'
+        pagination:
+          type: object
+          properties:
+            total: { type: integer }
+            limit: { type: integer }
+            offset: { type: integer }
 
     # --- Specific Request Envelopes ---
     ApiRequest_GetTokenRequest:
@@ -681,11 +1301,71 @@ components:
         - properties:
             response: { $ref: '#/components/schemas/TokenList' }
 
-    ApiResponse_TransactSuccess:
+    ApiResponse_TransactAccepted:
       allOf:
         - $ref: '#/components/schemas/ApiResponse'
         - properties:
-            response: { $ref: '#/components/schemas/TransactSuccess' }
+            context:
+              allOf:
+                - $ref: '#/components/schemas/ResponseContext'
+                - properties:
+                    status:
+                      type: string
+                      const: "accepted"
+                    transactionId:
+                      type: string
+                      format: uri-reference
+            response: { $ref: '#/components/schemas/TransactAccepted' }
+
+    # --- Transaction API Request Envelopes ---
+    ApiRequest_TransactionStatusRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/TransactionStatusRequest' }
+
+    ApiRequest_GetTransactionRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/GetTransactionRequest' }
+
+    ApiRequest_ListTransactionsRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/ListTransactionsRequest' }
+
+    ApiRequest_TokenTransactionsRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/TokenTransactionsRequest' }
+
+    # --- Transaction API Response Envelopes ---
+    ApiResponse_TransactionStatus:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/TransactionStatus' }
+
+    ApiResponse_TransactionDetails:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/TransactionDetails' }
+
+    ApiResponse_TransactionList:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/TransactionList' }
+
+    ApiResponse_TokenTransactionList:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/TokenTransactionList' }
 
   # -------------------- Responses --------------------
   responses:

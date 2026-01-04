@@ -1,0 +1,234 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://finternet-io.github.io/specs/schemas/transaction-log.schema.json",
+  "title": "Finternet TransactionLog",
+  "description": "System-wide transaction envelope representing a business transaction across one or more tokens.",
+  "type": "object",
+  "$comment": "This schema validates transaction log instances. For full schema definitions including JSON-LD context, see v1/attributes.yaml",
+  "definitions": {
+    "ExecutionStatus": {
+      "description": "Execution status of the transaction",
+      "type": "string",
+      "enum": ["submitted", "pending", "executing", "completed", "failed", "rolled_back"]
+    },
+    "ProofProfile": {
+      "description": "Type of proof mechanism used",
+      "type": "string",
+      "enum": ["zk-snark", "zk-stark", "merkle", "tee-attestation", "signature-bundle", "none"]
+    },
+    "LedgerAnchor": {
+      "description": "Reference to external/public ledger",
+      "type": "object",
+      "properties": {
+        "chain": {
+          "type": "string",
+          "description": "Blockchain or ledger identifier",
+          "examples": ["ethereum", "bitcoin", "solana", "polygon"]
+        },
+        "network": {
+          "type": "string",
+          "description": "Network name (mainnet, testnet, etc.)",
+          "examples": ["mainnet", "sepolia", "devnet"]
+        },
+        "txHash": {
+          "type": "string",
+          "description": "Transaction hash on the external ledger"
+        },
+        "blockId": {
+          "type": "string",
+          "description": "Block number or hash"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of ledger confirmation"
+        }
+      }
+    },
+    "TokenTransactionReference": {
+      "description": "Reference to a TokenTransaction",
+      "type": "object",
+      "required": ["tokenTxId", "tokenId", "operation"],
+      "properties": {
+        "tokenTxId": {
+          "type": "string",
+          "format": "uri-reference",
+          "description": "Token transaction identifier"
+        },
+        "tokenId": {
+          "type": "string",
+          "format": "uri-reference",
+          "description": "Token affected by this transaction"
+        },
+        "operation": {
+          "type": "string",
+          "description": "Operation performed",
+          "examples": ["mint", "burn", "transfer", "freeze", "lock"]
+        }
+      }
+    },
+    "ExecutionTimestamps": {
+      "description": "Execution lifecycle timestamps",
+      "type": "object",
+      "properties": {
+        "submitted": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When transaction was submitted"
+        },
+        "started": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When execution started"
+        },
+        "completed": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When execution completed"
+        },
+        "finalized": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When transaction was finalized (proofs, ledger anchoring)"
+        }
+      }
+    }
+  },
+  "properties": {
+    "@context": {
+      "description": "The JSON-LD context, should reference https://finternet-io.github.io/specs/schemas/transaction/v1/context.jsonld",
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "https://finternet-io.github.io/specs/schemas/transaction/v1/context.jsonld"
+        },
+        {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "@type": {
+      "description": "The JSON-LD type",
+      "type": "string",
+      "const": "TransactionLog"
+    },
+    "txId": {
+      "description": "Globally unique transaction identifier",
+      "type": "string",
+      "format": "uri-reference",
+      "examples": [
+        "urn:uuid:tx-a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+      ]
+    },
+    "correlationId": {
+      "description": "External correlation ID for integration with other systems",
+      "type": "string"
+    },
+    "initiator": {
+      "description": "Account or system that initiated the transaction",
+      "type": "string",
+      "format": "uri-reference",
+      "examples": ["did:web:alice.example", "urn:uuid:account-123"]
+    },
+    "tokenTransactions": {
+      "description": "References to associated TokenTransaction records",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/TokenTransactionReference"
+      },
+      "minItems": 1
+    },
+    "workflowInstanceId": {
+      "description": "Reference to WorkflowInstance that orchestrated this transaction",
+      "type": "string",
+      "format": "uri-reference"
+    },
+    "status": {
+      "$ref": "#/definitions/ExecutionStatus",
+      "description": "Current execution status"
+    },
+    "timestamps": {
+      "$ref": "#/definitions/ExecutionTimestamps",
+      "description": "Execution lifecycle timestamps"
+    },
+    "proofId": {
+      "description": "Reference to ProofRecord for this transaction",
+      "type": "string",
+      "format": "uri-reference"
+    },
+    "proofProfile": {
+      "$ref": "#/definitions/ProofProfile",
+      "description": "Type of proof mechanism used"
+    },
+    "batchId": {
+      "description": "Batch identifier if this transaction is part of a batch",
+      "type": "string"
+    },
+    "ledgerAnchors": {
+      "description": "References to external/public ledger confirmations",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/LedgerAnchor"
+      }
+    },
+    "metadata": {
+      "description": "Additional metadata for the transaction",
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Human-readable description"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Classification tags"
+        },
+        "custom": {
+          "type": "object",
+          "description": "Custom metadata",
+          "additionalProperties": true
+        }
+      }
+    },
+    "error": {
+      "description": "Error information if transaction failed",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Error code"
+        },
+        "message": {
+          "type": "string",
+          "description": "Error message"
+        },
+        "details": {
+          "type": "object",
+          "description": "Additional error details",
+          "additionalProperties": true
+        }
+      }
+    }
+  },
+  "required": [
+    "txId",
+    "initiator",
+    "tokenTransactions",
+    "status",
+    "timestamps"
+  ],
+  "additionalProperties": false
+}

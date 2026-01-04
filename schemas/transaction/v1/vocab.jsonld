@@ -1,0 +1,458 @@
+{
+    "@context": {
+        "finternet": "https://finternet-io.github.io/specs/schemas/transaction/v1#",
+        "schema": "https://schema.org/",
+        "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+        "xsd": "http://www.w3.org/2001/XMLSchema#",
+        "sec": "https://w3id.org/security#"
+    },
+    "@graph": [
+        {
+            "@id": "finternet:TransactionLog",
+            "@type": "rdfs:Class",
+            "rdfs:label": "TransactionLog",
+            "rdfs:comment": "System-wide transaction envelope representing a business transaction across one or more tokens."
+        },
+        {
+            "@id": "finternet:TokenTransaction",
+            "@type": "rdfs:Class",
+            "rdfs:label": "TokenTransaction",
+            "rdfs:comment": "Per-token record of a state change applied to that token (state transition)."
+        },
+        {
+            "@id": "finternet:txId",
+            "@type": "rdf:Property",
+            "rdfs:label": "txId",
+            "rdfs:comment": "Globally unique transaction identifier.",
+            "rdfs:domain": "finternet:TransactionLog",
+            "rdfs:range": "xsd:string"
+        },
+        {
+            "@id": "finternet:tokenTxId",
+            "@type": "rdf:Property",
+            "rdfs:label": "tokenTxId",
+            "rdfs:comment": "Unique identifier for a token transaction.",
+            "rdfs:domain": "finternet:TokenTransaction",
+            "rdfs:range": "xsd:string"
+        },
+        {
+            "@id": "finternet:initiator",
+            "@type": "rdf:Property",
+            "rdfs:label": "initiator",
+            "rdfs:comment": "Account or system that initiated the transaction.",
+            "rdfs:domain": "finternet:TransactionLog",
+            "rdfs:range": "xsd:string"
+        },
+        {
+            "@id": "finternet:tokenTransactions",
+            "@type": "rdf:Property",
+            "rdfs:label": "tokenTransactions",
+            "rdfs:comment": "References to associated TokenTransaction records.",
+            "rdfs:domain": "finternet:TransactionLog",
+            "rdfs:range": "finternet:TokenTransactionReference"
+        },
+        {
+            "@id": "finternet:tokenId",
+            "@type": "rdf:Property",
+            "rdfs:label": "tokenId",
+            "rdfs:comment": "Token that this transaction operates on.",
+            "rdfs:domain": "finternet:TokenTransaction",
+            "rdfs:range": "xsd:string"
+        },
+        {
+            "@id": "finternet:operation",
+            "@type": "rdf:Property",
+            "rdfs:label": "operation",
+            "rdfs:comment": "Type of operation performed.",
+            "rdfs:range": "finternet:OperationType"
+        },
+        {
+            "@id": "finternet:ExecutionStatus",
+            "@type": "schema:Enumeration",
+            "schema:name": "Execution Status",
+            "rdfs:comment": "Enumeration of transaction execution statuses.",
+            "schema:hasEnumerationMember": [
+                { "@id": "finternet:submitted" },
+                { "@id": "finternet:pending" },
+                { "@id": "finternet:executing" },
+                { "@id": "finternet:completed" },
+                { "@id": "finternet:failed" },
+                { "@id": "finternet:rolled_back" }
+            ]
+        },
+        {
+            "@id": "finternet:submitted",
+            "@type": ["finternet:ExecutionStatus", "schema:Enumeration"],
+            "schema:name": "Submitted",
+            "schema:identifier": "submitted"
+        },
+        {
+            "@id": "finternet:pending",
+            "@type": ["finternet:ExecutionStatus", "schema:Enumeration"],
+            "schema:name": "Pending",
+            "schema:identifier": "pending"
+        },
+        {
+            "@id": "finternet:executing",
+            "@type": ["finternet:ExecutionStatus", "schema:Enumeration"],
+            "schema:name": "Executing",
+            "schema:identifier": "executing"
+        },
+        {
+            "@id": "finternet:completed",
+            "@type": ["finternet:ExecutionStatus", "schema:Enumeration"],
+            "schema:name": "Completed",
+            "schema:identifier": "completed"
+        },
+        {
+            "@id": "finternet:failed",
+            "@type": ["finternet:ExecutionStatus", "schema:Enumeration"],
+            "schema:name": "Failed",
+            "schema:identifier": "failed"
+        },
+        {
+            "@id": "finternet:rolled_back",
+            "@type": ["finternet:ExecutionStatus", "schema:Enumeration"],
+            "schema:name": "Rolled Back",
+            "schema:identifier": "rolled_back"
+        },
+        {
+            "@id": "finternet:OperationType",
+            "@type": "schema:Enumeration",
+            "schema:name": "Operation Type",
+            "rdfs:comment": "Enumeration of token operation types.",
+            "schema:hasEnumerationMember": [
+                { "@id": "finternet:mint" },
+                { "@id": "finternet:burn" },
+                { "@id": "finternet:transfer" },
+                { "@id": "finternet:freeze" },
+                { "@id": "finternet:unfreeze" },
+                { "@id": "finternet:lock" },
+                { "@id": "finternet:unlock" },
+                { "@id": "finternet:redeem" },
+                { "@id": "finternet:read" },
+                { "@id": "finternet:updateData" },
+                { "@id": "finternet:updateMetadata" },
+                { "@id": "finternet:addClaim" },
+                { "@id": "finternet:revokeClaim" }
+            ]
+        },
+        {
+            "@id": "finternet:mint",
+            "@type": ["finternet:OperationType", "schema:Enumeration"],
+            "schema:name": "Mint",
+            "schema:identifier": "mint"
+        },
+        {
+            "@id": "finternet:burn",
+            "@type": ["finternet:OperationType", "schema:Enumeration"],
+            "schema:name": "Burn",
+            "schema:identifier": "burn"
+        },
+        {
+            "@id": "finternet:transfer",
+            "@type": ["finternet:OperationType", "schema:Enumeration"],
+            "schema:name": "Transfer",
+            "schema:identifier": "transfer"
+        },
+        {
+            "@id": "finternet:freeze",
+            "@type": ["finternet:OperationType", "schema:Enumeration"],
+            "schema:name": "Freeze",
+            "schema:identifier": "freeze"
+        },
+        {
+            "@id": "finternet:ProofProfile",
+            "@type": "schema:Enumeration",
+            "schema:name": "Proof Profile",
+            "rdfs:comment": "Enumeration of proof mechanism types.",
+            "schema:hasEnumerationMember": [
+                { "@id": "finternet:zk-snark" },
+                { "@id": "finternet:zk-stark" },
+                { "@id": "finternet:merkle" },
+                { "@id": "finternet:tee-attestation" },
+                { "@id": "finternet:signature-bundle" },
+                { "@id": "finternet:none" }
+            ]
+        },
+        {
+            "@id": "finternet:zk-snark",
+            "@type": ["finternet:ProofProfile", "schema:Enumeration"],
+            "schema:name": "ZK-SNARK",
+            "schema:identifier": "zk-snark"
+        },
+        {
+            "@id": "finternet:ExecutionTimestamps",
+            "@type": "rdfs:Class",
+            "rdfs:label": "ExecutionTimestamps",
+            "rdfs:comment": "Execution lifecycle timestamps."
+        },
+        {
+            "@id": "finternet:timestamps",
+            "@type": "rdf:Property",
+            "rdfs:label": "timestamps",
+            "rdfs:comment": "Execution lifecycle timestamps.",
+            "rdfs:domain": "finternet:TransactionLog",
+            "rdfs:range": "finternet:ExecutionTimestamps"
+        },
+        {
+            "@id": "finternet:LedgerAnchor",
+            "@type": "rdfs:Class",
+            "rdfs:label": "LedgerAnchor",
+            "rdfs:comment": "Reference to external/public ledger."
+        },
+        {
+            "@id": "finternet:ledgerAnchors",
+            "@type": "rdf:Property",
+            "rdfs:label": "ledgerAnchors",
+            "rdfs:comment": "References to external/public ledger confirmations.",
+            "rdfs:domain": "finternet:TransactionLog",
+            "rdfs:range": "finternet:LedgerAnchor"
+        },
+        {
+            "@id": "finternet:Participant",
+            "@type": "rdfs:Class",
+            "rdfs:label": "Participant",
+            "rdfs:comment": "Participant in a token transaction."
+        },
+        {
+            "@id": "finternet:participants",
+            "@type": "rdf:Property",
+            "rdfs:label": "participants",
+            "rdfs:comment": "Participants involved in this transaction.",
+            "rdfs:domain": "finternet:TokenTransaction",
+            "rdfs:range": "finternet:Participant"
+        },
+        {
+            "@id": "finternet:ParticipantRole",
+            "@type": "schema:Enumeration",
+            "schema:name": "Participant Role",
+            "rdfs:comment": "Enumeration of participant roles.",
+            "schema:hasEnumerationMember": [
+                { "@id": "finternet:sender" },
+                { "@id": "finternet:receiver" },
+                { "@id": "finternet:operator" },
+                { "@id": "finternet:approver" }
+            ]
+        },
+        {
+            "@id": "finternet:sender",
+            "@type": ["finternet:ParticipantRole", "schema:Enumeration"],
+            "schema:name": "Sender",
+            "schema:identifier": "sender"
+        },
+        {
+            "@id": "finternet:receiver",
+            "@type": ["finternet:ParticipantRole", "schema:Enumeration"],
+            "schema:name": "Receiver",
+            "schema:identifier": "receiver"
+        },
+        {
+            "@id": "finternet:StateReference",
+            "@type": "rdfs:Class",
+            "rdfs:label": "StateReference",
+            "rdfs:comment": "Reference to token state with commitment."
+        },
+        {
+            "@id": "finternet:stateBefore",
+            "@type": "rdf:Property",
+            "rdfs:label": "stateBefore",
+            "rdfs:comment": "Token state before this transaction.",
+            "rdfs:domain": "finternet:TokenTransaction",
+            "rdfs:range": "finternet:StateReference"
+        },
+        {
+            "@id": "finternet:stateAfter",
+            "@type": "rdf:Property",
+            "rdfs:label": "stateAfter",
+            "rdfs:comment": "Token state after this transaction.",
+            "rdfs:domain": "finternet:TokenTransaction",
+            "rdfs:range": "finternet:StateReference"
+        },
+        {
+            "@id": "finternet:stateCommitment",
+            "@type": "rdf:Property",
+            "rdfs:label": "stateCommitment",
+            "rdfs:comment": "Cryptographic hash/commitment of the token state.",
+            "rdfs:domain": "finternet:StateReference",
+            "rdfs:range": "xsd:string"
+        },
+        {
+            "@id": "finternet:AuditEvent",
+            "@type": "rdfs:Class",
+            "rdfs:label": "AuditEvent",
+            "rdfs:comment": "Audit event tracking administrative changes to token metadata, data, and claims (admin-only)."
+        },
+        {
+            "@id": "finternet:auditEventId",
+            "@type": "rdf:Property",
+            "rdfs:label": "auditEventId",
+            "rdfs:comment": "Globally unique audit event identifier.",
+            "rdfs:domain": "finternet:AuditEvent",
+            "rdfs:range": "xsd:string"
+        },
+        {
+            "@id": "finternet:actor",
+            "@type": "rdf:Property",
+            "rdfs:label": "actor",
+            "rdfs:comment": "Account or system that performed the action.",
+            "rdfs:domain": "finternet:AuditEvent",
+            "rdfs:range": "xsd:string"
+        },
+        {
+            "@id": "finternet:AuditEventType",
+            "@type": "schema:Enumeration",
+            "schema:name": "Audit Event Type",
+            "rdfs:comment": "Enumeration of audit event types.",
+            "schema:hasEnumerationMember": [
+                { "@id": "finternet:MetadataUpdated" },
+                { "@id": "finternet:DataCorrected" },
+                { "@id": "finternet:ClaimAttached" },
+                { "@id": "finternet:ClaimRevoked" },
+                { "@id": "finternet:StateOverride" },
+                { "@id": "finternet:PermissionChanged" }
+            ]
+        },
+        {
+            "@id": "finternet:MetadataUpdated",
+            "@type": ["finternet:AuditEventType", "schema:Enumeration"],
+            "schema:name": "Metadata Updated",
+            "schema:identifier": "MetadataUpdated"
+        },
+        {
+            "@id": "finternet:DataCorrected",
+            "@type": ["finternet:AuditEventType", "schema:Enumeration"],
+            "schema:name": "Data Corrected",
+            "schema:identifier": "DataCorrected"
+        },
+        {
+            "@id": "finternet:ClaimAttached",
+            "@type": ["finternet:AuditEventType", "schema:Enumeration"],
+            "schema:name": "Claim Attached",
+            "schema:identifier": "ClaimAttached"
+        },
+        {
+            "@id": "finternet:ClaimRevoked",
+            "@type": ["finternet:AuditEventType", "schema:Enumeration"],
+            "schema:name": "Claim Revoked",
+            "schema:identifier": "ClaimRevoked"
+        },
+        {
+            "@id": "finternet:StateOverride",
+            "@type": ["finternet:AuditEventType", "schema:Enumeration"],
+            "schema:name": "State Override",
+            "schema:identifier": "StateOverride"
+        },
+        {
+            "@id": "finternet:PermissionChanged",
+            "@type": ["finternet:AuditEventType", "schema:Enumeration"],
+            "schema:name": "Permission Changed",
+            "schema:identifier": "PermissionChanged"
+        },
+        {
+            "@id": "finternet:ChangeDetails",
+            "@type": "rdfs:Class",
+            "rdfs:label": "ChangeDetails",
+            "rdfs:comment": "Details of what changed in an audit event."
+        },
+        {
+            "@id": "finternet:changeDetails",
+            "@type": "rdf:Property",
+            "rdfs:label": "changeDetails",
+            "rdfs:comment": "Details of what changed.",
+            "rdfs:domain": "finternet:AuditEvent",
+            "rdfs:range": "finternet:ChangeDetails"
+        },
+        {
+            "@id": "finternet:fieldPath",
+            "@type": "rdf:Property",
+            "rdfs:label": "fieldPath",
+            "rdfs:comment": "JSON path to the changed field.",
+            "rdfs:domain": "finternet:ChangeDetails",
+            "rdfs:range": "xsd:string"
+        },
+        {
+            "@id": "finternet:beforeValue",
+            "@type": "rdf:Property",
+            "rdfs:label": "beforeValue",
+            "rdfs:comment": "Value before the change.",
+            "rdfs:domain": "finternet:ChangeDetails"
+        },
+        {
+            "@id": "finternet:afterValue",
+            "@type": "rdf:Property",
+            "rdfs:label": "afterValue",
+            "rdfs:comment": "Value after the change.",
+            "rdfs:domain": "finternet:ChangeDetails"
+        },
+        {
+            "@id": "finternet:Approval",
+            "@type": "rdfs:Class",
+            "rdfs:label": "Approval",
+            "rdfs:comment": "Approval record for an administrative change."
+        },
+        {
+            "@id": "finternet:approvals",
+            "@type": "rdf:Property",
+            "rdfs:label": "approvals",
+            "rdfs:comment": "Approvals required for this change.",
+            "rdfs:domain": "finternet:AuditEvent",
+            "rdfs:range": "finternet:Approval"
+        },
+        {
+            "@id": "finternet:approver",
+            "@type": "rdf:Property",
+            "rdfs:label": "approver",
+            "rdfs:comment": "Account that approved.",
+            "rdfs:domain": "finternet:Approval",
+            "rdfs:range": "xsd:string"
+        },
+        {
+            "@id": "finternet:approved",
+            "@type": "rdf:Property",
+            "rdfs:label": "approved",
+            "rdfs:comment": "Whether approved or rejected.",
+            "rdfs:domain": "finternet:Approval",
+            "rdfs:range": "xsd:boolean"
+        },
+        {
+            "@id": "finternet:auditTimestamp",
+            "@type": "rdf:Property",
+            "rdfs:label": "auditTimestamp",
+            "rdfs:comment": "When this audit event occurred.",
+            "rdfs:domain": "finternet:AuditEvent",
+            "rdfs:range": "xsd:dateTime"
+        },
+        {
+            "@id": "finternet:AuditMetadata",
+            "@type": "rdfs:Class",
+            "rdfs:label": "AuditMetadata",
+            "rdfs:comment": "Additional audit metadata."
+        },
+        {
+            "@id": "finternet:ipAddress",
+            "@type": "rdf:Property",
+            "rdfs:label": "ipAddress",
+            "rdfs:comment": "IP address of the actor.",
+            "rdfs:domain": "finternet:AuditMetadata",
+            "rdfs:range": "xsd:string"
+        },
+        {
+            "@id": "finternet:userAgent",
+            "@type": "rdf:Property",
+            "rdfs:label": "userAgent",
+            "rdfs:comment": "User agent string.",
+            "rdfs:domain": "finternet:AuditMetadata",
+            "rdfs:range": "xsd:string"
+        },
+        {
+            "@id": "finternet:sessionId",
+            "@type": "rdf:Property",
+            "rdfs:label": "sessionId",
+            "rdfs:comment": "Session identifier.",
+            "rdfs:domain": "finternet:AuditMetadata",
+            "rdfs:range": "xsd:string"
+        }
+    ]
+}

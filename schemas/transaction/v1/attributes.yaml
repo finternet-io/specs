@@ -1,0 +1,570 @@
+openapi: 3.1.0
+info:
+  title: Finternet Transaction Schema v1
+  version: 1.0.0
+  description: |
+    Transaction schema for the Finternet protocol.
+    Provides data models for TransactionLog (system-wide transaction envelope)
+    and TokenTransaction (per-token state change records).
+
+components:
+  schemas:
+    # -------------------- TransactionLog --------------------
+
+    TransactionLog:
+      type: object
+      description: System-wide transaction envelope representing a business transaction across one or more tokens
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/transaction/v1/context.jsonld
+        "@type": finternet:TransactionLog
+      required:
+        - txId
+        - initiator
+        - tokenTransactions
+        - status
+        - timestamps
+      properties:
+        txId:
+          type: string
+          format: uri-reference
+          description: Globally unique transaction identifier
+          x-jsonld: { "@id": "@id", "@type": "@id" }
+        correlationId:
+          type: string
+          description: External correlation ID for integration with other systems
+          x-jsonld: { "@id": "finternet:correlationId" }
+        initiator:
+          type: string
+          format: uri-reference
+          description: Account or system that initiated the transaction
+          x-jsonld: { "@id": "finternet:initiator", "@type": "@id" }
+        tokenTransactions:
+          type: array
+          description: References to associated TokenTransaction records
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/TokenTransactionReference'
+          x-jsonld: { "@id": "finternet:tokenTransactions", "@container": "@set" }
+        workflowInstanceId:
+          type: string
+          format: uri-reference
+          description: Reference to WorkflowInstance that orchestrated this transaction
+          x-jsonld: { "@id": "finternet:workflowInstanceId", "@type": "@id" }
+        status:
+          $ref: '#/components/schemas/ExecutionStatus'
+        timestamps:
+          $ref: '#/components/schemas/ExecutionTimestamps'
+        proofId:
+          type: string
+          format: uri-reference
+          description: Reference to ProofRecord for this transaction
+          x-jsonld: { "@id": "finternet:proofId", "@type": "@id" }
+        proofProfile:
+          $ref: '#/components/schemas/ProofProfile'
+        batchId:
+          type: string
+          description: Batch identifier if this transaction is part of a batch
+          x-jsonld: { "@id": "finternet:batchId" }
+        ledgerAnchors:
+          type: array
+          description: References to external/public ledger confirmations
+          items:
+            $ref: '#/components/schemas/LedgerAnchor'
+          x-jsonld: { "@id": "finternet:ledgerAnchors", "@container": "@set" }
+        metadata:
+          $ref: '#/components/schemas/TransactionMetadata'
+
+    ExecutionStatus:
+      type: string
+      description: Execution status of the transaction
+      enum:
+        - submitted
+        - pending
+        - executing
+        - completed
+        - failed
+        - rolled_back
+      x-jsonld: { "@id": "finternet:executionStatus", "@type": "@vocab" }
+
+    ExecutionTimestamps:
+      type: object
+      description: Execution lifecycle timestamps
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/transaction/v1/context.jsonld
+        "@type": finternet:ExecutionTimestamps
+      properties:
+        submitted:
+          type: string
+          format: date-time
+          description: When transaction was submitted
+          x-jsonld: { "@id": "finternet:submittedAt", "@type": "xsd:dateTime" }
+        started:
+          type: string
+          format: date-time
+          description: When execution started
+          x-jsonld: { "@id": "finternet:startedAt", "@type": "xsd:dateTime" }
+        completed:
+          type: string
+          format: date-time
+          description: When execution completed
+          x-jsonld: { "@id": "finternet:completedAt", "@type": "xsd:dateTime" }
+        finalized:
+          type: string
+          format: date-time
+          description: When transaction was finalized (proofs, ledger anchoring)
+          x-jsonld: { "@id": "finternet:finalizedAt", "@type": "xsd:dateTime" }
+
+    ProofProfile:
+      type: string
+      description: Type of proof mechanism used
+      enum:
+        - zk-snark
+        - zk-stark
+        - merkle
+        - tee-attestation
+        - signature-bundle
+        - none
+      x-jsonld: { "@id": "finternet:proofProfile", "@type": "@vocab" }
+
+    LedgerAnchor:
+      type: object
+      description: Reference to external/public ledger
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/transaction/v1/context.jsonld
+        "@type": finternet:LedgerAnchor
+      properties:
+        chain:
+          type: string
+          description: Blockchain or ledger identifier
+          x-jsonld: { "@id": "finternet:chain" }
+          examples:
+            - ethereum
+            - bitcoin
+            - solana
+        network:
+          type: string
+          description: Network name (mainnet, testnet, etc.)
+          x-jsonld: { "@id": "finternet:network" }
+          examples:
+            - mainnet
+            - sepolia
+        txHash:
+          type: string
+          description: Transaction hash on the external ledger
+          x-jsonld: { "@id": "finternet:txHash" }
+        blockId:
+          type: string
+          description: Block number or hash
+          x-jsonld: { "@id": "finternet:blockId" }
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp of ledger confirmation
+          x-jsonld: { "@id": "finternet:anchorTimestamp", "@type": "xsd:dateTime" }
+
+    TokenTransactionReference:
+      type: object
+      description: Reference to a TokenTransaction
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/transaction/v1/context.jsonld
+        "@type": finternet:TokenTransactionReference
+      required:
+        - tokenTxId
+        - tokenId
+        - operation
+      properties:
+        tokenTxId:
+          type: string
+          format: uri-reference
+          description: Token transaction identifier
+          x-jsonld: { "@id": "finternet:tokenTxId", "@type": "@id" }
+        tokenId:
+          type: string
+          format: uri-reference
+          description: Token affected by this transaction
+          x-jsonld: { "@id": "finternet:tokenId", "@type": "@id" }
+        operation:
+          type: string
+          description: Operation performed
+          x-jsonld: { "@id": "finternet:operation" }
+
+    TransactionMetadata:
+      type: object
+      description: Additional metadata for the transaction
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/transaction/v1/context.jsonld
+        "@type": finternet:TransactionMetadata
+      properties:
+        description:
+          type: string
+          description: Human-readable description
+          x-jsonld: { "@id": "schema:description" }
+        tags:
+          type: array
+          items:
+            type: string
+          description: Classification tags
+          x-jsonld: { "@id": "schema:keywords", "@container": "@set" }
+        custom:
+          type: object
+          description: Custom metadata
+          additionalProperties: true
+          x-jsonld: { "@id": "finternet:customMetadata", "@type": "@json" }
+
+    # -------------------- TokenTransaction --------------------
+
+    TokenTransaction:
+      type: object
+      description: Per-token record of a state change applied to that token (state transition)
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/transaction/v1/context.jsonld
+        "@type": finternet:TokenTransaction
+      required:
+        - tokenTxId
+        - txId
+        - tokenId
+        - operation
+        - stateAfter
+        - timestamp
+      properties:
+        tokenTxId:
+          type: string
+          format: uri-reference
+          description: Unique identifier for this token transaction
+          x-jsonld: { "@id": "@id", "@type": "@id" }
+        txId:
+          type: string
+          format: uri-reference
+          description: Reference to the parent TransactionLog
+          x-jsonld: { "@id": "finternet:txId", "@type": "@id" }
+        tokenId:
+          type: string
+          format: uri-reference
+          description: Token that this transaction operates on
+          x-jsonld: { "@id": "finternet:tokenId", "@type": "@id" }
+        operation:
+          $ref: '#/components/schemas/OperationType'
+        participants:
+          type: array
+          description: Participants involved in this transaction
+          items:
+            $ref: '#/components/schemas/Participant'
+          x-jsonld: { "@id": "finternet:participants", "@container": "@set" }
+        fromAccount:
+          type: string
+          format: uri-reference
+          description: Source account (for transfers)
+          x-jsonld: { "@id": "finternet:fromAccount", "@type": "@id" }
+        toAccount:
+          type: string
+          format: uri-reference
+          description: Destination account (for transfers)
+          x-jsonld: { "@id": "finternet:toAccount", "@type": "@id" }
+        amount:
+          $ref: '#/components/schemas/AmountTransferred'
+        stateBefore:
+          $ref: '#/components/schemas/StateReference'
+        stateAfter:
+          $ref: '#/components/schemas/StateReference'
+        proofId:
+          type: string
+          format: uri-reference
+          description: Reference to proof validating this state change
+          x-jsonld: { "@id": "finternet:proofId", "@type": "@id" }
+        timestamp:
+          type: string
+          format: date-time
+          description: When this transaction was executed
+          x-jsonld: { "@id": "finternet:executedAt", "@type": "xsd:dateTime" }
+        metadata:
+          $ref: '#/components/schemas/TokenTransactionMetadata'
+        signature:
+          $ref: '#/components/schemas/TransactionSignature'
+
+    OperationType:
+      type: string
+      description: Type of operation performed on the token
+      enum:
+        - mint
+        - burn
+        - transfer
+        - freeze
+        - unfreeze
+        - lock
+        - unlock
+        - redeem
+        - read
+        - updateData
+        - updateMetadata
+        - addClaim
+        - revokeClaim
+      x-jsonld: { "@id": "finternet:operationType", "@type": "@vocab" }
+
+    Participant:
+      type: object
+      description: Participant in the transaction
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/transaction/v1/context.jsonld
+        "@type": finternet:Participant
+      required:
+        - accountId
+        - role
+      properties:
+        accountId:
+          type: string
+          format: uri-reference
+          description: Account identifier
+          x-jsonld: { "@id": "finternet:accountId", "@type": "@id" }
+        role:
+          type: string
+          description: Role in the transaction
+          enum:
+            - sender
+            - receiver
+            - operator
+            - approver
+          x-jsonld: { "@id": "finternet:role", "@type": "@vocab" }
+
+    AmountTransferred:
+      type: object
+      description: Amount or units transferred/affected
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/transaction/v1/context.jsonld
+        "@type": finternet:AmountTransferred
+      properties:
+        amount:
+          type: string
+          description: Amount (string for big numbers)
+          x-jsonld: { "@id": "finternet:amount" }
+        unit:
+          type: string
+          description: Unit of measurement
+          default: token
+          x-jsonld: { "@id": "finternet:unit" }
+        decimals:
+          type: integer
+          description: Decimal places for the amount
+          x-jsonld: { "@id": "finternet:decimals", "@type": "xsd:integer" }
+
+    StateReference:
+      type: object
+      description: Reference to token state with commitment
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/transaction/v1/context.jsonld
+        "@type": finternet:StateReference
+      required:
+        - stateCommitment
+      properties:
+        stateCommitment:
+          type: string
+          description: Cryptographic hash/commitment of the token state
+          x-jsonld: { "@id": "finternet:stateCommitment" }
+        stateVersion:
+          type: integer
+          description: Version number of the state
+          x-jsonld: { "@id": "finternet:stateVersion", "@type": "xsd:integer" }
+        stateSnapshot:
+          type: object
+          description: Optional snapshot of the actual state
+          additionalProperties: true
+          x-jsonld: { "@id": "finternet:stateSnapshot", "@type": "@json" }
+
+    TokenTransactionMetadata:
+      type: object
+      description: Additional transaction metadata
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/transaction/v1/context.jsonld
+        "@type": finternet:TokenTransactionMetadata
+      properties:
+        reason:
+          type: string
+          description: Reason for the transaction
+          x-jsonld: { "@id": "finternet:reason" }
+        reference:
+          type: string
+          description: External reference or correlation ID
+          x-jsonld: { "@id": "finternet:reference" }
+        custom:
+          type: object
+          description: Custom metadata
+          additionalProperties: true
+          x-jsonld: { "@id": "finternet:customMetadata", "@type": "@json" }
+
+    TransactionSignature:
+      type: object
+      description: Cryptographic signature over this transaction
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/transaction/v1/context.jsonld
+        "@type": sec:Signature
+      properties:
+        type:
+          type: string
+          description: Signature type
+          x-jsonld: { "@id": "@type" }
+        value:
+          type: string
+          description: Signature value
+          x-jsonld: { "@id": "sec:signatureValue" }
+        signer:
+          type: string
+          format: uri-reference
+          description: Who signed this transaction
+          x-jsonld: { "@id": "sec:creator", "@type": "@id" }
+
+    # -------------------- AuditEvent (Admin Only) --------------------
+    # Note: Audit events are generated internally by the system for administrative actions.
+    # These are not exposed via public APIs and are for compliance, monitoring, and audit purposes only.
+
+    AuditEvent:
+      type: object
+      description: Audit event tracking administrative changes to token metadata, data, and claims (admin-only)
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/transaction/v1/context.jsonld
+        "@type": finternet:AuditEvent
+      required:
+        - auditEventId
+        - tokenId
+        - actor
+        - eventType
+        - timestamp
+      properties:
+        auditEventId:
+          type: string
+          format: uri-reference
+          description: Globally unique audit event identifier
+          x-jsonld: { "@id": "@id", "@type": "@id" }
+        tokenId:
+          type: string
+          format: uri-reference
+          description: Token that was modified
+          x-jsonld: { "@id": "finternet:tokenId", "@type": "@id" }
+        txId:
+          type: string
+          format: uri-reference
+          description: Optional reference to associated TransactionLog
+          x-jsonld: { "@id": "finternet:txId", "@type": "@id" }
+        actor:
+          type: string
+          format: uri-reference
+          description: Account or system that performed the action
+          x-jsonld: { "@id": "finternet:actor", "@type": "@id" }
+        eventType:
+          $ref: '#/components/schemas/AuditEventType'
+        changeDetails:
+          $ref: '#/components/schemas/ChangeDetails'
+        reason:
+          type: string
+          description: Human-readable justification for the change
+          x-jsonld: { "@id": "finternet:reason" }
+        approvals:
+          type: array
+          description: Approvals required for this change
+          items:
+            $ref: '#/components/schemas/Approval'
+          x-jsonld: { "@id": "finternet:approvals", "@container": "@set" }
+        timestamp:
+          type: string
+          format: date-time
+          description: When this audit event occurred
+          x-jsonld: { "@id": "finternet:auditTimestamp", "@type": "xsd:dateTime" }
+        proofId:
+          type: string
+          format: uri-reference
+          description: Optional cryptographic proof of the audit event
+          x-jsonld: { "@id": "finternet:proofId", "@type": "@id" }
+        metadata:
+          $ref: '#/components/schemas/AuditMetadata'
+        signature:
+          $ref: '#/components/schemas/TransactionSignature'
+
+    AuditEventType:
+      type: string
+      description: Type of administrative action
+      enum:
+        - MetadataUpdated
+        - DataCorrected
+        - ClaimAttached
+        - ClaimRevoked
+        - StateOverride
+        - PermissionChanged
+      x-jsonld: { "@id": "finternet:auditEventType", "@type": "@vocab" }
+
+    ChangeDetails:
+      type: object
+      description: Details of what changed
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/transaction/v1/context.jsonld
+        "@type": finternet:ChangeDetails
+      properties:
+        fieldPath:
+          type: string
+          description: JSON path to the changed field (e.g., 'metadata.name', 'data.jurisdiction')
+          x-jsonld: { "@id": "finternet:fieldPath" }
+        before:
+          description: Value before the change
+          x-jsonld: { "@id": "finternet:beforeValue", "@type": "@json" }
+        after:
+          description: Value after the change
+          x-jsonld: { "@id": "finternet:afterValue", "@type": "@json" }
+        changeType:
+          type: string
+          enum:
+            - created
+            - updated
+            - deleted
+          description: Type of change operation
+          x-jsonld: { "@id": "finternet:changeType", "@type": "@vocab" }
+
+    Approval:
+      type: object
+      description: Approval record for an administrative change
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/transaction/v1/context.jsonld
+        "@type": finternet:Approval
+      required:
+        - approver
+        - approved
+      properties:
+        approver:
+          type: string
+          format: uri-reference
+          description: Account that approved
+          x-jsonld: { "@id": "finternet:approver", "@type": "@id" }
+        approved:
+          type: boolean
+          description: Whether approved or rejected
+          x-jsonld: { "@id": "finternet:approved", "@type": "xsd:boolean" }
+        timestamp:
+          type: string
+          format: date-time
+          description: When the approval was granted
+          x-jsonld: { "@id": "finternet:approvalTimestamp", "@type": "xsd:dateTime" }
+        signature:
+          type: string
+          description: Cryptographic signature of approval
+          x-jsonld: { "@id": "finternet:approvalSignature" }
+
+    AuditMetadata:
+      type: object
+      description: Additional audit metadata
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/transaction/v1/context.jsonld
+        "@type": finternet:AuditMetadata
+      properties:
+        ipAddress:
+          type: string
+          description: IP address of the actor
+          x-jsonld: { "@id": "finternet:ipAddress" }
+        userAgent:
+          type: string
+          description: User agent string
+          x-jsonld: { "@id": "finternet:userAgent" }
+        sessionId:
+          type: string
+          description: Session identifier
+          x-jsonld: { "@id": "finternet:sessionId" }
+        custom:
+          type: object
+          additionalProperties: true
+          description: Custom metadata
+          x-jsonld: { "@id": "finternet:customMetadata", "@type": "@json" }
