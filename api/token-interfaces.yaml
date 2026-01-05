@@ -618,7 +618,7 @@ components:
         msgId: { type: string, format: uuid }
         transactionId: { type: string, format: uuid, nullable: true }
         status: { type: string, enum: [successful, failed, pending] }
-        error: { $ref: '#/components/schemas/ErrorPayload', nullable: true }
+        error: { $ref: '#/components/schemas/ErrorPayload' }
     Signature:
       type: object
       required: [type, jws]
@@ -628,6 +628,7 @@ components:
     ErrorPayload:
       type: object
       required: [code, message]
+      nullable: true
       properties:
         code: { type: string, example: "RESOURCE_NOT_FOUND" }
         message: { type: string }
@@ -639,7 +640,7 @@ components:
       properties:
         context: { $ref: '#/components/schemas/Context' }
         payload: { type: object }
-        signature: { $ref: '#/components/schemas/Signature', nullable: true }
+        signature: { $ref: '#/components/schemas/Signature'}
     ApiResponse:
       type: object
       required: [context, response]
@@ -1135,10 +1136,10 @@ components:
       properties:
         chain:
           type: string
-          examples: [ethereum, bitcoin, solana]
+          example: [ethereum, bitcoin, solana]
         network:
           type: string
-          examples: [mainnet, sepolia]
+          example: [mainnet, sepolia]
         txHash:
           type: string
         blockId:
@@ -1309,7 +1310,7 @@ components:
                 - properties:
                     status:
                       type: string
-                      const: "accepted"
+                      enum: ["accepted"]
                     transactionId:
                       type: string
                       format: uri-reference
