@@ -7,7 +7,7 @@
   "tokenTransactions": [
     {
       "tokenTxId": "urn:uuid:tokentx-c8d4e5f6-a7b8-9012-3456-7890abcdef01",
-      "tokenId": "urn:uuid:token-fusd-a1b2c3d4",
+      "tokenId": "urn:uuid:usdc-a1b2c3d4",
       "operation": "transfer"
     }
   ],
@@ -32,7 +32,7 @@
     }
   ],
   "metadata": {
-    "description": "Transfer 100 FUSD from Alice to Bob",
+    "description": "Transfer 100 USDC from Alice to Bob",
     "tags": ["payment", "settlement"],
     "custom": {
       "paymentType": "instant",

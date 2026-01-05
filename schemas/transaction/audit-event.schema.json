@@ -69,23 +69,27 @@
       "description": "Type of administrative action"
     },
     "changeDetails": {
-      "type": "object",
-      "description": "Details of what changed",
-      "properties": {
-        "fieldPath": {
-          "type": "string",
-          "description": "JSON path to the changed field (e.g., 'metadata.name', 'data.jurisdiction')"
-        },
-        "before": {
-          "description": "Value before the change"
-        },
-        "after": {
-          "description": "Value after the change"
-        },
-        "changeType": {
-          "type": "string",
-          "enum": ["created", "updated", "deleted"],
-          "description": "Type of change operation"
+      "type": "array",
+      "description": "Array of changes made in this audit event (supports multiple field updates)",
+      "items": {
+        "type": "object",
+        "description": "Details of what changed",
+        "properties": {
+          "fieldPath": {
+            "type": "string",
+            "description": "JSON path to the changed field (e.g., 'metadata.name', 'data.jurisdiction')"
+          },
+          "before": {
+            "description": "Value before the change"
+          },
+          "after": {
+            "description": "Value after the change"
+          },
+          "changeType": {
+            "type": "string",
+            "enum": ["created", "updated", "deleted"],
+            "description": "Type of change operation"
+          }
         }
       }
     },

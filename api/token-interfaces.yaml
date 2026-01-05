@@ -158,8 +158,7 @@ paths:
         - `unlock` - Unlock token
         - `redeem` - Redeem token (for redeemable assets)
         - `transfer` - Transfer token ownership
-        - `updateData` - Update the data section
-        - `updateMetadata` - Update mutable metadata fields
+        - `update` - Update token data or metadata fields
         - `addClaim` - Add verifiable credential/attestation
         - `revokeClaim` - Revoke a claim
         - `updateClaimStatus` - Update claim status
@@ -189,18 +188,18 @@ paths:
                     operation: "mint"
                     metadata:
                       tokenStandard: "UNITS-FT"
-                      name: "Finternet Dollar"
-                      symbol: "FUSD"
+                      name: "USD Coin"
+                      symbol: "USDC"
                       decimals: 6
                       fungibility: "fungible"
-                      issuer: "did:web:finternet-bank.example"
+                      issuer: "did:web:circle.com"
                       valuationType: "fixed"
                       valuationModel:
                         parValue:
                           amount: "1.00"
                           currency: "USD"
                     data:
-                      reserveAccount: "did:web:finternet-bank.example:accounts:reserve-001"
+                      reserveAccount: "did:web:circle.com:accounts:reserve-001"
                       jurisdiction: "US"
                     initialSupply: "1000000000000"
                   signature:
@@ -260,8 +259,8 @@ paths:
                   signature:
                     type: "JsonWebSignature2020"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
-              UpdateData:
-                summary: "Update token data section"
+              UpdateToken:
+                summary: "Update token data and metadata"
                 value:
                   context:
                     id: "api.token.transact"
@@ -271,10 +270,10 @@ paths:
                     developerToken: "dev_pk_..."
                     authorization: "Bearer eyJ..."
                   payload:
-                    operation: "updateData"
+                    operation: "update"
                     tokenId: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
                     data:
-                      auditReport: "https://auditor.example/reports/fusd-2025-q2"
+                      auditReport: "https://www.circle.com/en/usdc-transparency"
                       lastAuditDate: "2025-04-01T00:00:00Z"
               AddClaim:
                 summary: "Add a verifiable claim"
@@ -568,7 +567,7 @@ paths:
                 msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef"
                 developerToken: "dev_pk_..."
               payload:
-                tokenId: "urn:uuid:token-fusd-a1b2c3d4"
+                tokenId: "urn:uuid:usdc-a1b2c3d4"
                 filters:
                   operation: "transfer"
                   dateRange:
@@ -662,13 +661,13 @@ components:
       required: [tokenStandard, name, symbol, decimals, fungibility, issuer]
       properties:
         tokenStandard: { type: string, example: "UNITS-FT" }
-        name: { type: string, example: "Finternet Dollar" }
-        symbol: { type: string, example: "FUSD" }
+        name: { type: string, example: "USD Coin" }
+        symbol: { type: string, example: "USDC" }
         decimals: { type: integer, example: 6 }
         fungibility: { type: string, enum: [fungible, nonFungible, semiFungible] }
         tokenClass: { type: string, example: "stablecoin" }
         version: { type: string, example: "1.0.0" }
-        issuer: { type: string, format: uri-reference, example: "did:web:finternet-bank.example" }
+        issuer: { type: string, format: uri-reference, example: "did:web:circle.com" }
         creator: { type: string, format: uri-reference }
         owner: { type: string, format: uri-reference }
         status: { type: string, enum: [active, inactive, deprecated, test] }
@@ -809,26 +808,25 @@ components:
         Request payload for token operations. The structure varies by operation:
 
         **For mint:** `operation`, `metadata`, `data` (optional), `claims` (optional), `initialSupply`
-        **For updateData:** `operation`, `tokenId`, `data`
-        **For updateMetadata:** `operation`, `tokenId`, `metadata`
+        **For update:** `operation`, `tokenId`, `data` (optional), `metadata` (optional)
         **For addClaim:** `operation`, `tokenId`, `claim`
         **For revokeClaim:** `operation`, `tokenId`, `claimId`
         **For burn/freeze/transfer:** `operation`, `tokenId`, plus operation-specific params at root level
       properties:
         operation:
           type: string
-          enum: [mint, burn, freeze, unfreeze, lock, unlock, redeem, transfer, updateData, updateMetadata, addClaim, revokeClaim, updateClaimStatus]
+          enum: [mint, burn, freeze, unfreeze, lock, unlock, redeem, transfer, update, addClaim, revokeClaim, updateClaimStatus]
         tokenId:
           type: string
           format: uri-reference
           description: "Required for all operations except mint"
         metadata:
           type: object
-          description: "Token metadata (for mint, updateMetadata operations)"
+          description: "Token metadata (for mint, update operations)"
           additionalProperties: true
         data:
           type: object
-          description: "Token data section (for mint, updateData operations)"
+          description: "Token data section (for mint, update operations)"
           additionalProperties: true
         claim:
           type: object
@@ -1065,7 +1063,7 @@ components:
           format: uri-reference
         operation:
           type: string
-          enum: [mint, burn, transfer, freeze, unfreeze, lock, unlock, redeem, updateData, updateMetadata, addClaim, revokeClaim]
+          enum: [mint, burn, transfer, freeze, unfreeze, lock, unlock, redeem, update, addClaim, revokeClaim]
         participants:
           type: array
           items:

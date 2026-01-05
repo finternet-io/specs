@@ -4,14 +4,14 @@
   "id": "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab",
   "metadata": {
     "tokenStandard": "UNITS-FT",
-    "name": "Finternet Dollar",
-    "symbol": "FUSD",
+    "name": "USD Coin",
+    "symbol": "USDC",
     "decimals": 6,
     "fungibility": "fungible",
     "tokenClass": "stablecoin",
     "version": "1.0.0",
-    "issuer": "did:web:finternet-bank.example",
-    "creator": "did:web:finternet-bank.example",
+    "issuer": "did:web:circle.com",
+    "creator": "did:web:circle.com",
     "status": "active",
     "valuationType": "fixed",
     "stateModel": "native",
@@ -20,7 +20,7 @@
         "amount": "1.00",
         "currency": "USD"
       },
-      "redeemableBy": "Finternet Bank"
+      "redeemableBy": "Circle"
     },
     "flags": {
       "transactable": true,
@@ -33,17 +33,17 @@
       "fiat-backed",
       "regulated"
     ],
-    "description": "A USD-backed stablecoin issued by Finternet Bank with 1:1 redemption guarantee",
+    "description": "A USD-backed stablecoin issued by Circle with 1:1 redemption guarantee",
     "externalUrls": [
-      "https://finternet-bank.example/tokens/fusd",
-      "https://explorer.finternet.io/token/fusd"
+      "https://www.circle.com/en/usdc",
+      "https://explorer.finternet.io/token/usdc"
     ],
     "createdAt": "2025-01-01T00:00:00Z",
     "updatedAt": "2025-01-04T10:30:00Z"
   },
   "data": {
-    "reserveAccount": "did:web:finternet-bank.example:accounts:reserve-001",
-    "auditReport": "https://auditor.example/reports/fusd-2025-q1",
+    "reserveAccount": "did:web:circle.com:accounts:reserve-001",
+    "auditReport": "https://www.circle.com/en/usdc-transparency",
     "regulatoryLicense": "FIN-2025-001",
     "jurisdiction": "US"
   },

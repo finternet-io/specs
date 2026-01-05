@@ -121,8 +121,7 @@
             "unlock": "finternet:unlock",
             "redeem": "finternet:redeem",
             "read": "finternet:read",
-            "updateData": "finternet:updateData",
-            "updateMetadata": "finternet:updateMetadata",
+            "update": "finternet:update",
             "addClaim": "finternet:addClaim",
             "revokeClaim": "finternet:revokeClaim",
 
@@ -228,7 +227,7 @@
 
             "changeDetails": {
                 "@id": "finternet:changeDetails",
-                "@type": "@id"
+                "@container": "@set"
             },
             "ChangeDetails": "finternet:ChangeDetails",
             "fieldPath": "finternet:fieldPath",

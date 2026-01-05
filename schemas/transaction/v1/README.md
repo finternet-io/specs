@@ -30,7 +30,7 @@ The TransactionLog represents a complete business transaction that may affect on
 - `ledgerAnchors` - External blockchain references
 
 **Example Use Cases:**
-- Atomic swap: burn USDC + mint FUSD (single TransactionLog, two TokenTransactions)
+- Atomic swap: burn USDC + mint USDT (single TransactionLog, two TokenTransactions)
 - Batch transfer: multiple transfers in one transaction
 - Complex workflow: multi-step operations with approvals
 
@@ -66,7 +66,7 @@ The AuditEvent tracks administrative changes to token metadata, data, and claims
 - `tokenId` - Token that was modified
 - `actor` - Account or system that performed the action
 - `eventType` - Type of administrative action
-- `changeDetails` - Before/after snapshots of what changed
+- `changeDetails` - Array of changes (before/after snapshots) - supports multiple field updates
 - `reason` - Justification for the change
 - `approvals` - Required approvals for the change
 - `timestamp` - When the event occurred
@@ -159,13 +159,13 @@ Account ──initiates──> TransactionLog
   "tokenTransactions": [
     {
       "tokenTxId": "tokentx-002",
-      "tokenId": "token-usdc",
+      "tokenId": "usdc",
       "operation": "burn",
       "amount": {"amount": "100"}
     },
     {
       "tokenTxId": "tokentx-003",
-      "tokenId": "token-fusd",
+      "tokenId": "usdt",
       "operation": "mint",
       "amount": {"amount": "100"}
     }

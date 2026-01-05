@@ -294,8 +294,7 @@ components:
         - unlock
         - redeem
         - read
-        - updateData
-        - updateMetadata
+        - update
         - addClaim
         - revokeClaim
       x-jsonld: { "@id": "finternet:operationType", "@type": "@vocab" }
@@ -451,7 +450,11 @@ components:
         eventType:
           $ref: '#/components/schemas/AuditEventType'
         changeDetails:
-          $ref: '#/components/schemas/ChangeDetails'
+          type: array
+          description: Array of changes made in this audit event (supports multiple field updates)
+          items:
+            $ref: '#/components/schemas/ChangeDetails'
+          x-jsonld: { "@id": "finternet:changeDetails", "@container": "@set" }
         reason:
           type: string
           description: Human-readable justification for the change

@@ -3,7 +3,7 @@
   "@type": "TokenTransaction",
   "tokenTxId": "urn:uuid:tokentx-c8d4e5f6-a7b8-9012-3456-7890abcdef01",
   "txId": "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd",
-  "tokenId": "urn:uuid:token-fusd-a1b2c3d4",
+  "tokenId": "urn:uuid:usdc-a1b2c3d4",
   "operation": "transfer",
   "participants": [
     {

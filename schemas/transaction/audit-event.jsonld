@@ -6,12 +6,14 @@
   "txId": "urn:uuid:tx-550e8400-e29b-41d4-a716-446655440001",
   "actor": "urn:account:issuer:central-bank-001",
   "eventType": "MetadataUpdated",
-  "changeDetails": {
-    "fieldPath": "metadata.name",
-    "before": "Central Bank Digital Currency (CBDC) - Beta",
-    "after": "Central Bank Digital Currency (CBDC) - v1.0",
-    "changeType": "updated"
-  },
+  "changeDetails": [
+    {
+      "fieldPath": "metadata.name",
+      "before": "Central Bank Digital Currency (CBDC) - Beta",
+      "after": "Central Bank Digital Currency (CBDC) - v1.0",
+      "changeType": "updated"
+    }
+  ],
   "reason": "Updated token name from beta to production version following successful pilot completion",
   "approvals": [
     {

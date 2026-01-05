@@ -75,6 +75,159 @@ Provides lean, reusable primitives for all Finternet schemas:
 
 **Design Philosophy**: Core contains **only truly generic primitives** reusable across all entity types (Account, Token, ACL, etc.). Domain-specific types remain in their respective schemas.
 
+## Token Schema (v1)
+
+Implements the **Universal Token Specification (UNITS)** for representing all types of financial assets as tokens.
+
+### Key Features
+
+- **UNITS Specification** - Four-section token structure
+  - **Metadata** - Immutable token identity (name, symbol, issuer, standard)
+  - **Data** - Mutable business data (reserves, jurisdiction, audit info)
+  - **Claims** - Verifiable credentials (compliance certificates, attestations)
+  - **State** - Current state and lifecycle (supply, ownership, status, locks)
+
+- **Token Standards** - Support for multiple token types
+  - `UNITS-FT` - Fungible tokens (stablecoins, securities)
+  - `UNITS-NFT` - Non-fungible tokens (unique assets)
+  - `UNITS-SFT` - Semi-fungible tokens (hybrid)
+
+- **Lifecycle Management** - Comprehensive state tracking
+  - Status: active, frozen, redeemed, burned, expired
+  - Supply tracking: total supply, circulating supply
+  - Lock states: escrow, collateral, compliance holds
+  - Restrictions: jurisdiction, use cases
+
+- **Verifiable Claims** - W3C Verifiable Credentials as first-class objects
+  - Public, private, or protected visibility
+  - Issuer attestations and proofs
+  - Status tracking: asserted, verified, revoked, expired
+
+### Token-Specific Types
+
+The token schema defines comprehensive types for financial asset management:
+- `TokenMetadata` - Immutable token identity and configuration
+- `TokenState` - Current state, supply, ownership, locks
+- `Claim` - W3C Verifiable Credential structure
+- `Fungibility` - fungible, nonFungible, semiFungible
+- `LifecycleStatus` - active, frozen, redeemed, burned, expired
+- `ValuationType` - fixed, pegged, market
+
+### Usage
+
+```json
+{
+  "@context": "https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld",
+  "@type": "FinancialProduct",
+  "id": "urn:uuid:...",
+  "metadata": {
+    "tokenStandard": "UNITS-FT",
+    "name": "USD Coin",
+    "symbol": "USDC",
+    "decimals": 6,
+    "fungibility": "fungible",
+    "issuer": "did:web:circle.com",
+    "valuationType": "fixed"
+  },
+  "data": {
+    "reserveAccount": "did:web:circle.com:accounts:reserve-001",
+    "jurisdiction": "US"
+  },
+  "claims": [
+    {
+      "@type": "VerifiableCredential",
+      "issuer": "did:web:auditor.example",
+      "credentialSubject": {
+        "id": "urn:uuid:...",
+        "reserveRatio": "100%"
+      }
+    }
+  ],
+  "state": {
+    "status": "active",
+    "supply": {
+      "totalSupply": "10000000000000",
+      "circulatingSupply": "8500000000000"
+    }
+  }
+}
+```
+
+## Transaction Schema (v1)
+
+Implements a two-tier transaction architecture for tracking and recording token operations.
+
+### Key Features
+
+- **Two-Tier Architecture**
+  - **TransactionLog** - System-wide transaction envelope
+  - **TokenTransaction** - Per-token state change record
+  - **AuditEvent** - Admin-only tracking for compliance
+
+- **State Commitments** - Cryptographic state tracking
+  - `stateBefore` and `stateAfter` for each token transaction
+  - Supports proof generation and verification
+  - Optional state snapshots for debugging
+
+- **Proof Integration**
+  - Multiple proof types: ZK-SNARKs, Merkle proofs, TEE attestations
+  - Batch proof support (multiple transactions → one proof)
+  - References to ProofRecord entities
+
+- **Workflow Orchestration**
+  - Links to WorkflowInstance for multi-step operations
+  - Separates transaction execution from orchestration logic
+
+- **Ledger Anchoring**
+  - Optional anchoring to external blockchains
+  - Multiple anchors supported (Ethereum, Bitcoin, Solana)
+  - Asynchronous anchoring (doesn't block completion)
+
+### Transaction-Specific Types
+
+**TransactionLog:**
+- `ExecutionStatus` - submitted, pending, executing, completed, failed, rolled_back
+- `ProofProfile` - zk-snark, zk-stark, merkle, tee-attestation, signature-bundle
+- `LedgerAnchor` - External blockchain reference
+- `ExecutionTimestamps` - Lifecycle timestamps
+
+**TokenTransaction:**
+- `OperationType` - mint, burn, transfer, freeze, unfreeze, lock, unlock, redeem, update, addClaim, revokeClaim
+- `Participant` - Transaction participants with roles
+- `StateReference` - State commitment + optional snapshot
+- `AmountTransferred` - Quantity affected
+
+**AuditEvent (Admin-Only):**
+- `AuditEventType` - MetadataUpdated, DataCorrected, ClaimAttached, ClaimRevoked, StateOverride, PermissionChanged
+- `ChangeDetails` - Array of field-level changes
+- `Approval` - Multi-party approval records
+
+### Usage
+
+**Atomic Swap Example:**
+```json
+{
+  "@context": "https://finternet-io.github.io/specs/schemas/transaction/v1/context.jsonld",
+  "@type": "TransactionLog",
+  "txId": "urn:uuid:tx-002",
+  "initiator": "did:web:alice.example",
+  "tokenTransactions": [
+    {
+      "tokenTxId": "urn:uuid:tokentx-002",
+      "tokenId": "usdc",
+      "operation": "burn"
+    },
+    {
+      "tokenTxId": "urn:uuid:tokentx-003",
+      "tokenId": "usdt",
+      "operation": "mint"
+    }
+  ],
+  "status": "completed",
+  "proofId": "urn:uuid:proof-001"
+}
+```
+
 ## Account Schema (v1)
 
 Extends core Entity to represent user and organizational accounts:
