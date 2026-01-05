@@ -57,6 +57,8 @@ servers:
 tags:
   - name: "Token"
     description: "Endpoints for token creation, querying, and lifecycle management."
+  - name: "Transaction"
+    description: "Endpoints for transaction management."
 
 # ===============================================================
 #   PATHS
