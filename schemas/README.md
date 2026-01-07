@@ -81,11 +81,12 @@ Implements the **Universal Token Specification (UNITS)** for representing all ty
 
 ### Key Features
 
-- **UNITS Specification** - Four-section token structure
-  - **Metadata** - Immutable token identity (name, symbol, issuer, standard)
+- **UNITS Specification** - Five-section token structure
+  - **Metadata** - Immutable token identity (name, symbol, standard, behavioral flags)
   - **Data** - Mutable business data (reserves, jurisdiction, audit info)
   - **Claims** - Verifiable credentials (compliance certificates, attestations)
-  - **State** - Current state and lifecycle (supply, ownership, status, locks)
+  - **Identities** - Identity relationships (issuer, creator, owner, operator, custodian)
+  - **State** - Current state and lifecycle (supply, status, locks)
 
 - **Token Standards** - Support for multiple token types
   - `UNITS-FT` - Fungible tokens (stablecoins, securities)
@@ -126,7 +127,6 @@ The token schema defines comprehensive types for financial asset management:
     "symbol": "USDC",
     "decimals": 6,
     "fungibility": "fungible",
-    "issuer": "did:web:circle.com",
     "valuationType": "fixed"
   },
   "data": {
@@ -141,6 +141,16 @@ The token schema defines comprehensive types for financial asset management:
         "id": "urn:uuid:...",
         "reserveRatio": "100%"
       }
+    }
+  ],
+  "identities": [
+    {
+      "id": "did:web:circle.com",
+      "type": "issuer"
+    },
+    {
+      "id": "did:web:alice.example",
+      "type": "owner"
     }
   ],
   "state": {

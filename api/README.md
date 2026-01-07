@@ -11,8 +11,8 @@ Complete API specification for managing universal tokens (UNITS specification) w
 **Key Endpoints:**
 
 #### Token Management
-- **GET `/v1/token/get`** - Retrieve detailed token information
-- **POST `/v1/token/list`** - List tokens with filtering and pagination
+- **POST `/v1/token/get`** - Retrieve detailed token information
+- **POST `/v1/token/search`** - Search tokens with filtering and pagination (owner inferred from JWT/ACL)
 - **POST `/v1/token/transact`** - Execute token operations (async)
 
 **Supported Operations:**
@@ -28,7 +28,7 @@ Complete API specification for managing universal tokens (UNITS specification) w
 #### Transaction Tracking
 - **POST `/v1/transaction/status`** - Poll async transaction status
 - **POST `/v1/transaction/get`** - Get complete transaction details
-- **POST `/v1/transaction/list`** - List transactions with filters
+- **POST `/v1/transaction/search`** - Search transactions with filters (initiator inferred from JWT/ACL)
 - **POST `/v1/token/transactions`** - Get token transaction history
 
 **API Design:**

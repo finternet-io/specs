@@ -130,6 +130,34 @@
         }
       }
     },
+    "IdentityType": {
+      "description": "Type of identity relationship to the token",
+      "type": "string",
+      "enum": ["issuer", "creator", "owner", "operator", "custodian", "manager", "controller"]
+    },
+    "Identity": {
+      "description": "Identity relationship record",
+      "type": "object",
+      "required": ["id", "type"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uri-reference",
+          "description": "DID, URI, or identifier of the identity"
+        },
+        "type": {
+          "$ref": "#/definitions/IdentityType"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Additional role descriptors"
+        }
+      },
+      "additionalProperties": false
+    },
     "Flags": {
       "description": "Behavioral flags for the token",
       "type": "object",
@@ -160,7 +188,7 @@
     "Metadata": {
       "description": "Static descriptive identity and behavioral profile of the token",
       "type": "object",
-      "required": ["tokenStandard", "name", "symbol", "decimals", "fungibility", "issuer"],
+      "required": ["tokenStandard", "name", "symbol", "decimals", "fungibility"],
       "properties": {
         "tokenStandard": {
           "$ref": "#/definitions/TokenStandard"
@@ -193,21 +221,6 @@
           "type": "string",
           "description": "Version of the token specification",
           "default": "1.0.0"
-        },
-        "issuer": {
-          "type": "string",
-          "description": "DID, URI, or identifier of issuer",
-          "format": "uri-reference"
-        },
-        "creator": {
-          "type": "string",
-          "description": "DID, URI, or identifier of creator",
-          "format": "uri-reference"
-        },
-        "owner": {
-          "type": "string",
-          "description": "Current logical owner (for NFTs)",
-          "format": "uri-reference"
         },
         "status": {
           "$ref": "#/definitions/MetadataStatus"
@@ -463,11 +476,6 @@
         "supply": {
           "$ref": "#/definitions/Supply"
         },
-        "currentOwner": {
-          "type": "string",
-          "format": "uri-reference",
-          "description": "Current owner identifier (for NFTs)"
-        },
         "lockState": {
           "$ref": "#/definitions/LockState"
         },
@@ -538,6 +546,13 @@
         "$ref": "#/definitions/Claim"
       },
       "description": "Verifiable credentials and attestations"
+    },
+    "identities": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Identity"
+      },
+      "description": "Identity relationships (issuer, creator, owner, operator, etc.)"
     },
     "state": {
       "$ref": "#/definitions/State",

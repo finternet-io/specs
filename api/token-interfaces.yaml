@@ -102,12 +102,12 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedError'
 
-  /v1/token/list:
+  /v1/token/search:
     post:
       tags:
         - "Token"
-      summary: "List tokens"
-      description: "Lists tokens with optional filters (owner, type, status, etc.). Supports pagination. Requires Developer auth."
+      summary: "Search tokens"
+      description: "Search tokens with filters (type, status, etc.). Owner filtering inferred from JWT/ACL. Supports pagination. Requires Developer auth."
       security:
         - developerToken: []
         - developerSignature: []
@@ -116,10 +116,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ApiRequest_ListTokensRequest'
+              $ref: '#/components/schemas/ApiRequest_SearchTokensRequest'
             example:
               context:
-                id: "api.token.list"
+                id: "api.token.search"
                 version: "1.0"
                 ts: "2025-01-04T10:00:00Z"
                 msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
@@ -127,9 +127,10 @@ paths:
                 authorization: "Bearer eyJ..."
               payload:
                 filters:
-                  owner: "did:web:alice.example"
                   tokenStandard: "UNITS-FT"
                   status: "active"
+                  fungibility: "fungible"
+                  tags: ["stablecoin"]
                 pagination:
                   limit: 50
                   offset: 0
@@ -194,7 +195,6 @@ paths:
                       symbol: "USDC"
                       decimals: 6
                       fungibility: "fungible"
-                      issuer: "did:web:circle.com"
                       valuationType: "fixed"
                       valuationModel:
                         parValue:
@@ -203,6 +203,11 @@ paths:
                     data:
                       reserveAccount: "did:web:circle.com:accounts:reserve-001"
                       jurisdiction: "US"
+                    identities:
+                      - id: "did:web:circle.com"
+                        type: "issuer"
+                      - id: "did:web:circle.com"
+                        type: "creator"
                     initialSupply: "1000000000000"
                   signature:
                     type: "JsonWebSignature2020"
@@ -501,14 +506,14 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedError'
 
-  /v1/transaction/list:
+  /v1/transaction/search:
     post:
       tags:
         - "Transaction"
-      summary: "List transactions"
+      summary: "Search transactions"
       description: |
-        Lists transactions with optional filters and pagination.
-        Useful for transaction history, reconciliation, and reporting.
+        Search transactions with filters and pagination.
+        Useful for transaction history, reconciliation, and reporting. Owner/initiator filtering inferred from JWT/ACL.
       security:
         - developerToken: []
       requestBody:
@@ -516,10 +521,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ApiRequest_ListTransactionsRequest'
+              $ref: '#/components/schemas/ApiRequest_SearchTransactionsRequest'
             example:
               context:
-                id: "api.transaction.list"
+                id: "api.transaction.search"
                 version: "1.0"
                 ts: "2025-01-04T10:00:00Z"
                 msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
@@ -527,14 +532,13 @@ paths:
                 authorization: "Bearer eyJ..."
               payload:
                 filters:
-                  initiator: "did:web:alice.example"
                   status: "completed"
                   dateRange:
                     from: "2025-01-01T00:00:00Z"
                     to: "2025-01-31T23:59:59Z"
-                pagination:
-                  limit: 50
-                  offset: 0
+                  pagination:
+                    limit: 50
+                    offset: 0
       responses:
         '200':
           description: "Transaction list retrieved"
@@ -569,15 +573,15 @@ paths:
                 msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef"
                 developerToken: "dev_pk_..."
               payload:
-                tokenId: "urn:uuid:usdc-a1b2c3d4"
                 filters:
+                  tokenId: "urn:uuid:usdc-a1b2c3d4"
                   operation: "transfer"
                   dateRange:
                     from: "2025-01-01T00:00:00Z"
                     to: "2025-01-31T23:59:59Z"
-                pagination:
-                  limit: 100
-                  offset: 0
+                  pagination:
+                    limit: 100
+                    offset: 0
       responses:
         '200':
           description: "Token transaction history retrieved"
@@ -658,10 +662,32 @@ components:
 
     # --- Token-Specific Schemas ---
 
+    # Identity
+    IdentityType:
+      type: string
+      description: "Type of identity relationship"
+      enum: [issuer, creator, owner, operator, custodian, manager, controller]
+
+    Identity:
+      type: object
+      description: "Identity relationship record"
+      required: [id, type]
+      properties:
+        id:
+          type: string
+          format: uri-reference
+          description: "DID, URI, or identifier"
+        type:
+          $ref: '#/components/schemas/IdentityType'
+        roles:
+          type: array
+          items: { type: string }
+          description: "Additional role descriptors"
+
     # Token Metadata
     TokenMetadata:
       type: object
-      required: [tokenStandard, name, symbol, decimals, fungibility, issuer]
+      required: [tokenStandard, name, symbol, decimals, fungibility]
       properties:
         tokenStandard: { type: string, example: "UNITS-FT" }
         name: { type: string, example: "USD Coin" }
@@ -670,9 +696,6 @@ components:
         fungibility: { type: string, enum: [fungible, nonFungible, semiFungible] }
         tokenClass: { type: string, example: "stablecoin" }
         version: { type: string, example: "1.0.0" }
-        issuer: { type: string, format: uri-reference, example: "did:web:circle.com" }
-        creator: { type: string, format: uri-reference }
-        owner: { type: string, format: uri-reference }
         status: { type: string, enum: [active, inactive, deprecated, test] }
         valuationType: { type: string, enum: [fixed, pegged, market] }
         stateModel: { type: string, enum: [native, proxy] }
@@ -702,7 +725,6 @@ components:
           properties:
             totalSupply: { type: string }
             circulatingSupply: { type: string }
-        currentOwner: { type: string, format: uri-reference }
         lockState:
           type: object
           properties:
@@ -772,6 +794,10 @@ components:
         metadata: { $ref: '#/components/schemas/TokenMetadata' }
         data: { type: object, additionalProperties: true }
         claims: { type: array, items: { $ref: '#/components/schemas/Claim' } }
+        identities:
+          type: array
+          items: { $ref: '#/components/schemas/Identity' }
+          description: "Identity relationships (issuer, creator, owner, etc.)"
         state: { $ref: '#/components/schemas/TokenState' }
 
     # --- Request Payloads ---
@@ -781,28 +807,27 @@ components:
       properties:
         tokenId: { type: string, format: uri-reference, example: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab" }
 
-    ListTokensRequest:
+    SearchTokensRequest:
       type: object
       properties:
         filters:
           type: object
+          description: "Search filters (owner inferred from JWT/ACL)"
           properties:
-            owner: { type: string, format: uri-reference }
-            issuer: { type: string, format: uri-reference }
             tokenStandard: { type: string }
             fungibility: { type: string, enum: [fungible, nonFungible, semiFungible] }
             status: { type: string, enum: [active, frozen, redeemed, burned, expired] }
             tags: { type: array, items: { type: string } }
-        pagination:
-          type: object
-          properties:
-            limit: { type: integer, default: 50, minimum: 1, maximum: 100 }
-            offset: { type: integer, default: 0, minimum: 0 }
-        sort:
-          type: object
-          properties:
-            field: { type: string, enum: [createdAt, updatedAt, name], default: "createdAt" }
-            order: { type: string, enum: [asc, desc], default: "desc" }
+            pagination:
+              type: object
+              properties:
+                limit: { type: integer, default: 50, minimum: 1, maximum: 100 }
+                offset: { type: integer, default: 0, minimum: 0 }
+            sort:
+              type: object
+              properties:
+                field: { type: string, enum: [createdAt, updatedAt, name], default: "createdAt" }
+                order: { type: string, enum: [asc, desc], default: "desc" }
 
     TransactRequest:
       type: object
@@ -1168,15 +1193,13 @@ components:
           type: string
           format: uri-reference
 
-    ListTransactionsRequest:
+    SearchTransactionsRequest:
       type: object
       properties:
         filters:
           type: object
+          description: "Search filters (initiator inferred from JWT/ACL)"
           properties:
-            initiator:
-              type: string
-              format: uri-reference
             status:
               $ref: '#/components/schemas/ExecutionStatus'
             tokenId:
@@ -1191,29 +1214,30 @@ components:
                 to:
                   type: string
                   format: date-time
-        pagination:
-          type: object
-          properties:
-            limit:
-              type: integer
-              default: 50
-              minimum: 1
-              maximum: 100
-            offset:
-              type: integer
-              default: 0
-              minimum: 0
+            pagination:
+              type: object
+              properties:
+                limit:
+                  type: integer
+                  default: 50
+                  minimum: 1
+                  maximum: 100
+                offset:
+                  type: integer
+                  default: 0
+                  minimum: 0
 
     TokenTransactionsRequest:
       type: object
-      required: [tokenId]
       properties:
-        tokenId:
-          type: string
-          format: uri-reference
         filters:
           type: object
+          description: "Transaction history filters"
           properties:
+            tokenId:
+              type: string
+              format: uri-reference
+              description: "Token ID to get history for"
             operation:
               type: string
             dateRange:
@@ -1225,15 +1249,15 @@ components:
                 to:
                   type: string
                   format: date-time
-        pagination:
-          type: object
-          properties:
-            limit:
-              type: integer
-              default: 100
-            offset:
-              type: integer
-              default: 0
+            pagination:
+              type: object
+              properties:
+                limit:
+                  type: integer
+                  default: 100
+                offset:
+                  type: integer
+                  default: 0
 
     # --- Transaction Response Payloads ---
 
@@ -1276,11 +1300,11 @@ components:
         - properties:
             payload: { $ref: '#/components/schemas/GetTokenRequest' }
 
-    ApiRequest_ListTokensRequest:
+    ApiRequest_SearchTokensRequest:
       allOf:
         - $ref: '#/components/schemas/RequestContext'
         - properties:
-            payload: { $ref: '#/components/schemas/ListTokensRequest' }
+            payload: { $ref: '#/components/schemas/SearchTokensRequest' }
 
     ApiRequest_TransactRequest:
       allOf:
@@ -1331,11 +1355,11 @@ components:
         - properties:
             payload: { $ref: '#/components/schemas/GetTransactionRequest' }
 
-    ApiRequest_ListTransactionsRequest:
+    ApiRequest_SearchTransactionsRequest:
       allOf:
         - $ref: '#/components/schemas/RequestContext'
         - properties:
-            payload: { $ref: '#/components/schemas/ListTransactionsRequest' }
+            payload: { $ref: '#/components/schemas/SearchTransactionsRequest' }
 
     ApiRequest_TokenTransactionsRequest:
       allOf:

@@ -10,8 +10,6 @@
     "fungibility": "fungible",
     "tokenClass": "stablecoin",
     "version": "1.0.0",
-    "issuer": "did:web:circle.com",
-    "creator": "did:web:circle.com",
     "status": "active",
     "valuationType": "fixed",
     "stateModel": "native",
@@ -77,6 +75,20 @@
         "jws": "eyJhbGciOiJFZERTQSIsImI2NCI6ZmFsc2UsImNyaXQiOlsiYjY0Il19..example"
       },
       "status": "verified"
+    }
+  ],
+  "identities": [
+    {
+      "id": "did:web:circle.com",
+      "type": "issuer"
+    },
+    {
+      "id": "did:web:circle.com",
+      "type": "creator"
+    },
+    {
+      "id": "did:web:alice.example",
+      "type": "owner"
     }
   ],
   "state": {

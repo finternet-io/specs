@@ -9,6 +9,45 @@ info:
 
 components:
   schemas:
+    # -------------------- Identity Section --------------------
+
+    IdentityType:
+      type: string
+      description: Type of identity relationship to the token
+      enum:
+        - issuer
+        - creator
+        - owner
+        - operator
+        - custodian
+        - manager
+        - controller
+      x-jsonld: { "@id": "finternet:identityType", "@type": "@vocab" }
+
+    Identity:
+      type: object
+      description: Identity relationship record
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld
+        "@type": finternet:Identity
+      required:
+        - id
+        - type
+      properties:
+        id:
+          type: string
+          format: uri-reference
+          description: DID, URI, or identifier of the identity
+          x-jsonld: { "@id": "@id", "@type": "@id" }
+        type:
+          $ref: '#/components/schemas/IdentityType'
+        roles:
+          type: array
+          items:
+            type: string
+          description: Additional role descriptors
+          x-jsonld: { "@id": "finternet:roles", "@container": "@set" }
+
     # -------------------- Metadata Section --------------------
 
     TokenMetadata:
@@ -23,7 +62,6 @@ components:
         - symbol
         - decimals
         - fungibility
-        - issuer
       properties:
         tokenStandard:
           type: string
@@ -68,21 +106,6 @@ components:
           description: Version of the token specification
           default: "1.0.0"
           x-jsonld: { "@id": "schema:version" }
-        issuer:
-          type: string
-          format: uri-reference
-          description: DID, URI, or identifier of issuer
-          x-jsonld: { "@id": "schema:issuer", "@type": "@id" }
-        creator:
-          type: string
-          format: uri-reference
-          description: DID, URI, or identifier of creator
-          x-jsonld: { "@id": "schema:creator", "@type": "@id" }
-        owner:
-          type: string
-          format: uri-reference
-          description: Current logical owner (for NFTs)
-          x-jsonld: { "@id": "schema:owner", "@type": "@id" }
         status:
           type: string
           description: Metadata-level status
@@ -314,11 +337,6 @@ components:
           x-jsonld: { "@id": "finternet:effectiveUntil", "@type": "xsd:dateTime" }
         supply:
           $ref: '#/components/schemas/Supply'
-        currentOwner:
-          type: string
-          format: uri-reference
-          description: Current owner identifier (for NFTs)
-          x-jsonld: { "@id": "finternet:currentOwner", "@type": "@id" }
         lockState:
           $ref: '#/components/schemas/LockState'
         restrictions:
