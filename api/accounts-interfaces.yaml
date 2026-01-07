@@ -68,7 +68,7 @@ paths:
       tags:
         - "Account"
       summary: "Register a new account"
-      description: "Creates a new user account with minimal information. Requires Developer auth and user authentication token."
+      description: "Creates a new user account. Requires Developer auth and user authentication token."
       security:
         - developerToken: []
         - developerSignature: []
