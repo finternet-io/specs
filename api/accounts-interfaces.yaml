@@ -125,7 +125,6 @@ paths:
                   accessToken: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
                   tokenType: "Bearer"
                   expiresIn: 3600
-                  isExisting: false
         '400':
           description: "Bad request, such as a missing required field."
           content:
@@ -277,8 +276,8 @@ paths:
             schema:
               $ref: '#/components/schemas/ApiRequest_LoginRequest'
             examples:
-              InitiateOTP:
-                summary: "Step 1: Initiate login by sending OTP"
+              InitiateOTPMobile:
+                summary: "Step 1: Initiate login by sending OTP (Mobile)"
                 value:
                   context:
                     id: "api.account.login"
@@ -287,7 +286,18 @@ paths:
                     msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
                     developerToken: "dev_pk_..."
                   payload:
-                    username: "alice@finternet"
+                    username: "+919876543210"
+              InitiateOTPEmail:
+                summary: "Step 1: Initiate login by sending OTP (Email)"
+                value:
+                  context:
+                    id: "api.account.login"
+                    version: "1.0"
+                    ts: "2025-09-09T09:00:00Z"
+                    msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                    developerToken: "dev_pk_..."
+                  payload:
+                    username: "alice@example.com"
               VerifyOTP:
                 summary: "Step 2: Verify OTP and get session token"
                 value:
@@ -298,7 +308,7 @@ paths:
                     msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
                     developerToken: "dev_pk_..."
                   payload:
-                    username: "alice@finternet"
+                    username: "alice@example.com"
                     otp: "1234"
       responses:
         '200':
@@ -323,8 +333,8 @@ paths:
                     response:
                       success: true
                       message: "OTP sent successfully"
-                VerifyOTP_Response:
-                  summary: "Step 2 Response: Authentication successful, token granted"
+                VerifyOTP_Response_AccountExisits:
+                  summary: "Step 2 Response: [Existing Account] Authentication successful, token granted"
                   value:
                     context:
                       id: "api.account.login"
@@ -336,6 +346,22 @@ paths:
                       accessToken: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
                       tokenType: "Bearer"
                       expiresIn: 3600
+                      isExisting: true
+                VerifyOTP_Response_NewAccount:
+                  summary: "Step 2 Response: [New Account] Authentication successful, token granted"
+                  value:
+                    context:
+                      id: "api.account.login"
+                      version: "1.0"
+                      ts: "2025-11-25T12:05:01Z"
+                      msgId: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
+                      status: "successful"
+                    response:
+                      accessToken: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      tokenType: "Bearer"
+                      expiresIn: 3600
+                      isExisting: false
+
         '401':
           $ref: '#/components/responses/UnauthorizedError' # Catches both dev auth and user auth failures
 
@@ -713,11 +739,11 @@ components:
         did: { type: string, example: "did:key:z..." }
     AccountProfile:
       type: object
-      required: [did, address, email, name, entityType]
+      required: [did, address, name, entityType]
       properties:
         did: { type: string, example: "did:key:z..." }
         address: { type: string, example: "alice@finternet" }
-        email: { type: string, format: email, example: "u***@example.com" }
+        email: { type: string, format: email, example: "u***@example.com", nullable: true }
         name: { type: string, example: "Alice Smith" }
         mobile: { type: string, example: "+9***3210", nullable: true }
         entityType: { type: string, enum: [PERSONAL, BUSINESS] }
