@@ -162,8 +162,8 @@ paths:
                       msgId: "a1b2c3d4..."
                       status: "failed"
                       error:
-                        code: "IDENTIFIER_TAKEN"
-                        message: "The address 'alice@finternet' is already in use."
+                        code: "RESOURCE_ALREADY_EXISTS"
+                        message: "Address is already in use."
                     response: {}
 
   /v1/account/update:
@@ -199,6 +199,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse_UpdatedAccountProfile'
+              example:
+                context:
+                  id: "api.account.update"
+                  version: "1.0"
+                  ts: "2025-09-09T10:00:01Z"
+                  msgId: "d1e2f3a4-b5c6-7890-1234-567890abcdef"
+                  status: "successful"
+                response:
+                  id: "user123"
+                  address: "alice@finternet"
+                  name: "Alice Smith-Jones"
+                  mobile: "+919876543211"
+                  updatedAt: "2025-09-09T10:00:01Z"
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '409':
@@ -215,8 +228,8 @@ paths:
                   msgId: "a1b2c3d4..."
                   status: "failed"
                   error:
-                    code: "PHONE_NUMBER_IN_USE"
-                    message: "The phone number is already associated with another account."
+                    code: "RESOURCE_ALREADY_EXISTS"
+                    message: "Address is already in use"
                 response: {}
 
   /v1/address/checkAvailability:
@@ -396,6 +409,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse_Success'
+              example:
+                context:
+                  id: "api.account.logout"
+                  version: "1.0"
+                  ts: "2025-09-09T10:30:01Z"
+                  msgId: "c1d2e3f4-a5b6-7890-1234-567890abcdef"
+                  status: "successful"
+                response:
+                  message: "Logout successful"
         '401':
           $ref: '#/components/responses/UnauthorizedError'
 
@@ -431,6 +453,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse_AccountProfile'
+              example:
+                context:
+                  id: "api.account.get"
+                  version: "1.0"
+                  ts: "2025-09-09T09:05:01Z"
+                  msgId: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
+                  status: "successful"
+                response:
+                  id: "user123"
+                  address: "alice@finternet"
+                  name: "Alice Smith"
+                  entityType: "PERSONAL"
+                  createdAt: "2025-09-08T12:00:00Z"
+                  updatedAt: "2025-09-09T09:00:00Z"
         '401':
           $ref: '#/components/responses/UnauthorizedError'
 
@@ -528,19 +564,26 @@ components:
         developerSignature: { type: string, example: "t=...,v1=...", nullable: true, description: "B2B Developer Signature (e.g., HMAC)" }
         authorization: { type: string, example: "Bearer eyJ...", nullable: true, description: "End-user's session token." }
     ResponseContext:
-      type: object
-      required: [id, version, ts, msgId, status]
-      properties:
-        id: { type: string, example: "api.account.create" }
-        version: { type: string, example: "1.0" }
-        ts: { type: string, format: date-time }
-        msgId: { type: string, format: uuid }
-        transactionId: { type: string, format: uuid, nullable: true }
-        status: { type: string, enum: [successful, failed, pending] }
-        error:
-          nullable: true
-          allOf:
-            - $ref: '#/components/schemas/ErrorPayload'
+      oneOf:
+        - type: object
+          required: [id, version, ts, msgId, status]
+          properties:
+            id: { type: string, example: "api.endpoint.name" }
+            version: { type: string, example: "1.0" }
+            ts: { type: string, format: date-time }
+            msgId: { type: string, format: uuid }
+            transactionId: { type: string, format: uuid, nullable: true }
+            status: { type: string, enum: [successful] }
+        - type: object
+          required: [id, version, ts, msgId, status, error]
+          properties:
+            id: { type: string, example: "api.endpoint.name" }
+            version: { type: string, example: "1.0" }
+            ts: { type: string, format: date-time }
+            msgId: { type: string, format: uuid }
+            transactionId: { type: string, format: uuid, nullable: true }
+            status: { type: string, enum: [failed, pending] }
+            error: { $ref: '#/components/schemas/ErrorPayload' }
     Signature:
       type: object
       required: [type, jws]
@@ -679,7 +722,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "AUTHENTICATION_FAILED", message: "Token invalid or expired." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "UNAUTHORIZED", message: "Unauthorized. The JWT is missing, invalid, or expired" } }
             response: {}
     UnauthorizedDeveloperError:
       description: "Developer authentication failed (HTTP 401)."
@@ -703,7 +746,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "The requested resource was not found." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "Account not found" } }
             response: {}
     BadRequestError:
       description: "Invalid request."
