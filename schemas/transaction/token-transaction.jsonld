@@ -5,6 +5,16 @@
   "txId": "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd",
   "tokenId": "urn:uuid:usdc-a1b2c3d4",
   "operation": "transfer",
+  "identities": [
+    {
+      "id": "did:web:circle.com",
+      "type": "issuer"
+    },
+    {
+      "id": "did:web:alice.example",
+      "type": "owner"
+    }
+  ],
   "participants": [
     {
       "accountId": "did:web:alice.example",

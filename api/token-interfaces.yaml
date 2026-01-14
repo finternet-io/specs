@@ -55,6 +55,8 @@ servers:
   - url: "http://localhost:3000"
     description: "Local Server"
 tags:
+  - name: "TokenClass"
+    description: "Endpoints for token class registration and management."
   - name: "Token"
     description: "Endpoints for token creation, querying, and lifecycle management."
   - name: "Transaction"
@@ -65,6 +67,189 @@ tags:
 # ===============================================================
 
 paths:
+  # -------------------- TokenClass --------------------
+  /v1/tokenclass/register:
+    post:
+      tags:
+        - "TokenClass"
+      summary: "Register new token class"
+      description: |
+        Register a new token class with schema definition and metadata.
+        Only authorized administrators can register token classes.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_RegisterTokenClassRequest'
+            example:
+              context:
+                id: "api.tokenclass.register"
+                version: "1.0"
+                ts: "2025-01-04T10:00:00Z"
+                msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                developerToken: "dev_pk_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                tokenClass: "USDC"
+                tokenStandard: "ERC-3643"
+                name: "USD Coin"
+                description: "Fully-backed USD stablecoin by Circle"
+                schema:
+                  metadata:
+                    required: ["tokenStandard", "name", "symbol", "decimals", "fungibility"]
+                  data:
+                    properties:
+                      reserveAccount: { type: "string" }
+                      jurisdiction: { type: "string" }
+                identities:
+                  - id: "did:web:circle.com"
+                    type: "issuer"
+                    roles: ["admin", "minter"]
+                metadata:
+                  category: "stablecoin"
+                  tags: ["fiat-backed", "regulated", "USD"]
+      responses:
+        '201':
+          description: "Token class registered successfully"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TokenClassDetails'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '409':
+          description: "Token class already exists"
+
+  /v1/tokenclass/update:
+    post:
+      tags:
+        - "TokenClass"
+      summary: "Update token class"
+      description: |
+        Update token class metadata, schema, or identities/roles.
+        Can be used to add/remove authorized minters or update class properties.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_UpdateTokenClassRequest'
+            example:
+              context:
+                id: "api.tokenclass.update"
+                version: "1.0"
+                ts: "2025-01-04T11:00:00Z"
+                msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef"
+                developerToken: "dev_pk_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                tokenClass: "USDC"
+                identities:
+                  - id: "did:web:newminter.example"
+                    type: "operator"
+                    roles: ["minter"]
+                metadata:
+                  tags: ["fiat-backed", "regulated", "USD", "circle"]
+      responses:
+        '200':
+          description: "Token class updated successfully"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TokenClassDetails'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /v1/tokenclass/get:
+    post:
+      tags:
+        - "TokenClass"
+      summary: "Get token class details"
+      description: "Retrieve detailed information about a specific token class"
+      security:
+        - developerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_GetTokenClassRequest'
+            example:
+              context:
+                id: "api.tokenclass.get"
+                version: "1.0"
+                ts: "2025-01-04T10:00:00Z"
+                msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef12"
+                developerToken: "dev_pk_..."
+              payload:
+                tokenClass: "USDC"
+      responses:
+        '200':
+          description: "Token class details retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TokenClassDetails'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /v1/tokenclass/search:
+    post:
+      tags:
+        - "TokenClass"
+      summary: "Search token classes"
+      description: "Search and list all registered token classes with filters"
+      security:
+        - developerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_SearchTokenClassRequest'
+            example:
+              context:
+                id: "api.tokenclass.search"
+                version: "1.0"
+                ts: "2025-01-04T10:00:00Z"
+                msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef123"
+                developerToken: "dev_pk_..."
+              payload:
+                filters:
+                  tokenStandard: "ERC-3643"
+                  category: "stablecoin"
+                  pagination:
+                    limit: 50
+                    offset: 0
+      responses:
+        '200':
+          description: "Token class list retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TokenClassList'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
   # -------------------- Token --------------------
   /v1/token/get:
     post:
@@ -101,6 +286,72 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+
+  /v1/token/mint:
+    post:
+      tags:
+        - "Token"
+      summary: "Mint new token"
+      description: |
+        Mint (create) a new token instance. This endpoint has separate ACL controls from other token operations.
+        Only authorized identities registered for the tokenClass can mint tokens.
+
+        Requires both developer authentication and end-user signature.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_MintTokenRequest'
+            example:
+              context:
+                id: "api.token.mint"
+                version: "1.0"
+                ts: "2025-01-04T10:00:00Z"
+                msgId: "c1d2e3f4-a5b6-7890-1234-567890abcdef"
+                developerToken: "dev_pk_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                tokenClass: "USDC"
+                metadata:
+                  tokenStandard: "ERC-3643"
+                  name: "USD Coin"
+                  symbol: "USDC"
+                  decimals: 6
+                  fungibility: "fungible"
+                  valuationType: "fixed"
+                  valuationModel:
+                    parValue:
+                      amount: "1.00"
+                      currency: "USD"
+                data:
+                  reserveAccount: "did:web:circle.com:accounts:reserve-001"
+                  jurisdiction: "US"
+                identities:
+                  - id: "did:web:circle.com"
+                    type: "issuer"
+                  - id: "did:web:circle.com"
+                    type: "creator"
+                initialSupply: "1000000000000"
+              signature:
+                type: "JsonWebSignature2020"
+                jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+      responses:
+        '202':
+          description: "Mint transaction accepted (async)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TransactAccepted'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
 
   /v1/token/search:
     post:
@@ -153,7 +404,6 @@ paths:
         Unified endpoint for all token write operations. The operation is specified in the payload.
 
         **Supported Operations:**
-        - `mint` - Create new token instance
         - `burn` - Burn/destroy token (terminal state)
         - `freeze` - Freeze token (compliance/regulatory hold)
         - `unfreeze` - Unfreeze token
@@ -166,7 +416,9 @@ paths:
         - `revokeClaim` - Revoke a claim
         - `updateClaimStatus` - Update claim status
 
-        Critical operations (mint, burn, transfer, addClaim, etc.) require end-user signature.
+        **Note:** `mint` operation has a dedicated `/v1/token/mint` endpoint with separate ACL controls.
+
+        Critical operations (burn, transfer, addClaim, etc.) require end-user signature.
       security:
         - developerToken: []
         - developerSignature: []
@@ -177,41 +429,6 @@ paths:
             schema:
               $ref: '#/components/schemas/ApiRequest_TransactRequest'
             examples:
-              MintToken:
-                summary: "Mint a new fungible token"
-                value:
-                  context:
-                    id: "api.token.transact"
-                    version: "1.0"
-                    ts: "2025-01-04T10:00:00Z"
-                    msgId: "c1d2e3f4-a5b6-7890-1234-567890abcdef"
-                    developerToken: "dev_pk_..."
-                    authorization: "Bearer eyJ..."
-                  payload:
-                    operation: "mint"
-                    metadata:
-                      tokenStandard: "UNITS-FT"
-                      name: "USD Coin"
-                      symbol: "USDC"
-                      decimals: 6
-                      fungibility: "fungible"
-                      valuationType: "fixed"
-                      valuationModel:
-                        parValue:
-                          amount: "1.00"
-                          currency: "USD"
-                    data:
-                      reserveAccount: "did:web:circle.com:accounts:reserve-001"
-                      jurisdiction: "US"
-                    identities:
-                      - id: "did:web:circle.com"
-                        type: "issuer"
-                      - id: "did:web:circle.com"
-                        type: "creator"
-                    initialSupply: "1000000000000"
-                  signature:
-                    type: "JsonWebSignature2020"
-                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               BurnToken:
                 summary: "Burn tokens"
                 value:
@@ -660,6 +877,134 @@ components:
         context: { $ref: '#/components/schemas/ResponseContext' }
         response: { type: object, description: "Always empty on error", example: {} }
 
+    # --- TokenClass Schemas ---
+
+    TokenClass:
+      type: object
+      required: [tokenClass, tokenStandard, name, schema]
+      description: "Token class definition with schema and authorized identities"
+      properties:
+        tokenClass:
+          type: string
+          description: "Unique token class identifier (e.g., USDC, USDT)"
+        tokenStandard:
+          type: string
+          description: "Base protocol standard (e.g., ERC-3643, UNITS-FT)"
+        name:
+          type: string
+          description: "Human-readable name"
+        description:
+          type: string
+          description: "Detailed description"
+        schema:
+          type: object
+          description: "JSON Schema definition for token instances"
+          properties:
+            metadata:
+              type: object
+              description: "Metadata schema requirements"
+            data:
+              type: object
+              description: "Data schema requirements"
+        identities:
+          type: array
+          items: { $ref: '#/components/schemas/Identity' }
+          description: "Authorized identities who can mint tokens of this class"
+        metadata:
+          type: object
+          description: "Token class metadata"
+          properties:
+            category:
+              type: string
+              description: "Category (e.g., stablecoin, security, utility)"
+            tags:
+              type: array
+              items: { type: string }
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+
+    RegisterTokenClassRequest:
+      type: object
+      required: [tokenClass, tokenStandard, name, schema]
+      description: "Request to register a new token class"
+      properties:
+        tokenClass: { type: string, example: "USDC" }
+        tokenStandard: { type: string, example: "ERC-3643" }
+        name: { type: string, example: "USD Coin" }
+        description: { type: string }
+        schema:
+          type: object
+          description: "JSON Schema for token instances"
+        identities:
+          type: array
+          items: { $ref: '#/components/schemas/Identity' }
+          description: "Initial authorized minters"
+        metadata:
+          type: object
+          description: "Token class metadata"
+
+    UpdateTokenClassRequest:
+      type: object
+      required: [tokenClass]
+      description: "Request to update token class properties"
+      properties:
+        tokenClass: { type: string, example: "USDC" }
+        description: { type: string }
+        schema:
+          type: object
+          description: "Updated schema definition"
+        identities:
+          type: array
+          items: { $ref: '#/components/schemas/Identity' }
+          description: "Updated list of authorized identities"
+        metadata:
+          type: object
+          description: "Updated metadata"
+
+    GetTokenClassRequest:
+      type: object
+      required: [tokenClass]
+      properties:
+        tokenClass: { type: string, example: "USDC" }
+
+    SearchTokenClassRequest:
+      type: object
+      properties:
+        filters:
+          type: object
+          description: "Search filters for token classes"
+          properties:
+            tokenStandard: { type: string }
+            category: { type: string }
+            tags: { type: array, items: { type: string } }
+            pagination:
+              type: object
+              properties:
+                limit: { type: integer, default: 50, minimum: 1, maximum: 100 }
+                offset: { type: integer, default: 0, minimum: 0 }
+            sort:
+              type: object
+              properties:
+                field: { type: string, enum: [createdAt, updatedAt, name], default: "createdAt" }
+                order: { type: string, enum: [asc, desc], default: "desc" }
+
+    TokenClassList:
+      type: object
+      properties:
+        tokenClasses:
+          type: array
+          items: { $ref: '#/components/schemas/TokenClass' }
+        pagination:
+          type: object
+          properties:
+            total: { type: integer }
+            limit: { type: integer }
+            offset: { type: integer }
+
     # --- Token-Specific Schemas ---
 
     # Identity
@@ -689,12 +1034,18 @@ components:
       type: object
       required: [tokenStandard, name, symbol, decimals, fungibility]
       properties:
-        tokenStandard: { type: string, example: "UNITS-FT" }
+        tokenStandard:
+          type: string
+          description: "Base protocol standard (e.g., ERC-3643, UNITS-FT, ERC-20)"
+          example: "ERC-3643"
         name: { type: string, example: "USD Coin" }
         symbol: { type: string, example: "USDC" }
         decimals: { type: integer, example: 6 }
         fungibility: { type: string, enum: [fungible, nonFungible, semiFungible] }
-        tokenClass: { type: string, example: "stablecoin" }
+        tokenClass:
+          type: string
+          description: "Specific token class identifier (e.g., USDC, USDT, WETH)"
+          example: "USDC"
         version: { type: string, example: "1.0.0" }
         status: { type: string, enum: [active, inactive, deprecated, test] }
         valuationType: { type: string, enum: [fixed, pegged, market] }
@@ -781,15 +1132,6 @@ components:
       type: object
       required: [id, metadata, state]
       properties:
-        "@context":
-          oneOf:
-            - type: string
-            - type: array
-              items:
-                oneOf:
-                  - type: string
-                  - type: object
-        "@type": { type: string, example: "FinancialProduct" }
         id: { type: string, format: uri-reference }
         metadata: { $ref: '#/components/schemas/TokenMetadata' }
         data: { type: object, additionalProperties: true }
@@ -807,6 +1149,35 @@ components:
       properties:
         tokenId: { type: string, format: uri-reference, example: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab" }
 
+    MintTokenRequest:
+      type: object
+      required: [tokenClass, metadata, initialSupply]
+      description: "Request to mint a new token instance"
+      properties:
+        tokenClass:
+          type: string
+          description: "Token class identifier (must be pre-registered)"
+          example: "USDC"
+        metadata:
+          type: object
+          description: "Token metadata"
+          additionalProperties: true
+        data:
+          type: object
+          description: "Token data section (optional)"
+          additionalProperties: true
+        identities:
+          type: array
+          items: { $ref: '#/components/schemas/Identity' }
+          description: "Identity relationships for this token"
+        claims:
+          type: array
+          items: { $ref: '#/components/schemas/Claim' }
+          description: "Initial verifiable claims (optional)"
+        initialSupply:
+          type: string
+          description: "Initial token supply (for fungible tokens)"
+
     SearchTokensRequest:
       type: object
       properties:
@@ -814,7 +1185,8 @@ components:
           type: object
           description: "Search filters (owner inferred from JWT/ACL)"
           properties:
-            tokenStandard: { type: string }
+            tokenClass: { type: string, description: "Filter by token class (e.g., USDC, USDT)" }
+            tokenStandard: { type: string, description: "Filter by protocol standard" }
             fungibility: { type: string, enum: [fungible, nonFungible, semiFungible] }
             status: { type: string, enum: [active, frozen, redeemed, burned, expired] }
             tags: { type: array, items: { type: string } }
@@ -835,15 +1207,16 @@ components:
       description: |
         Request payload for token operations. The structure varies by operation:
 
-        **For mint:** `operation`, `metadata`, `data` (optional), `claims` (optional), `initialSupply`
         **For update:** `operation`, `tokenId`, `data` (optional), `metadata` (optional)
         **For addClaim:** `operation`, `tokenId`, `claim`
         **For revokeClaim:** `operation`, `tokenId`, `claimId`
         **For burn/freeze/transfer:** `operation`, `tokenId`, plus operation-specific params at root level
+
+        **Note:** `mint` operation is handled by separate `/v1/token/mint` endpoint.
       properties:
         operation:
           type: string
-          enum: [mint, burn, freeze, unfreeze, lock, unlock, redeem, transfer, update, addClaim, revokeClaim, updateClaimStatus]
+          enum: [burn, freeze, unfreeze, lock, unlock, redeem, transfer, update, addClaim, revokeClaim, updateClaimStatus]
         tokenId:
           type: string
           format: uri-reference
@@ -1032,6 +1405,10 @@ components:
           type: string
           format: uri-reference
           description: "Account that initiated the transaction"
+        identities:
+          type: array
+          items: { $ref: '#/components/schemas/Identity' }
+          description: "Snapshot of all identities involved (captured at transaction time for auditability)"
         tokenTransactions:
           type: array
           items:
@@ -1092,6 +1469,10 @@ components:
         operation:
           type: string
           enum: [mint, burn, transfer, freeze, unfreeze, lock, unlock, redeem, update, addClaim, revokeClaim]
+        identities:
+          type: array
+          items: { $ref: '#/components/schemas/Identity' }
+          description: "Snapshot of token identities at time of this transaction"
         participants:
           type: array
           items:
@@ -1294,11 +1675,57 @@ components:
             offset: { type: integer }
 
     # --- Specific Request Envelopes ---
+
+    # TokenClass API Envelopes
+    ApiRequest_RegisterTokenClassRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/RegisterTokenClassRequest' }
+
+    ApiRequest_UpdateTokenClassRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/UpdateTokenClassRequest' }
+
+    ApiRequest_GetTokenClassRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/GetTokenClassRequest' }
+
+    ApiRequest_SearchTokenClassRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/SearchTokenClassRequest' }
+
+    ApiResponse_TokenClassDetails:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/TokenClass' }
+
+    ApiResponse_TokenClassList:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/TokenClassList' }
+
+    # Token API Envelopes
     ApiRequest_GetTokenRequest:
       allOf:
         - $ref: '#/components/schemas/RequestContext'
         - properties:
             payload: { $ref: '#/components/schemas/GetTokenRequest' }
+
+    ApiRequest_MintTokenRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/MintTokenRequest' }
+            signature: { $ref: '#/components/schemas/Signature' }
 
     ApiRequest_SearchTokensRequest:
       allOf:

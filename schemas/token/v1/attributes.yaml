@@ -40,7 +40,7 @@ components:
           description: DID, URI, or identifier of the identity
           x-jsonld: { "@id": "@id", "@type": "@id" }
         type:
-          $ref: '#/components/schemas/IdentityType'
+          $ref: "#/components/schemas/IdentityType"
         roles:
           type: array
           items:
@@ -70,8 +70,8 @@ components:
           examples:
             - UNITS-FT
             - UNITS-NFT
-            - ERC20
-            - ERC721
+            - ERC-20
+            - ERC-721
         name:
           type: string
           description: Human-readable token name
@@ -99,8 +99,12 @@ components:
           x-jsonld: { "@id": "finternet:fungibility", "@type": "@vocab" }
         tokenClass:
           type: string
-          description: Identifier for the token class/template
+          description: Specific token class identifier (e.g., USDC, USDT, WETH) - must be pre-registered
           x-jsonld: { "@id": "finternet:tokenClass" }
+          examples:
+            - USDC
+            - USDT
+            - WETH
         version:
           type: string
           description: Version of the token specification
@@ -131,11 +135,11 @@ components:
             - proxy
           x-jsonld: { "@id": "finternet:stateModel", "@type": "@vocab" }
         stateProvider:
-          $ref: '#/components/schemas/StateProvider'
+          $ref: "#/components/schemas/StateProvider"
         valuationModel:
-          $ref: '#/components/schemas/ValuationModel'
+          $ref: "#/components/schemas/ValuationModel"
         flags:
-          $ref: '#/components/schemas/TokenFlags'
+          $ref: "#/components/schemas/TokenFlags"
         tags:
           type: array
           items:
@@ -152,7 +156,8 @@ components:
             type: string
             format: uri
           description: URLs to off-chain resources
-          x-jsonld: { "@id": "schema:url", "@container": "@set", "@type": "@id" }
+          x-jsonld:
+            { "@id": "schema:url", "@container": "@set", "@type": "@id" }
         createdAt:
           type: string
           format: date-time
@@ -211,15 +216,15 @@ components:
         "@type": finternet:ValuationModel
       properties:
         parValue:
-          $ref: '#/components/schemas/ParValue'
+          $ref: "#/components/schemas/ParValue"
         redeemableBy:
           type: string
           description: Entity responsible for redemption
           x-jsonld: { "@id": "finternet:redeemableBy" }
         peggedTo:
-          $ref: '#/components/schemas/PeggedTo'
+          $ref: "#/components/schemas/PeggedTo"
         valuationPolicy:
-          $ref: '#/components/schemas/ValuationPolicy'
+          $ref: "#/components/schemas/ValuationPolicy"
 
     ParValue:
       type: object
@@ -268,13 +273,18 @@ components:
         requiresExternalClaims:
           type: boolean
           description: Whether value must come from claims
-          x-jsonld: { "@id": "finternet:requiresExternalClaims", "@type": "xsd:boolean" }
+          x-jsonld:
+            {
+              "@id": "finternet:requiresExternalClaims",
+              "@type": "xsd:boolean",
+            }
         recommendedClaimTypes:
           type: array
           items:
             type: string
           description: Recommended claim types for valuation
-          x-jsonld: { "@id": "finternet:recommendedClaimTypes", "@container": "@set" }
+          x-jsonld:
+            { "@id": "finternet:recommendedClaimTypes", "@container": "@set" }
 
     TokenFlags:
       type: object
@@ -329,18 +339,20 @@ components:
           type: string
           format: date-time
           description: Effective start date
-          x-jsonld: { "@id": "finternet:effectiveFrom", "@type": "xsd:dateTime" }
+          x-jsonld:
+            { "@id": "finternet:effectiveFrom", "@type": "xsd:dateTime" }
         effectiveUntil:
           type: string
           format: date-time
           description: Effective end date
-          x-jsonld: { "@id": "finternet:effectiveUntil", "@type": "xsd:dateTime" }
+          x-jsonld:
+            { "@id": "finternet:effectiveUntil", "@type": "xsd:dateTime" }
         supply:
-          $ref: '#/components/schemas/Supply'
+          $ref: "#/components/schemas/Supply"
         lockState:
-          $ref: '#/components/schemas/LockState'
+          $ref: "#/components/schemas/LockState"
         restrictions:
-          $ref: '#/components/schemas/Restrictions'
+          $ref: "#/components/schemas/Restrictions"
         customState:
           type: object
           description: Token-class-specific state fields
@@ -488,7 +500,7 @@ components:
           additionalProperties: true
           x-jsonld: { "@id": "vc:credentialSubject" }
         proof:
-          $ref: '#/components/schemas/Proof'
+          $ref: "#/components/schemas/Proof"
         status:
           type: string
           description: Status of the claim

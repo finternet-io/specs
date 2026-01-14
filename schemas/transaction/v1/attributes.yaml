@@ -38,6 +38,25 @@ components:
           format: uri-reference
           description: Account or system that initiated the transaction
           x-jsonld: { "@id": "finternet:initiator", "@type": "@id" }
+        identities:
+          type: array
+          description: Snapshot of all identities involved in transaction (for auditability)
+          items:
+            type: object
+            required:
+              - id
+              - type
+            properties:
+              id:
+                type: string
+                format: uri-reference
+              type:
+                type: string
+              roles:
+                type: array
+                items:
+                  type: string
+          x-jsonld: { "@id": "finternet:identities", "@container": "@set" }
         tokenTransactions:
           type: array
           description: References to associated TokenTransaction records
@@ -244,6 +263,25 @@ components:
           x-jsonld: { "@id": "finternet:tokenId", "@type": "@id" }
         operation:
           $ref: '#/components/schemas/OperationType'
+        identities:
+          type: array
+          description: Snapshot of token identities at time of transaction
+          items:
+            type: object
+            required:
+              - id
+              - type
+            properties:
+              id:
+                type: string
+                format: uri-reference
+              type:
+                type: string
+              roles:
+                type: array
+                items:
+                  type: string
+          x-jsonld: { "@id": "finternet:identities", "@container": "@set" }
         participants:
           type: array
           description: Participants involved in this transaction
