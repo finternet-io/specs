@@ -237,9 +237,12 @@ paths:
                 filters:
                   tokenStandard: "ERC-3643"
                   category: "stablecoin"
-                  pagination:
-                    limit: 50
-                    offset: 0
+                pagination:
+                  limit: 50
+                  offset: 0
+                sort:
+                  field: "createdAt"
+                  order: "desc"
       responses:
         '200':
           description: "Token class list retrieved"
@@ -385,6 +388,9 @@ paths:
                 pagination:
                   limit: 50
                   offset: 0
+                sort:
+                  field: "createdAt"
+                  order: "desc"
       responses:
         '200':
           description: "Token list retrieved successfully."
@@ -753,9 +759,12 @@ paths:
                   dateRange:
                     from: "2025-01-01T00:00:00Z"
                     to: "2025-01-31T23:59:59Z"
-                  pagination:
-                    limit: 50
-                    offset: 0
+                pagination:
+                  limit: 50
+                  offset: 0
+                sort:
+                  field: "createdAt"
+                  order: "desc"
       responses:
         '200':
           description: "Transaction list retrieved"
@@ -796,9 +805,12 @@ paths:
                   dateRange:
                     from: "2025-01-01T00:00:00Z"
                     to: "2025-01-31T23:59:59Z"
-                  pagination:
-                    limit: 100
-                    offset: 0
+                pagination:
+                  limit: 100
+                  offset: 0
+                sort:
+                  field: "timestamp"
+                  order: "desc"
       responses:
         '200':
           description: "Token transaction history retrieved"
@@ -877,6 +889,110 @@ components:
         context: { $ref: '#/components/schemas/ResponseContext' }
         response: { type: object, description: "Always empty on error", example: {} }
 
+    # --- Common Search Schemas ---
+
+    PaginationRequest:
+      type: object
+      description: "Pagination parameters for search requests"
+      properties:
+        limit:
+          type: integer
+          default: 50
+          minimum: 1
+          maximum: 100
+          description: "Maximum number of results to return"
+        offset:
+          type: integer
+          default: 0
+          minimum: 0
+          description: "Number of results to skip"
+
+    PaginationResponse:
+      type: object
+      description: "Pagination metadata in search responses"
+      properties:
+        total: { type: integer, description: "Total number of matching records" }
+        limit: { type: integer, description: "Requested limit" }
+        offset: { type: integer, description: "Requested offset" }
+
+    SortRequest:
+      type: object
+      description: "Sort parameters for search requests"
+      properties:
+        field:
+          type: string
+          enum: [createdAt, updatedAt, name]
+          default: createdAt
+          description: "Field to sort by"
+        order:
+          type: string
+          enum: [asc, desc]
+          default: desc
+          description: "Sort direction"
+
+    FilterFieldConvention:
+      type: string
+      description: |
+        **Filter Field Naming Convention**
+
+        Filters are resolved in the following order. `defaultFilterScope` ONLY affects
+        unqualified custom fields (category 3 below).
+
+        ┌─────────────────────────────────────────────────────────────────────────┐
+        │  FILTER RESOLUTION ORDER                                                │
+        ├─────────────────────────────────────────────────────────────────────────┤
+        │                                                                         │
+        │  1. KNOWN FIELDS (top-level table columns):                            │
+        │     - Examples: status, tokenClass, tokenStandard, fungibility, owner  │
+        │     - These are direct database columns, NOT in JSONB                  │
+        │     - ⚠️  defaultFilterScope has NO effect on these                    │
+        │     - Usage: "status": "active"                                        │
+        │                                                                         │
+        │  2. EXPLICIT PATHS (dot-notation):                                     │
+        │     - Examples: "data.reserveAccount", "metadata.category"             │
+        │     - Explicitly specifies which JSONB column to search                │
+        │     - ⚠️  defaultFilterScope has NO effect on these                    │
+        │     - Usage: "data.jurisdiction": "US"                                 │
+        │                                                                         │
+        │  3. UNQUALIFIED CUSTOM FIELDS (no dot, not a known field):             │
+        │     - Examples: "customField", "myProperty"                            │
+        │     - ✅ defaultFilterScope ONLY affects these fields                  │
+        │     - If defaultFilterScope="metadata" → metadata.customField          │
+        │     - If defaultFilterScope="data" → data.customField                  │
+        │                                                                         │
+        └─────────────────────────────────────────────────────────────────────────┘
+
+        **Known Fields by Entity:**
+        - TokenClass: tokenClass, tokenStandard, name, status
+        - Token: tokenClass, tokenStandard, status, fungibility, owner
+        - Transaction: status, tokenId
+        - TokenTransaction: tokenId, operation, entryType, fromAccount, toAccount
+
+        **Example 1: Default scope is metadata**
+        ```json
+        {
+          "filters": {
+            "status": "active",           // → tokens.status (known field)
+            "tokenClass": "USDC",         // → tokens.token_class (known field)
+            "category": "stablecoin",     // → metadata.category (unqualified)
+            "data.jurisdiction": "US"     // → data.jurisdiction (explicit path)
+          },
+          "defaultFilterScope": "metadata"
+        }
+        ```
+
+        **Example 2: Default scope is data**
+        ```json
+        {
+          "filters": {
+            "status": "active",           // → tokens.status (known field, unchanged!)
+            "reserveAccount": "acct-123", // → data.reserveAccount (unqualified)
+            "metadata.tags": ["regulated"] // → metadata.tags (explicit path)
+          },
+          "defaultFilterScope": "data"
+        }
+        ```
+
     # --- TokenClass Schemas ---
 
     TokenClass:
@@ -912,8 +1028,25 @@ components:
           description: "Authorized identities who can mint tokens of this class"
         metadata:
           type: object
-          description: "Token class metadata"
+          description: "Token class metadata including balance model configuration"
           properties:
+            balanceModel:
+              type: string
+              enum: [per_owner, single_token]
+              default: single_token
+              description: |
+                Defines how token balances are managed:
+                - "per_owner": Each owner has their own token with balance (fungible tokens).
+                              Mint creates/updates token for the owner.
+                              Transfer debits sender's token, credits recipient's token.
+                - "single_token": One token per class (NFTs, unique assets).
+                                  Mint creates/updates the single token.
+                                  Transfer changes ownership of the token.
+            decimals:
+              type: integer
+              minimum: 0
+              maximum: 18
+              description: "Decimal places for fungible tokens (e.g., 6 for USDC, 18 for ETH)"
             category:
               type: string
               description: "Category (e.g., stablecoin, security, utility)"
@@ -973,24 +1106,28 @@ components:
 
     SearchTokenClassRequest:
       type: object
+      description: "Search request with filters, pagination, and sort at payload level"
       properties:
         filters:
           type: object
-          description: "Search filters for token classes"
+          description: |
+            Search filters for token classes.
+            Known fields: tokenStandard, category, tags.
+            Custom fields default to metadata scope (see FilterFieldConvention).
           properties:
-            tokenStandard: { type: string }
-            category: { type: string }
-            tags: { type: array, items: { type: string } }
-            pagination:
-              type: object
-              properties:
-                limit: { type: integer, default: 50, minimum: 1, maximum: 100 }
-                offset: { type: integer, default: 0, minimum: 0 }
-            sort:
-              type: object
-              properties:
-                field: { type: string, enum: [createdAt, updatedAt, name], default: "createdAt" }
-                order: { type: string, enum: [asc, desc], default: "desc" }
+            tokenStandard: { type: string, description: "Filter by protocol standard" }
+            category: { type: string, description: "Filter by category (searches metadata.category)" }
+            tags: { type: array, items: { type: string }, description: "Filter by tags" }
+          additionalProperties: true
+        defaultFilterScope:
+          type: string
+          enum: [metadata, data]
+          default: metadata
+          description: "Default scope for unqualified filter fields (default: metadata)"
+        pagination:
+          $ref: '#/components/schemas/PaginationRequest'
+        sort:
+          $ref: '#/components/schemas/SortRequest'
 
     TokenClassList:
       type: object
@@ -999,11 +1136,7 @@ components:
           type: array
           items: { $ref: '#/components/schemas/TokenClass' }
         pagination:
-          type: object
-          properties:
-            total: { type: integer }
-            limit: { type: integer }
-            offset: { type: integer }
+          $ref: '#/components/schemas/PaginationResponse'
 
     # --- Token-Specific Schemas ---
 
@@ -1180,26 +1313,30 @@ components:
 
     SearchTokensRequest:
       type: object
+      description: "Search request with filters, pagination, and sort at payload level"
       properties:
         filters:
           type: object
-          description: "Search filters (owner inferred from JWT/ACL)"
+          description: |
+            Search filters for tokens. Owner filtering inferred from JWT/ACL.
+            Known fields: tokenClass, tokenStandard, fungibility, status, tags.
+            Custom fields default to metadata scope (see FilterFieldConvention).
           properties:
             tokenClass: { type: string, description: "Filter by token class (e.g., USDC, USDT)" }
             tokenStandard: { type: string, description: "Filter by protocol standard" }
             fungibility: { type: string, enum: [fungible, nonFungible, semiFungible] }
             status: { type: string, enum: [active, frozen, redeemed, burned, expired] }
             tags: { type: array, items: { type: string } }
-            pagination:
-              type: object
-              properties:
-                limit: { type: integer, default: 50, minimum: 1, maximum: 100 }
-                offset: { type: integer, default: 0, minimum: 0 }
-            sort:
-              type: object
-              properties:
-                field: { type: string, enum: [createdAt, updatedAt, name], default: "createdAt" }
-                order: { type: string, enum: [asc, desc], default: "desc" }
+          additionalProperties: true
+        defaultFilterScope:
+          type: string
+          enum: [metadata, data]
+          default: metadata
+          description: "Default scope for unqualified filter fields (default: metadata)"
+        pagination:
+          $ref: '#/components/schemas/PaginationRequest'
+        sort:
+          $ref: '#/components/schemas/SortRequest'
 
     TransactRequest:
       type: object
@@ -1267,11 +1404,7 @@ components:
           items:
             $ref: '#/components/schemas/Token'
         pagination:
-          type: object
-          properties:
-            total: { type: integer }
-            limit: { type: integer }
-            offset: { type: integer }
+          $ref: '#/components/schemas/PaginationResponse'
 
     TransactAccepted:
       type: object
@@ -1469,6 +1602,18 @@ components:
         operation:
           type: string
           enum: [mint, burn, transfer, freeze, unfreeze, lock, unlock, redeem, update, addClaim, revokeClaim]
+        entryType:
+          type: string
+          enum: [debit, credit]
+          nullable: true
+          description: |
+            Double-entry bookkeeping indicator for transfer operations:
+            - "debit": Reduces sender's balance (outgoing transfer)
+            - "credit": Increases recipient's balance (incoming transfer)
+            - null: For non-transfer operations (mint, burn, freeze, etc.)
+
+            Transfer operations create TWO token_transactions with the same txId:
+            one debit entry for the sender and one credit entry for the recipient.
         identities:
           type: array
           items: { $ref: '#/components/schemas/Identity' }
@@ -1526,17 +1671,32 @@ components:
 
     StateReference:
       type: object
-      description: "State reference with commitment"
+      description: |
+        State reference with cryptographic commitment for verification.
+        State commitments form a chain where each commitment includes the previous one,
+        enabling tamper detection and full state history verification.
       required: [stateCommitment]
       properties:
         stateCommitment:
           type: string
-          description: "Cryptographic hash of state"
+          description: |
+            SHA-256 hash of the token state computed from:
+            previousCommitment + lastTxId + timestamp + tokenId + owner +
+            identities + claims + state + stateVersion
+        previousCommitment:
+          type: string
+          description: "Previous state commitment hash (enables chain verification)"
+        lastTxId:
+          type: string
+          format: uri-reference
+          description: "Transaction ID that caused this state change"
         stateVersion:
           type: integer
+          description: "Monotonically increasing version number (optimistic locking)"
         stateSnapshot:
           type: object
           additionalProperties: true
+          description: "Full state snapshot at this version"
 
     LedgerAnchor:
       type: object
@@ -1576,40 +1736,43 @@ components:
 
     SearchTransactionsRequest:
       type: object
+      description: "Search request with filters, pagination at payload level"
       properties:
         filters:
           type: object
-          description: "Search filters (initiator inferred from JWT/ACL)"
+          description: "Search filters for transactions. Initiator filtering inferred from JWT/ACL."
           properties:
             status:
               $ref: '#/components/schemas/ExecutionStatus'
             tokenId:
               type: string
               format: uri-reference
+              description: "Filter by token ID"
             dateRange:
               type: object
+              description: "Filter by date range"
               properties:
-                from:
-                  type: string
-                  format: date-time
-                to:
-                  type: string
-                  format: date-time
-            pagination:
-              type: object
-              properties:
-                limit:
-                  type: integer
-                  default: 50
-                  minimum: 1
-                  maximum: 100
-                offset:
-                  type: integer
-                  default: 0
-                  minimum: 0
+                from: { type: string, format: date-time }
+                to: { type: string, format: date-time }
+          additionalProperties: true
+        defaultFilterScope:
+          type: string
+          enum: [metadata, data]
+          default: metadata
+          description: "Default scope for unqualified filter fields"
+        pagination:
+          $ref: '#/components/schemas/PaginationRequest'
+        sort:
+          allOf:
+            - $ref: '#/components/schemas/SortRequest'
+            - properties:
+                field:
+                  enum: [createdAt, updatedAt, timestamp]
+                  default: createdAt
 
     TokenTransactionsRequest:
       type: object
+      description: "Request for token transaction history with filters and pagination at payload level"
       properties:
         filters:
           type: object
@@ -1621,24 +1784,37 @@ components:
               description: "Token ID to get history for"
             operation:
               type: string
+              enum: [mint, burn, transfer, freeze, unfreeze, lock, unlock, redeem, update, addClaim, revokeClaim]
+              description: "Filter by operation type"
+            entryType:
+              type: string
+              enum: [debit, credit]
+              description: "Filter by entry type (for transfer operations)"
             dateRange:
               type: object
+              description: "Filter by date range"
               properties:
-                from:
-                  type: string
-                  format: date-time
-                to:
-                  type: string
-                  format: date-time
-            pagination:
-              type: object
-              properties:
+                from: { type: string, format: date-time }
+                to: { type: string, format: date-time }
+          additionalProperties: true
+        defaultFilterScope:
+          type: string
+          enum: [metadata, data]
+          default: metadata
+          description: "Default scope for unqualified filter fields"
+        pagination:
+          allOf:
+            - $ref: '#/components/schemas/PaginationRequest'
+            - properties:
                 limit:
-                  type: integer
                   default: 100
-                offset:
-                  type: integer
-                  default: 0
+        sort:
+          allOf:
+            - $ref: '#/components/schemas/SortRequest'
+            - properties:
+                field:
+                  enum: [timestamp, createdAt]
+                  default: timestamp
 
     # --- Transaction Response Payloads ---
 
@@ -1654,11 +1830,7 @@ components:
           items:
             $ref: '#/components/schemas/TransactionLog'
         pagination:
-          type: object
-          properties:
-            total: { type: integer }
-            limit: { type: integer }
-            offset: { type: integer }
+          $ref: '#/components/schemas/PaginationResponse'
 
     TokenTransactionList:
       type: object
@@ -1668,11 +1840,7 @@ components:
           items:
             $ref: '#/components/schemas/TokenTransaction'
         pagination:
-          type: object
-          properties:
-            total: { type: integer }
-            limit: { type: integer }
-            offset: { type: integer }
+          $ref: '#/components/schemas/PaginationResponse'
 
     # --- Specific Request Envelopes ---
 
