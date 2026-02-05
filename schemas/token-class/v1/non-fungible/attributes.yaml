@@ -1,0 +1,74 @@
+openapi: 3.1.0
+info:
+  title: Finternet NonFungibleTokenClass Schema v1
+  version: 1.0.0
+  description: |
+    NonFungibleTokenClass (UNITS-NFT) - Token class for unique/non-interchangeable tokens.
+
+    ## Characteristics
+
+    - **decimals**: 0 (NFTs are atomic)
+    - **divisible**: false (cannot split an NFT)
+    - **transferable**: true (can transfer ownership)
+
+    ## Examples
+
+    Property deeds, certificates, collectibles, unique items.
+
+components:
+  schemas:
+    NonFungibleTokenClass:
+      type: object
+      description: |
+        NonFungibleTokenClass (UNITS-NFT) - Token class for unique tokens.
+
+        Non-fungible tokens represent unique items - each token is distinct.
+        Each token instance has balance="1" (you own it or you don't).
+      allOf:
+        - $ref: '../base/attributes.yaml#/components/schemas/TokenClass'
+        - type: object
+          x-jsonld:
+            "@context": https://finternet-io.github.io/specs/schemas/token-class/v1/context.jsonld
+            "@type": finternet:NonFungibleTokenClass
+          properties:
+            tokenStandard:
+              type: array
+              description: Must include "UNITS-NFT" as primary standard
+              items:
+                type: string
+              minItems: 1
+              examples:
+                - ["UNITS-NFT"]
+                - ["UNITS-NFT", "ERC-721"]
+            fungibility:
+              type: string
+              const: nonFungible
+              description: Always "nonFungible" for NonFungibleTokenClass
+            decimals:
+              type: integer
+              const: 0
+              description: NFTs always have 0 decimals (atomic)
+            flags:
+              type: object
+              description: Default flags for non-fungible tokens
+              properties:
+                transactable:
+                  type: boolean
+                  default: true
+                transferable:
+                  type: boolean
+                  default: true
+                  description: NFTs are transferable by default
+                divisible:
+                  type: boolean
+                  const: false
+                  description: NFTs cannot be divided
+                locked:
+                  type: boolean
+                  default: false
+                revocable:
+                  type: boolean
+                  default: false
+                burnable:
+                  type: boolean
+                  default: true

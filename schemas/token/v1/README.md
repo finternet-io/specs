@@ -1,64 +1,148 @@
-# Finternet Token Schema v1
+# Token Instance Schema v1
 
-This directory contains the schema definitions for the Finternet UNITS Token Specification.
+Lightweight token instance schema for the Finternet protocol.
 
 ## Overview
 
-The UNITS Token Specification is a universal, extensible data model for representing any tokenized asset, contract, or entitlement in the Finternet ecosystem. It supports both fungible and non-fungible assets while enabling cryptographic verifiability, privacy, and interoperability.
+**Token** is an instance of a **TokenClass**. It references the class for static configuration and holds only instance-specific data (~10 fields vs ~15 for TokenClass).
 
-## Architecture
+## Token vs TokenClass
 
-The token specification follows a four-part structure:
+| Aspect | TokenClass | Token |
+|--------|------------|-------|
+| Purpose | Template/definition | Instance |
+| Fields | ~15 fields | ~10 fields |
+| Supply | totalSupply, maxSupply | (none) |
+| Balance | (none) | **balance** |
+| Relationships | (none) | **dependsOn, hasDependents** |
+| Identities | issuer, creator, manager | **owner, operator, custodian** |
 
-### 1. Metadata
-Static descriptive identity and behavioral profile of the token. Includes:
-- Token identifiers (name, symbol, decimals)
-- Token class and standard information
-- Issuer and creator identifiers
-- Valuation model (fixed, pegged, market)
-- State model (native or proxy)
-- Behavioral flags (transferable, locked, revocable)
+## Key Fields
 
-### 2. Data
-Type-specific, extensible domain data. This section is open-ended and governed by the token class definition. Examples:
-- Financial tokens: face value, ISIN, maturity info
-- NFTs: artwork metadata, traits, attributes
-- RWA tokens: property docs, custody info, appraisal data
+| Field | Required | Description |
+|-------|----------|-------------|
+| `tokenId` | Yes | Unique instance identifier |
+| `tokenClassId` | Yes | Reference to TokenClass template |
+| `owner` | Yes | Denormalized owner address |
+| `identities` | Yes | Instance-level roles |
+| `state` | Yes | Runtime state (status, balance) |
+| `relationships` | No | Token-to-token dependencies |
+| `data` | No | Mutable business data |
 
-### 3. Claims
-Verifiable credentials and attestations about the token. Includes:
-- Compliance certifications
-- KYC/AML assertions
-- Legal rights/ownership confirmations
-- Credit ratings or audit attestations
+## Instance-Level Identities
 
-Each claim follows W3C Verifiable Credentials format with cryptographic proofs.
+Token instances have different identity types than TokenClass:
 
-### 4. State
-Runtime lifecycle and status information. Includes:
-- Lifecycle status (active, frozen, redeemed, burned, expired)
-- Supply data (for fungible tokens)
-- Ownership state (for NFTs)
-- Lock conditions and restrictions
-- Time-based validity windows
-- Cryptographic state commitment
+| Type | Description |
+|------|-------------|
+| `owner` | Current holder of the token |
+| `operator` | Delegated operator with permissions |
+| `custodian` | Custodial holder (for custody scenarios) |
 
-## Design Principles
+Note: Class-level identities (issuer, creator, manager) are on the TokenClass.
 
-1. **Identity-State Separation**: Token identity (metadata) is immutable or versioned separately from mutable state
-2. **State as Verifiable Commitment**: All states can be cryptographically verified
-3. **Claims as Verifiable Assertions**: Claims are first-class, cryptographically verifiable objects
-4. **Lifecycle as State Model**: Lifecycle is formally expressed through state transitions
-5. **Extensible Semantics**: Uses open standards (schema.org, W3C VC) for interoperability
+## Relationships
+
+Tokens can have dependencies on other tokens:
+
+| Type | Description | Example |
+|------|-------------|---------|
+| `dependsOn` | This token depends on another | LEASE → PROPERTY |
+| `hasDependents` | Other tokens depend on this | PROPERTY → [LEASE, RENTAL_INCOME] |
+
+## Balance
+
+The `balance` field represents what the holder owns:
+
+| Token Type | Balance | Example |
+|------------|---------|---------|
+| FungibleToken | Variable amount | "100500000" (100.5 USDC with 6 decimals) |
+| NonFungibleToken | Always "1" | "1" |
+| CredentialToken | Always "1" | "1" |
+
+## Example: Fungible Token Instance
+
+```json
+{
+  "@context": "https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld",
+  "@type": "Token",
+  "tokenId": "urn:finternet:token:alice-usdc-001",
+  "tokenClassId": "urn:finternet:token-class:usdc",
+  "owner": "alice",
+  "identities": [
+    { "id": "alice", "type": "owner" }
+  ],
+  "state": {
+    "status": "active",
+    "balance": "100500000"
+  },
+  "createdAt": "2025-01-28T00:00:00Z"
+}
+```
+
+## Example: NFT with Relationship
+
+```json
+{
+  "@context": "https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld",
+  "@type": "Token",
+  "tokenId": "urn:finternet:token:lease-001",
+  "tokenClassId": "urn:finternet:token-class:property-lease",
+  "owner": "bob",
+  "identities": [
+    { "id": "bob", "type": "owner" }
+  ],
+  "state": {
+    "status": "active",
+    "balance": "1",
+    "effectiveFrom": "2025-01-01T00:00:00Z",
+    "effectiveUntil": "2026-01-01T00:00:00Z"
+  },
+  "relationships": [
+    {
+      "type": "dependsOn",
+      "targetTokenId": "urn:finternet:token:property-123",
+      "description": "This lease is for property-123"
+    }
+  ],
+  "createdAt": "2025-01-28T00:00:00Z"
+}
+```
+
+## Example: Credential Token
+
+```json
+{
+  "@context": "https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld",
+  "@type": "Token",
+  "tokenId": "urn:finternet:token:kyc-alice-001",
+  "tokenClassId": "urn:finternet:token-class:kyc-verification",
+  "owner": "alice",
+  "identities": [
+    { "id": "alice", "type": "owner" }
+  ],
+  "state": {
+    "status": "active",
+    "balance": "1",
+    "effectiveFrom": "2025-01-28T00:00:00Z",
+    "effectiveUntil": "2026-01-28T00:00:00Z"
+  },
+  "createdAt": "2025-01-28T00:00:00Z"
+}
+```
 
 ## Files
 
-- `context.jsonld` - JSON-LD context definitions (planned)
-- `vocab.jsonld` - Vocabulary definitions (planned)
-- `attributes.yaml` - Detailed attribute schemas (planned)
+| File | Purpose |
+|------|---------|
+| `context.jsonld` | JSON-LD context definitions |
+| `vocab.jsonld` | RDF vocabulary definitions |
+| `attributes.yaml` | OpenAPI schema with validation |
+| `README.md` | This documentation |
 
-## References
+## Related
 
-- [Token Entity Spec](../../../Token%20Entity%20Spec.md) - Full specification document
-- [JSON Schema](../token.schema.json) - JSON Schema validator
-- [Example Token](../token.jsonld) - Example token instance
+- [Base TokenClass](../../token-class/v1/base/README.md)
+- [FungibleTokenClass](../../token-class/v1/fungible/README.md)
+- [NonFungibleTokenClass](../../token-class/v1/non-fungible/README.md)
+- [CredentialTokenClass](../../token-class/v1/credential/README.md)

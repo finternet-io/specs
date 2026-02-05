@@ -1,123 +1,19 @@
 {
   "@context": "https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld",
-  "@type": "FinancialProduct",
-  "id": "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab",
-  "metadata": {
-    "tokenStandard": "UNITS-FT",
-    "name": "USD Coin",
-    "symbol": "USDC",
-    "decimals": 6,
-    "fungibility": "fungible",
-    "tokenClass": "stablecoin",
-    "version": "1.0.0",
-    "status": "active",
-    "valuationType": "fixed",
-    "stateModel": "native",
-    "valuationModel": {
-      "parValue": {
-        "amount": "1.00",
-        "currency": "USD"
-      },
-      "redeemableBy": "Circle"
-    },
-    "flags": {
-      "transactable": true,
-      "transferable": true,
-      "locked": false,
-      "revocable": false
-    },
-    "tags": [
-      "stablecoin",
-      "fiat-backed",
-      "regulated"
-    ],
-    "description": "A USD-backed stablecoin issued by Circle with 1:1 redemption guarantee",
-    "externalUrls": [
-      "https://www.circle.com/en/usdc",
-      "https://explorer.finternet.io/token/usdc"
-    ],
-    "createdAt": "2025-01-01T00:00:00Z",
-    "updatedAt": "2025-01-04T10:30:00Z"
-  },
-  "data": {
-    "reserveAccount": "did:web:circle.com:accounts:reserve-001",
-    "auditReport": "https://www.circle.com/en/usdc-transparency",
-    "regulatoryLicense": "FIN-2025-001",
-    "jurisdiction": "US"
-  },
-  "claims": [
-    {
-      "id": "urn:uuid:claim-001",
-      "@context": [
-        "https://www.w3.org/2018/credentials/v1",
-        "https://schema.org"
-      ],
-      "type": [
-        "VerifiableCredential",
-        "ReserveAttestation"
-      ],
-      "issuer": "did:web:auditor.example",
-      "issuanceDate": "2025-01-01T00:00:00Z",
-      "expirationDate": "2025-04-01T00:00:00Z",
-      "visibility": "public",
-      "credentialSubject": {
-        "id": "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab",
-        "reserveRatio": "100%",
-        "auditStatus": "compliant",
-        "totalReserve": "10000000.00",
-        "currency": "USD"
-      },
-      "proof": {
-        "type": "Ed25519Signature2018",
-        "created": "2025-01-01T00:00:00Z",
-        "verificationMethod": "did:web:auditor.example#key-1",
-        "proofPurpose": "assertionMethod",
-        "jws": "eyJhbGciOiJFZERTQSIsImI2NCI6ZmFsc2UsImNyaXQiOlsiYjY0Il19..example"
-      },
-      "status": "verified"
-    }
-  ],
+  "@type": "Token",
+  "tokenId": "urn:finternet:token:alice-usdc-001",
+  "tokenClassId": "urn:finternet:token-class:usdc",
+  "owner": "alice",
   "identities": [
     {
-      "id": "did:web:circle.com",
-      "type": "issuer"
-    },
-    {
-      "id": "did:web:circle.com",
-      "type": "creator"
-    },
-    {
-      "id": "did:web:alice.example",
+      "id": "alice",
       "type": "owner"
     }
   ],
   "state": {
     "status": "active",
-    "effectiveFrom": "2025-01-01T00:00:00Z",
-    "effectiveUntil": null,
-    "supply": {
-      "totalSupply": "10000000000000",
-      "circulatingSupply": "8500000000000"
-    },
-    "lockState": {
-      "locked": false
-    },
-    "restrictions": {
-      "jurisdiction": [
-        "US",
-        "EU",
-        "IN"
-      ],
-      "allowedUseCases": [
-        "payment",
-        "collateral",
-        "settlement"
-      ]
-    },
-    "customState": {
-      "lastAuditDate": "2025-01-01T00:00:00Z",
-      "nextAuditDate": "2025-04-01T00:00:00Z"
-    },
-    "stateCommitment": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-  }
+    "balance": "100500000"
+  },
+  "createdAt": "2025-01-28T00:00:00Z",
+  "updatedAt": "2025-01-28T00:00:00Z"
 }

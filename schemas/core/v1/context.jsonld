@@ -5,9 +5,7 @@
         "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
         "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
         "xsd": "http://www.w3.org/2001/XMLSchema#",
-        "Identifier": "finternet:Identifier",
-        "identifierValue": "finternet:identifierValue",
-        "identifierDomain": "finternet:identifierDomain",
+        "FinternetAddress": "finternet:FinternetAddress",
         "Entity": "finternet:Entity",
         "id": "@id",
         "type": "@type",
@@ -23,10 +21,6 @@
         },
         "version": "schema:version",
         "status": "finternet:status",
-        "primaryAddress": {
-            "@id": "finternet:primaryAddress",
-            "@type": "@id"
-        },
         "labels": {
             "@id": "schema:additionalProperty",
             "@container": "@set"

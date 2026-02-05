@@ -1,32 +1,45 @@
 openapi: 3.1.0
 info:
-  title: Finternet Token (UNITS) Schema v1
+  title: Finternet Token Instance Schema v1
   version: 1.0.0
   description: |
-    Token schema for the Finternet protocol following the UNITS Token Specification.
-    Provides a universal, extensible data model for representing any tokenized asset,
-    contract, or entitlement.
+    Lightweight Token instance schema for the Finternet protocol.
+
+    ## Token vs TokenClass
+
+    | Aspect | TokenClass | Token |
+    |--------|------------|-------|
+    | Purpose | Template/definition | Instance |
+    | Fields | ~15 fields | ~10 fields |
+    | Supply | totalSupply, maxSupply | (none) |
+    | Balance | (none) | balance |
+    | Relationships | (none) | dependsOn, hasDependents |
+    | Identities | issuer, creator, manager | owner, operator, custodian |
+
+    ## Key Design Principles
+
+    1. **Lightweight**: Token instances are minimal (~10 fields)
+    2. **References TokenClass**: Inherits static configuration from TokenClass
+    3. **Instance-specific state**: Owns balance, status, lock state
+    4. **Relationships**: Token-to-token dependencies (e.g., LEASE → PROPERTY)
+    5. **Denormalized owner**: Fast owner lookups without joining identities
 
 components:
   schemas:
-    # -------------------- Identity Section --------------------
+    # -------------------- Identity (Instance-Level) --------------------
 
-    IdentityType:
+    InstanceIdentityType:
       type: string
-      description: Type of identity relationship to the token
+      description: Type of identity relationship at the Token instance level
       enum:
-        - issuer
-        - creator
         - owner
         - operator
         - custodian
-        - manager
-        - controller
       x-jsonld: { "@id": "finternet:identityType", "@type": "@vocab" }
 
     Identity:
       type: object
-      description: Identity relationship record
+      description: Instance-level identity relationship
       x-jsonld:
         "@context": https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld
         "@type": finternet:Identity
@@ -36,11 +49,10 @@ components:
       properties:
         id:
           type: string
-          format: uri-reference
-          description: DID, URI, or identifier of the identity
+          description: FinternetAddress or DID of the identity
           x-jsonld: { "@id": "@id", "@type": "@id" }
         type:
-          $ref: "#/components/schemas/IdentityType"
+          $ref: "#/components/schemas/InstanceIdentityType"
         roles:
           type: array
           items:
@@ -48,116 +60,193 @@ components:
           description: Additional role descriptors
           x-jsonld: { "@id": "finternet:roles", "@container": "@set" }
 
-    # -------------------- Metadata Section --------------------
+    # -------------------- State --------------------
 
-    TokenMetadata:
+    TokenStatus:
+      type: string
+      description: Lifecycle status of the token
+      enum:
+        - active
+        - frozen
+        - redeemed
+        - burned
+        - expired
+      x-jsonld: { "@id": "finternet:status", "@type": "@vocab" }
+
+    LockState:
       type: object
-      description: Static descriptive identity and behavioral profile of the token
+      description: Lock state information
       x-jsonld:
         "@context": https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld
-        "@type": finternet:TokenMetadata
+        "@type": finternet:LockState
       required:
-        - tokenStandard
-        - name
-        - symbol
-        - decimals
-        - fungibility
+        - locked
       properties:
-        tokenStandard:
+        locked:
+          type: boolean
+          description: Whether the token is locked
+          x-jsonld: { "@id": "finternet:locked", "@type": "xsd:boolean" }
+        lockReason:
           type: string
-          description: Token standard identifier
-          x-jsonld: { "@id": "finternet:tokenStandard" }
-          examples:
-            - UNITS-FT
-            - UNITS-NFT
-            - ERC-20
-            - ERC-721
-        name:
+          description: Reason or code for the lock
+          x-jsonld: { "@id": "finternet:lockReason" }
+        lockedBy:
           type: string
-          description: Human-readable token name
-          minLength: 1
-          x-jsonld: { "@id": "schema:name" }
-        symbol:
+          description: Entity that applied the lock
+          x-jsonld: { "@id": "finternet:lockedBy", "@type": "@id" }
+        lockedAt:
           type: string
-          description: Short ticker symbol
-          minLength: 1
-          maxLength: 10
-          x-jsonld: { "@id": "finternet:symbol" }
-        decimals:
-          type: integer
-          description: Number of decimal places (0 for NFTs)
-          minimum: 0
-          maximum: 18
-          x-jsonld: { "@id": "finternet:decimals", "@type": "xsd:integer" }
-        fungibility:
-          type: string
-          description: Token fungibility type
-          enum:
-            - fungible
-            - nonFungible
-            - semiFungible
-          x-jsonld: { "@id": "finternet:fungibility", "@type": "@vocab" }
-        tokenClass:
-          type: string
-          description: Specific token class identifier (e.g., USDC, USDT, WETH) - must be pre-registered
-          x-jsonld: { "@id": "finternet:tokenClass" }
-          examples:
-            - USDC
-            - USDT
-            - WETH
-        version:
-          type: string
-          description: Version of the token specification
-          default: "1.0.0"
-          x-jsonld: { "@id": "schema:version" }
+          format: date-time
+          description: Lock timestamp
+          x-jsonld: { "@id": "finternet:lockedAt", "@type": "xsd:dateTime" }
+
+    TokenState:
+      type: object
+      description: |
+        Runtime state of a token instance.
+
+        The `balance` field represents the holder's current balance:
+        - FungibleToken: Variable amount (e.g., "100500000" = 100.5 USDC with 6 decimals)
+        - NonFungibleToken: Always "1"
+        - CredentialToken: Always "1"
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld
+        "@type": finternet:TokenState
+      required:
+        - status
+        - balance
+      properties:
         status:
+          $ref: "#/components/schemas/TokenStatus"
+        balance:
           type: string
-          description: Metadata-level status
-          enum:
-            - active
-            - inactive
-            - deprecated
-            - test
-          x-jsonld: { "@id": "finternet:metadataStatus", "@type": "@vocab" }
-        valuationType:
+          description: |
+            Holder's current balance in smallest units (string for big numbers).
+            Examples:
+            - "100500000" = 100.5 USDC (with 6 decimals)
+            - "1" = NFT or Credential
+          pattern: "^[0-9]+$"
+          x-jsonld: { "@id": "finternet:balance" }
+        effectiveFrom:
           type: string
-          description: Valuation model for the token
-          enum:
-            - fixed
-            - pegged
-            - market
-          x-jsonld: { "@id": "finternet:valuationType", "@type": "@vocab" }
-        stateModel:
+          format: date-time
+          description: When this token instance became effective
+          x-jsonld: { "@id": "finternet:effectiveFrom", "@type": "xsd:dateTime" }
+        effectiveUntil:
           type: string
-          description: Whether token state is native or proxied
-          enum:
-            - native
-            - proxy
-          x-jsonld: { "@id": "finternet:stateModel", "@type": "@vocab" }
-        stateProvider:
-          $ref: "#/components/schemas/StateProvider"
-        valuationModel:
-          $ref: "#/components/schemas/ValuationModel"
-        flags:
-          $ref: "#/components/schemas/TokenFlags"
-        tags:
-          type: array
-          items:
-            type: string
-          description: Classification tags
-          x-jsonld: { "@id": "schema:keywords", "@container": "@set" }
+          format: date-time
+          description: When this token instance expires (null if no expiry)
+          x-jsonld: { "@id": "finternet:effectiveUntil", "@type": "xsd:dateTime" }
+        lockState:
+          $ref: "#/components/schemas/LockState"
+        stateCommitment:
+          type: string
+          description: Cryptographic hash/commitment representing this state
+          x-jsonld: { "@id": "finternet:stateCommitment" }
+
+    # -------------------- Relationships --------------------
+
+    RelationshipType:
+      type: string
+      description: Type of token-to-token relationship
+      enum:
+        - dependsOn
+        - hasDependents
+      x-jsonld: { "@id": "finternet:relationshipType", "@type": "@vocab" }
+
+    Relationship:
+      type: object
+      description: |
+        Token-to-token dependency relationship.
+
+        Examples:
+        - LEASE token dependsOn PROPERTY token
+        - RENTAL_INCOME token dependsOn LEASE token
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld
+        "@type": finternet:Relationship
+      required:
+        - type
+        - targetTokenId
+      properties:
+        type:
+          $ref: "#/components/schemas/RelationshipType"
+        targetTokenId:
+          type: string
+          format: uri
+          description: Token ID of the related token
+          x-jsonld: { "@id": "finternet:targetTokenId", "@type": "@id" }
         description:
           type: string
-          description: Human-readable description
+          description: Human-readable description of the relationship
           x-jsonld: { "@id": "schema:description" }
-        externalUrls:
+
+    # -------------------- Token --------------------
+
+    Token:
+      type: object
+      description: |
+        Lightweight Token instance.
+
+        This is an instance of a TokenClass - it references the class for static
+        configuration and holds only instance-specific data.
+
+        Key fields:
+        - **tokenId**: Unique instance identifier
+        - **tokenClassId**: Reference to the TokenClass template
+        - **owner**: Denormalized owner address (for fast lookups)
+        - **identities**: Instance-level roles (owner, operator, custodian)
+        - **state**: Runtime state (status, balance, lock)
+        - **relationships**: Token-to-token dependencies
+        - **data**: Optional mutable business data
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld
+        "@type": finternet:Token
+      required:
+        - tokenId
+        - tokenClassId
+        - owner
+        - identities
+        - state
+      properties:
+        tokenId:
+          type: string
+          format: uri
+          description: Unique identifier for this token instance
+          x-jsonld: { "@id": "@id", "@type": "@id" }
+        tokenClassId:
+          type: string
+          format: uri
+          description: Reference to the TokenClass this token is an instance of
+          x-jsonld: { "@id": "finternet:tokenClassId", "@type": "@id" }
+        owner:
+          type: string
+          description: |
+            Denormalized owner address (FinternetAddress).
+            Duplicated from identities for fast owner-based queries.
+          x-jsonld: { "@id": "finternet:owner" }
+        identities:
           type: array
           items:
-            type: string
-            format: uri
-          description: URLs to off-chain resources
-          x-jsonld:
-            { "@id": "schema:url", "@container": "@set", "@type": "@id" }
+            $ref: "#/components/schemas/Identity"
+          description: |
+            Instance-level identity relationships.
+            Types: owner, operator, custodian
+          minItems: 1
+          x-jsonld: { "@id": "finternet:identities", "@container": "@set" }
+        state:
+          $ref: "#/components/schemas/TokenState"
+        relationships:
+          type: array
+          items:
+            $ref: "#/components/schemas/Relationship"
+          description: Token-to-token dependencies
+          x-jsonld: { "@id": "finternet:relationships", "@container": "@set" }
+        data:
+          type: object
+          description: Optional mutable business data (token-class-specific)
+          additionalProperties: true
+          x-jsonld: { "@id": "finternet:data", "@type": "@json" }
         createdAt:
           type: string
           format: date-time
@@ -168,380 +257,3 @@ components:
           format: date-time
           description: Last update timestamp
           x-jsonld: { "@id": "schema:dateModified", "@type": "xsd:dateTime" }
-
-    StateProvider:
-      type: object
-      description: State provider configuration for proxy tokens
-      x-jsonld:
-        "@context": https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld
-        "@type": finternet:StateProvider
-      required:
-        - type
-      properties:
-        type:
-          type: string
-          description: Type of state provider
-          enum:
-            - chain
-            - registry
-            - custodian
-          x-jsonld: { "@id": "finternet:stateProviderType", "@type": "@vocab" }
-        network:
-          type: string
-          description: Network identifier
-          x-jsonld: { "@id": "finternet:network" }
-        contract:
-          type: string
-          description: Contract address or identifier
-          x-jsonld: { "@id": "finternet:contract" }
-        tokenId:
-          type: string
-          description: Token ID for NFTs
-          x-jsonld: { "@id": "finternet:externalTokenId" }
-        proofFormat:
-          type: string
-          description: Proof format used
-          enum:
-            - merkle-proof
-            - zk-proof
-            - signature-chain
-            - registry-based
-          x-jsonld: { "@id": "finternet:proofFormat", "@type": "@vocab" }
-
-    ValuationModel:
-      type: object
-      description: Detailed valuation model configuration
-      x-jsonld:
-        "@context": https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld
-        "@type": finternet:ValuationModel
-      properties:
-        parValue:
-          $ref: "#/components/schemas/ParValue"
-        redeemableBy:
-          type: string
-          description: Entity responsible for redemption
-          x-jsonld: { "@id": "finternet:redeemableBy" }
-        peggedTo:
-          $ref: "#/components/schemas/PeggedTo"
-        valuationPolicy:
-          $ref: "#/components/schemas/ValuationPolicy"
-
-    ParValue:
-      type: object
-      description: Par value configuration for fixed-value tokens
-      x-jsonld:
-        "@context": https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld
-        "@type": finternet:ParValue
-      required:
-        - amount
-        - currency
-      properties:
-        amount:
-          type: string
-          description: Immutable face value per token unit
-          x-jsonld: { "@id": "finternet:parValueAmount" }
-        currency:
-          type: string
-          description: Currency code (ISO 4217 or similar)
-          x-jsonld: { "@id": "finternet:currency" }
-
-    PeggedTo:
-      type: object
-      description: Peg configuration for pegged tokens
-      x-jsonld:
-        "@context": https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld
-        "@type": finternet:PeggedTo
-      required:
-        - assetCode
-      properties:
-        assetCode:
-          type: string
-          description: Target reference asset code
-          x-jsonld: { "@id": "finternet:assetCode" }
-        source:
-          type: string
-          description: Source authority
-          x-jsonld: { "@id": "finternet:source" }
-
-    ValuationPolicy:
-      type: object
-      description: Valuation policy for market-priced tokens
-      x-jsonld:
-        "@context": https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld
-        "@type": finternet:ValuationPolicy
-      properties:
-        requiresExternalClaims:
-          type: boolean
-          description: Whether value must come from claims
-          x-jsonld:
-            {
-              "@id": "finternet:requiresExternalClaims",
-              "@type": "xsd:boolean",
-            }
-        recommendedClaimTypes:
-          type: array
-          items:
-            type: string
-          description: Recommended claim types for valuation
-          x-jsonld:
-            { "@id": "finternet:recommendedClaimTypes", "@container": "@set" }
-
-    TokenFlags:
-      type: object
-      description: Behavioral flags for the token
-      x-jsonld:
-        "@context": https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld
-        "@type": finternet:TokenFlags
-      properties:
-        transactable:
-          type: boolean
-          description: Whether the token can be transacted
-          default: true
-          x-jsonld: { "@id": "finternet:transactable", "@type": "xsd:boolean" }
-        transferable:
-          type: boolean
-          description: Whether ownership can be transferred
-          default: true
-          x-jsonld: { "@id": "finternet:transferable", "@type": "xsd:boolean" }
-        locked:
-          type: boolean
-          description: High-level lock flag
-          default: false
-          x-jsonld: { "@id": "finternet:locked", "@type": "xsd:boolean" }
-        revocable:
-          type: boolean
-          description: Whether the issuer can revoke this token
-          default: false
-          x-jsonld: { "@id": "finternet:revocable", "@type": "xsd:boolean" }
-
-    # -------------------- State Section --------------------
-
-    TokenState:
-      type: object
-      description: Runtime lifecycle and status of the token
-      x-jsonld:
-        "@context": https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld
-        "@type": finternet:TokenState
-      required:
-        - status
-      properties:
-        status:
-          type: string
-          description: Lifecycle status of the token
-          enum:
-            - active
-            - frozen
-            - redeemed
-            - burned
-            - expired
-          x-jsonld: { "@id": "finternet:lifecycleStatus", "@type": "@vocab" }
-        effectiveFrom:
-          type: string
-          format: date-time
-          description: Effective start date
-          x-jsonld:
-            { "@id": "finternet:effectiveFrom", "@type": "xsd:dateTime" }
-        effectiveUntil:
-          type: string
-          format: date-time
-          description: Effective end date
-          x-jsonld:
-            { "@id": "finternet:effectiveUntil", "@type": "xsd:dateTime" }
-        supply:
-          $ref: "#/components/schemas/Supply"
-        lockState:
-          $ref: "#/components/schemas/LockState"
-        restrictions:
-          $ref: "#/components/schemas/Restrictions"
-        customState:
-          type: object
-          description: Token-class-specific state fields
-          additionalProperties: true
-          x-jsonld: { "@id": "finternet:customState", "@type": "@json" }
-        stateCommitment:
-          type: string
-          description: Hash/commitment representing this state
-          x-jsonld: { "@id": "finternet:stateCommitment" }
-
-    Supply:
-      type: object
-      description: Supply information for fungible tokens
-      x-jsonld:
-        "@context": https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld
-        "@type": finternet:Supply
-      properties:
-        totalSupply:
-          type: string
-          description: Total supply (string for big numbers)
-          x-jsonld: { "@id": "finternet:totalSupply" }
-        circulatingSupply:
-          type: string
-          description: Circulating supply (string for big numbers)
-          x-jsonld: { "@id": "finternet:circulatingSupply" }
-
-    LockState:
-      type: object
-      description: Detailed lock state information
-      x-jsonld:
-        "@context": https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld
-        "@type": finternet:LockState
-      required:
-        - locked
-      properties:
-        locked:
-          type: boolean
-          description: Whether the token is locked
-          x-jsonld: { "@id": "finternet:isLocked", "@type": "xsd:boolean" }
-        lockReason:
-          type: string
-          description: Reason or code for the lock
-          x-jsonld: { "@id": "finternet:lockReason" }
-        lockedBy:
-          type: string
-          format: uri-reference
-          description: Entity that applied the lock
-          x-jsonld: { "@id": "finternet:lockedBy", "@type": "@id" }
-        lockedAt:
-          type: string
-          format: date-time
-          description: Lock timestamp
-          x-jsonld: { "@id": "finternet:lockedAt", "@type": "xsd:dateTime" }
-
-    Restrictions:
-      type: object
-      description: High-level restrictions on token use/transfer
-      x-jsonld:
-        "@context": https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld
-        "@type": finternet:Restrictions
-      properties:
-        jurisdiction:
-          type: array
-          items:
-            type: string
-          description: Allowed/disallowed jurisdictions (ISO 3166-1 alpha-2)
-          x-jsonld: { "@id": "finternet:jurisdiction", "@container": "@set" }
-        allowedUseCases:
-          type: array
-          items:
-            type: string
-          description: Allowed use cases
-          x-jsonld: { "@id": "finternet:allowedUseCases", "@container": "@set" }
-
-    # -------------------- Claims Section --------------------
-
-    Claim:
-      type: object
-      description: Verifiable credential or attestation about the token
-      x-jsonld:
-        "@context": https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld
-        "@type": vc:VerifiableCredential
-      required:
-        - id
-        - "@context"
-        - type
-        - issuer
-        - issuanceDate
-        - credentialSubject
-      properties:
-        id:
-          type: string
-          format: uri
-          description: Unique identifier for this claim
-          x-jsonld: { "@id": "@id", "@type": "@id" }
-        "@context":
-          oneOf:
-            - type: string
-            - type: array
-              items:
-                type: string
-          description: JSON-LD context for the claim
-        type:
-          oneOf:
-            - type: string
-            - type: array
-              items:
-                type: string
-          description: Claim types
-          x-jsonld: { "@id": "@type", "@type": "@vocab" }
-        issuer:
-          type: string
-          format: uri-reference
-          description: DID/URI of claim issuer
-          x-jsonld: { "@id": "vc:issuer", "@type": "@id" }
-        issuanceDate:
-          type: string
-          format: date-time
-          description: Claim issuance date
-          x-jsonld: { "@id": "vc:issuanceDate", "@type": "xsd:dateTime" }
-        expirationDate:
-          type: string
-          format: date-time
-          description: Claim expiration date
-          x-jsonld: { "@id": "vc:expirationDate", "@type": "xsd:dateTime" }
-        visibility:
-          type: string
-          description: Visibility/privacy level of the claim
-          enum:
-            - public
-            - private
-            - protected
-          x-jsonld: { "@id": "finternet:visibility", "@type": "@vocab" }
-        credentialSubject:
-          type: object
-          description: Subject of the claim
-          required:
-            - id
-          properties:
-            id:
-              type: string
-              format: uri-reference
-              description: Subject identifier
-              x-jsonld: { "@id": "@id", "@type": "@id" }
-          additionalProperties: true
-          x-jsonld: { "@id": "vc:credentialSubject" }
-        proof:
-          $ref: "#/components/schemas/Proof"
-        status:
-          type: string
-          description: Status of the claim
-          enum:
-            - asserted
-            - verified
-            - revoked
-            - expired
-          x-jsonld: { "@id": "finternet:claimStatus", "@type": "@vocab" }
-
-    Proof:
-      type: object
-      description: Cryptographic proof for a claim
-      x-jsonld:
-        "@context": https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld
-        "@type": sec:Proof
-      required:
-        - type
-        - created
-        - verificationMethod
-        - proofPurpose
-      properties:
-        type:
-          type: string
-          description: Proof type
-          x-jsonld: { "@id": "@type" }
-        created:
-          type: string
-          format: date-time
-          description: Proof creation timestamp
-          x-jsonld: { "@id": "sec:created", "@type": "xsd:dateTime" }
-        verificationMethod:
-          type: string
-          format: uri
-          description: URI for public key/verification method
-          x-jsonld: { "@id": "sec:verificationMethod", "@type": "@id" }
-        proofPurpose:
-          type: string
-          description: Purpose of the proof
-          x-jsonld: { "@id": "sec:proofPurpose" }
-        jws:
-          type: string
-          description: Compact JWS or signature encoding
-          x-jsonld: { "@id": "sec:jws" }

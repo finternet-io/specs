@@ -1,0 +1,47 @@
+{
+  "@context": "https://finternet-io.github.io/specs/schemas/token-class/v1/base/context.jsonld",
+  "@type": "FungibleTokenClass",
+  "tokenClassId": "urn:finternet:token-class:usdc",
+  "tokenStandard": ["UNITS-FT", "ERC-20"],
+  "name": "USD Coin",
+  "symbol": "USDC",
+  "decimals": 6,
+  "fungibility": "fungible",
+  "description": "USD-pegged stablecoin issued by Circle",
+  "flags": {
+    "transactable": true,
+    "transferable": true,
+    "divisible": true,
+    "locked": false,
+    "revocable": false,
+    "burnable": true
+  },
+  "identities": [
+    {
+      "id": "did:web:circle.com",
+      "type": "issuer"
+    }
+  ],
+  "supply": {
+    "totalSupply": "50000000000000000",
+    "maxSupply": null,
+    "circulatingSupply": "50000000000000000"
+  },
+  "stateModel": "proxy",
+  "stateProvider": {
+    "type": "chain",
+    "network": "ethereum",
+    "contract": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+    "proofFormat": "merkle-proof"
+  },
+  "valuationModel": {
+    "type": "pegged",
+    "peggedTo": {
+      "assetCode": "USD",
+      "source": "circle.com"
+    }
+  },
+  "programId": "reference-ft",
+  "tags": ["stablecoin", "defi"],
+  "createdAt": "2025-01-28T00:00:00Z"
+}

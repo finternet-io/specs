@@ -8,34 +8,21 @@ info:
 
 components:
   schemas:
-    Identifier:
-      type: object
-      description: Structured identifier for Finternet addressing (e.g., alice@finternet)
+    FinternetAddress:
+      type: string
+      description: |
+        Simple username for Finternet addressing.
+        Just the username - no domain suffix needed.
       x-jsonld:
         context: https://finternet-io.github.io/specs/schemas/core/v1/context.jsonld
-        type: finternet:Identifier
-      required:
-        - identifierValue
-        - identifierDomain
-      properties:
-        identifierValue:
-          type: string
-          description: Local part of the identifier (before @)
-          pattern: "^[a-z0-9_-]+$"
-          minLength: 1
-          maxLength: 64
-          examples:
-            - alice
-            - bob
-            - acme-corp
-        identifierDomain:
-          type: string
-          description: Domain part of the identifier (after @)
-          pattern: "^[a-z0-9.-]+$"
-          minLength: 1
-          maxLength: 253
-          examples:
-            - finternet
+        type: finternet:FinternetAddress
+      pattern: "^[a-z0-9_-]+$"
+      minLength: 1
+      maxLength: 64
+      examples:
+        - alice
+        - bob
+        - acme-corp
 
     Entity:
       type: object
@@ -76,8 +63,6 @@ components:
         status:
           type: string
           description: Current status of the entity
-        primaryAddress:
-          $ref: '#/components/schemas/Identifier'
         labels:
           type: array
           description: Key-value metadata labels for categorization and tagging
@@ -93,4 +78,3 @@ components:
             required:
               - name
               - value
-

@@ -87,33 +87,284 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ApiRequest_RegisterTokenClassRequest'
-            example:
-              context:
-                id: "api.tokenclass.register"
-                version: "1.0"
-                ts: "2025-01-04T10:00:00Z"
-                msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-                developerToken: "dev_pk_..."
-                authorization: "Bearer eyJ..."
-              payload:
-                tokenClass: "USDC"
-                tokenStandard: "ERC-3643"
-                name: "USD Coin"
-                description: "Fully-backed USD stablecoin by Circle"
-                schema:
-                  metadata:
-                    required: ["tokenStandard", "name", "symbol", "decimals", "fungibility"]
-                  data:
-                    properties:
-                      reserveAccount: { type: "string" }
-                      jurisdiction: { type: "string" }
-                identities:
-                  - id: "did:web:circle.com"
-                    type: "issuer"
-                    roles: ["admin", "minter"]
-                metadata:
-                  category: "stablecoin"
-                  tags: ["fiat-backed", "regulated", "USD"]
+            examples:
+              USDC:
+                summary: "Register USDC - Circle's USD stablecoin"
+                value:
+                  context:
+                    id: "api.tokenclass.register"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "USDC"
+                    tokenStandard: "UNITS-FT"
+                    name: "USD Coin"
+                    description: "Circle USD stablecoin pegged 1:1 to USD"
+                    status: "active"
+                    schema:
+                      type: "object"
+                      properties:
+                        supply:
+                          type: "object"
+                          properties:
+                            total: { type: "string", pattern: "^[0-9]+$" }
+                            circulating: { type: "string", pattern: "^[0-9]+$" }
+                      required: ["supply"]
+                    identities:
+                      - id: "circle@finternet"
+                        type: "issuer"
+                        roles: ["admin", "minter", "burner"]
+                    metadata:
+                      decimals: 6
+                      symbol: "USDC"
+                      currency: "USD"
+                      fungible: true
+                      category: "stablecoin"
+              USDT:
+                summary: "Register USDT - Tether's USD stablecoin"
+                value:
+                  context:
+                    id: "api.tokenclass.register"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "USDT"
+                    tokenStandard: "UNITS-FT"
+                    name: "Tether USD"
+                    description: "Tether USD stablecoin"
+                    schema:
+                      type: "object"
+                      properties:
+                        supply:
+                          type: "object"
+                          properties:
+                            total: { type: "string", pattern: "^[0-9]+$" }
+                            circulating: { type: "string", pattern: "^[0-9]+$" }
+                      required: ["supply"]
+                    identities:
+                      - id: "tether@finternet"
+                        type: "issuer"
+                        roles: ["admin", "minter", "burner"]
+                    metadata:
+                      decimals: 6
+                      symbol: "USDT"
+                      currency: "USD"
+                      fungible: true
+                      category: "stablecoin"
+              EURC:
+                summary: "Register EURC - Circle's Euro stablecoin"
+                value:
+                  context:
+                    id: "api.tokenclass.register"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "EURC"
+                    tokenStandard: "UNITS-FT"
+                    name: "Euro Coin"
+                    description: "Circle Euro stablecoin pegged 1:1 to EUR"
+                    schema:
+                      type: "object"
+                      properties:
+                        supply:
+                          type: "object"
+                          properties:
+                            total: { type: "string", pattern: "^[0-9]+$" }
+                            circulating: { type: "string", pattern: "^[0-9]+$" }
+                      required: ["supply"]
+                    identities:
+                      - id: "circle-eu@finternet"
+                        type: "issuer"
+                        roles: ["admin", "minter", "burner"]
+                    metadata:
+                      decimals: 6
+                      symbol: "EURC"
+                      currency: "EUR"
+                      fungible: true
+                      category: "stablecoin"
+              GBPT:
+                summary: "Register GBPT - British Pound stablecoin"
+                value:
+                  context:
+                    id: "api.tokenclass.register"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "GBPT"
+                    tokenStandard: "UNITS-FT"
+                    name: "British Pound Token"
+                    description: "Stablecoin pegged 1:1 to GBP"
+                    schema:
+                      type: "object"
+                      properties:
+                        supply:
+                          type: "object"
+                          properties:
+                            total: { type: "string", pattern: "^[0-9]+$" }
+                            circulating: { type: "string", pattern: "^[0-9]+$" }
+                      required: ["supply"]
+                    identities:
+                      - id: "hsbc@finternet"
+                        type: "issuer"
+                        roles: ["admin", "minter", "burner"]
+                    metadata:
+                      decimals: 6
+                      symbol: "GBPT"
+                      currency: "GBP"
+                      fungible: true
+                      category: "stablecoin"
+              INRT:
+                summary: "Register INRT - Indian Rupee token"
+                value:
+                  context:
+                    id: "api.tokenclass.register"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "e5f6a7b8-c9d0-1234-5678-90abcdef1"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "INRT"
+                    tokenStandard: "UNITS-FT"
+                    name: "Indian Rupee Token"
+                    description: "Stablecoin pegged 1:1 to INR"
+                    schema:
+                      type: "object"
+                      properties:
+                        supply:
+                          type: "object"
+                          properties:
+                            total: { type: "string", pattern: "^[0-9]+$" }
+                            circulating: { type: "string", pattern: "^[0-9]+$" }
+                      required: ["supply"]
+                    identities:
+                      - id: "hdfc@finternet"
+                        type: "issuer"
+                        roles: ["admin", "minter", "burner"]
+                    metadata:
+                      decimals: 2
+                      symbol: "INRT"
+                      currency: "INR"
+                      fungible: true
+                      category: "stablecoin"
+              NFH-T:
+                summary: "Register NFH-T - Utility token with constraints"
+                value:
+                  context:
+                    id: "api.tokenclass.register"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "f6a7b8c9-d0e1-2345-6789-0abcdef12"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "NFH-T"
+                    tokenStandard: "UNITS-FT"
+                    name: "Network for Humanities Token"
+                    description: "Utility token with max supply and min balance constraints"
+                    schema:
+                      type: "object"
+                      properties:
+                        supply:
+                          type: "object"
+                          properties:
+                            total: { type: "string", pattern: "^[0-9]+$" }
+                            circulating: { type: "string", pattern: "^[0-9]+$" }
+                      required: ["supply"]
+                    identities:
+                      - id: "nfh@finternet"
+                        type: "issuer"
+                        roles: ["admin", "minter", "burner"]
+                    metadata:
+                      decimals: 2
+                      symbol: "NFH"
+                      fungible: true
+                      category: "utility"
+                      maxSupply: "10000000"
+                      minBalance: "1000"
+              ART-NFT:
+                summary: "Register ART-NFT - Digital art collectibles"
+                value:
+                  context:
+                    id: "api.tokenclass.register"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "a7b8c9d0-e1f2-3456-7890-abcdef123"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "ART-NFT"
+                    tokenStandard: "UNITS-NFT"
+                    name: "Digital Art Collectible"
+                    description: "NFT for unique digital artworks and collectibles"
+                    schema:
+                      type: "object"
+                      properties:
+                        tokenURI: { type: "string", format: "uri" }
+                        attributes:
+                          type: "array"
+                          items:
+                            type: "object"
+                            properties:
+                              trait_type: { type: "string" }
+                              value: { type: ["string", "number"] }
+                            required: ["trait_type", "value"]
+                        creator: { type: "string" }
+                        royaltyBps: { type: "integer", minimum: 0, maximum: 10000 }
+                      required: ["tokenURI"]
+                    identities:
+                      - id: "opensea@finternet"
+                        type: "issuer"
+                        roles: ["admin", "minter"]
+                    metadata:
+                      symbol: "ART"
+                      fungible: false
+                      category: "collectible"
+              RWA-NFT:
+                summary: "Register RWA-NFT - Real world asset tokens"
+                value:
+                  context:
+                    id: "api.tokenclass.register"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "b8c9d0e1-f2a3-4567-8901-bcdef1234"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "RWA-NFT"
+                    tokenStandard: "UNITS-NFT"
+                    name: "Real World Asset Token"
+                    description: "NFT for tokenized real-world assets like property deeds"
+                    schema:
+                      type: "object"
+                      properties:
+                        assetId: { type: "string", description: "External asset identifier" }
+                        assetType: { type: "string", enum: ["property", "vehicle", "certificate", "document"] }
+                        legalDocHash: { type: "string", pattern: "^[a-f0-9]{64}$", description: "SHA-256 hash of legal document" }
+                        jurisdiction: { type: "string" }
+                        valuationUSD: { type: "string", pattern: "^[0-9]+\\.?[0-9]*$" }
+                      required: ["assetId", "assetType", "legalDocHash"]
+                    identities:
+                      - id: "realassets@finternet"
+                        type: "issuer"
+                        roles: ["admin", "minter", "compliance"]
+                    metadata:
+                      symbol: "RWA"
+                      fungible: false
+                      category: "real_world_asset"
+                      requiresKYC: true
       responses:
         '201':
           description: "Token class registered successfully"
@@ -121,6 +372,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse_TokenClassDetails'
+              example:
+                context:
+                  id: "api.tokenclass.register"
+                  version: "1.0"
+                  ts: "2025-01-04T10:00:00Z"
+                  msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                  status: "successful"
+                response:
+                  tokenClass: "USDC"
+                  tokenStandard: "UNITS-FT"
+                  name: "USD Coin"
+                  description: "Circle USD stablecoin pegged 1:1 to USD"
+                  status: "active"
+                  schema:
+                    type: "object"
+                    properties:
+                      supply:
+                        type: "object"
+                        properties:
+                          total: { type: "string", pattern: "^[0-9]+$" }
+                          circulating: { type: "string", pattern: "^[0-9]+$" }
+                    required: ["supply"]
+                  identities:
+                    - id: "circle@finternet"
+                      type: "issuer"
+                      roles: ["admin", "minter", "burner"]
+                  metadata:
+                    decimals: 6
+                    symbol: "USDC"
+                    currency: "USD"
+                    fungible: true
+                    category: "stablecoin"
+                    createdAt: "2025-01-04T10:00:00Z"
+                    updatedAt: "2025-01-04T10:00:00Z"
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -157,12 +442,12 @@ paths:
                 authorization: "Bearer eyJ..."
               payload:
                 tokenClass: "USDC"
-                identities:
-                  - id: "did:web:newminter.example"
-                    type: "operator"
-                    roles: ["minter"]
                 metadata:
-                  tags: ["fiat-backed", "regulated", "USD", "circle"]
+                  tags:
+                    category: "stablecoin"
+                    compliance: "regulated"
+                    issuer: "circle"
+                    peg: "USD"
       responses:
         '200':
           description: "Token class updated successfully"
@@ -187,6 +472,7 @@ paths:
       description: "Retrieve detailed information about a specific token class"
       security:
         - developerToken: []
+        - userToken: []
       requestBody:
         required: true
         content:
@@ -200,6 +486,7 @@ paths:
                 ts: "2025-01-04T10:00:00Z"
                 msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef12"
                 developerToken: "dev_pk_..."
+                authorization: "Bearer eyJ..."
               payload:
                 tokenClass: "USDC"
       responses:
@@ -209,6 +496,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse_TokenClassDetails'
+              example:
+                context:
+                  id: "api.tokenclass.get"
+                  version: "1.0"
+                  ts: "2025-01-04T10:00:00Z"
+                  msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
+                  status: "successful"
+                response:
+                  tokenClass: "USDC"
+                  tokenStandard: "UNITS-FT"
+                  name: "USD Coin"
+                  description: "Circle USD stablecoin pegged 1:1 to USD"
+                  status: "active"
+                  schema:
+                    type: "object"
+                    properties:
+                      supply:
+                        type: "object"
+                        properties:
+                          total: { type: "string", pattern: "^[0-9]+$" }
+                          circulating: { type: "string", pattern: "^[0-9]+$" }
+                    required: ["supply"]
+                  identities:
+                    - id: "circle@finternet"
+                      type: "issuer"
+                      roles: ["admin", "minter", "burner"]
+                  metadata:
+                    decimals: 6
+                    symbol: "USDC"
+                    currency: "USD"
+                    fungible: true
+                    category: "stablecoin"
+                    createdAt: "2025-01-04T10:00:00Z"
+                    updatedAt: "2025-01-04T10:00:00Z"
         '404':
           $ref: '#/components/responses/NotFoundError'
         '401':
@@ -222,6 +543,7 @@ paths:
       description: "Search and list all registered token classes with filters"
       security:
         - developerToken: []
+        - userToken: []
       requestBody:
         required: true
         content:
@@ -235,6 +557,7 @@ paths:
                 ts: "2025-01-04T10:00:00Z"
                 msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef123"
                 developerToken: "dev_pk_..."
+                authorization: "Bearer eyJ..."
               payload:
                 filters:
                   tokenStandard: "ERC-3643"
@@ -252,6 +575,71 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse_TokenClassList'
+              example:
+                context:
+                  id: "api.tokenclass.search"
+                  version: "1.0"
+                  ts: "2025-01-04T10:00:00Z"
+                  msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef"
+                  status: "successful"
+                response:
+                  tokenClasses:
+                    - tokenClass: "USDC"
+                      tokenStandard: "UNITS-FT"
+                      name: "USD Coin"
+                      description: "Circle USD stablecoin pegged 1:1 to USD"
+                      status: "active"
+                      schema:
+                        type: "object"
+                        properties:
+                          supply:
+                            type: "object"
+                            properties:
+                              total: { type: "string", pattern: "^[0-9]+$" }
+                              circulating: { type: "string", pattern: "^[0-9]+$" }
+                        required: ["supply"]
+                      identities:
+                        - id: "circle@finternet"
+                          type: "issuer"
+                          roles: ["admin", "minter", "burner"]
+                      metadata:
+                        decimals: 6
+                        symbol: "USDC"
+                        currency: "USD"
+                        fungible: true
+                        category: "stablecoin"
+                        createdAt: "2025-01-04T10:00:00Z"
+                        updatedAt: "2025-01-04T10:00:00Z"
+                    - tokenClass: "USDT"
+                      tokenStandard: "UNITS-FT"
+                      name: "Tether USD"
+                      description: "Tether USD stablecoin"
+                      status: "active"
+                      schema:
+                        type: "object"
+                        properties:
+                          supply:
+                            type: "object"
+                            properties:
+                              total: { type: "string", pattern: "^[0-9]+$" }
+                              circulating: { type: "string", pattern: "^[0-9]+$" }
+                        required: ["supply"]
+                      identities:
+                        - id: "tether@finternet"
+                          type: "issuer"
+                          roles: ["admin", "minter", "burner"]
+                      metadata:
+                        decimals: 6
+                        symbol: "USDT"
+                        currency: "USD"
+                        fungible: true
+                        category: "stablecoin"
+                        createdAt: "2025-01-04T10:00:00Z"
+                        updatedAt: "2025-01-04T10:00:00Z"
+                  pagination:
+                    total: 2
+                    limit: 50
+                    offset: 0
         '401':
           $ref: '#/components/responses/UnauthorizedError'
 
@@ -261,10 +649,10 @@ paths:
       tags:
         - "Token"
       summary: "Get token details"
-      description: "Retrieves detailed information about a specific token by its ID. Requires Developer auth."
+      description: "Retrieves detailed information about a specific token by its ID. Requires Developer and User auth."
       security:
         - developerToken: []
-        - developerSignature: []
+        - userToken: []
       requestBody:
         required: true
         content:
@@ -278,6 +666,7 @@ paths:
                 ts: "2025-01-04T10:00:00Z"
                 msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
                 developerToken: "dev_pk_..."
+                authorization: "Bearer eyJ..."
               payload:
                 tokenId: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
       responses:
@@ -311,39 +700,147 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ApiRequest_MintTokenRequest'
-            example:
-              context:
-                id: "api.token.mint"
-                version: "1.0"
-                ts: "2025-01-04T10:00:00Z"
-                msgId: "c1d2e3f4-a5b6-7890-1234-567890abcdef"
-                developerToken: "dev_pk_..."
-                authorization: "Bearer eyJ..."
-              payload:
-                tokenClass: "USDC"
-                metadata:
-                  tokenStandard: "ERC-3643"
-                  name: "USD Coin"
-                  symbol: "USDC"
-                  decimals: 6
-                  fungibility: "fungible"
-                  valuationType: "fixed"
-                  valuationModel:
-                    parValue:
-                      amount: "1.00"
-                      currency: "USD"
-                data:
-                  reserveAccount: "did:web:circle.com:accounts:reserve-001"
-                  jurisdiction: "US"
-                identities:
-                  - id: "did:web:circle.com"
-                    type: "issuer"
-                  - id: "did:web:circle.com"
-                    type: "creator"
-                initialSupply: "1000000000000"
-              signature:
-                type: "JsonWebSignature2020"
-                jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+            examples:
+              USDC:
+                summary: "Mint USDC - 1M tokens"
+                value:
+                  context:
+                    id: "api.token.mint"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "c1d2e3f4-a5b6-7890-1234-567890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "USDC"
+                    identities:
+                      - id: "circle@finternet"
+                        type: "issuer"
+                        roles: ["admin", "minter"]
+                      - id: "circle@finternet"
+                        type: "owner"
+                        roles: ["owner"]
+                    initialSupply: "1000000000000"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              INRT:
+                summary: "Mint INRT - 10K tokens"
+                value:
+                  context:
+                    id: "api.token.mint"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "d2e3f4a5-b6c7-8901-2345-67890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "INRT"
+                    identities:
+                      - id: "hdfc@finternet"
+                        type: "issuer"
+                        roles: ["admin", "minter"]
+                      - id: "hdfc@finternet"
+                        type: "owner"
+                        roles: ["owner"]
+                    initialSupply: "1000000"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              NFH-T:
+                summary: "Mint NFH-T - 5K tokens with constraints"
+                value:
+                  context:
+                    id: "api.token.mint"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "e3f4a5b6-c7d8-9012-3456-7890abcdef1"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "NFH-T"
+                    identities:
+                      - id: "nfh@finternet"
+                        type: "issuer"
+                        roles: ["admin", "minter"]
+                      - id: "nfh@finternet"
+                        type: "owner"
+                        roles: ["owner"]
+                    initialSupply: "500000"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              ART-NFT:
+                summary: "Mint ART-NFT - Digital Art"
+                value:
+                  context:
+                    id: "api.token.mint"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "f4a5b6c7-d8e9-0123-4567-890abcdef12"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "ART-NFT"
+                    metadata:
+                      name: "Sunset Dreams #001"
+                    data:
+                      tokenURI: "https://ipfs.io/ipfs/QmXyz123/metadata.json"
+                      attributes:
+                        - trait_type: "Artist"
+                          value: "Alice Johnson"
+                        - trait_type: "Style"
+                          value: "Digital Impressionism"
+                        - trait_type: "Year"
+                          value: 2024
+                        - trait_type: "Rarity"
+                          value: "Legendary"
+                      creator: "alice@finternet"
+                      royaltyBps: 500
+                      valuationUSD: "5000.00"
+                    identities:
+                      - id: "opensea@finternet"
+                        type: "issuer"
+                        roles: ["admin", "minter"]
+                      - id: "alice@finternet"
+                        type: "owner"
+                        roles: ["owner"]
+                    initialSupply: "1"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              RWA-NFT:
+                summary: "Mint RWA-NFT - Property Deed"
+                value:
+                  context:
+                    id: "api.token.mint"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "a5b6c7d8-e9f0-1234-5678-90abcdef123"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "RWA-NFT"
+                    metadata:
+                      name: "Property Deed - 123 Main St"
+                    data:
+                      assetId: "PROP-2024-001234"
+                      assetType: "property"
+                      legalDocHash: "a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd"
+                      jurisdiction: "US-CA"
+                      valuationUSD: "750000.00"
+                      propertyAddress: "123 Main Street, San Francisco, CA 94102"
+                    identities:
+                      - id: "realassets@finternet"
+                        type: "issuer"
+                        roles: ["admin", "minter", "compliance"]
+                      - id: "bob@finternet"
+                        type: "owner"
+                        roles: ["owner"]
+                    initialSupply: "1"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
       responses:
         '202':
           description: "Mint transaction accepted (async)"
@@ -386,7 +883,8 @@ paths:
                   tokenStandard: "UNITS-FT"
                   status: "active"
                   fungibility: "fungible"
-                  tags: ["stablecoin"]
+                  tags:
+                    - "stablecoin"
                 pagination:
                   limit: 50
                   offset: 0
@@ -420,13 +918,10 @@ paths:
         - `redeem` - Redeem token (for redeemable assets)
         - `transfer` - Transfer token ownership
         - `update` - Update token data or metadata fields
-        - `addClaim` - Add verifiable credential/attestation
-        - `revokeClaim` - Revoke a claim
-        - `updateClaimStatus` - Update claim status
 
         **Note:** `mint` operation has a dedicated `/v1/token/mint` endpoint with separate ACL controls.
 
-        Critical operations (burn, transfer, addClaim, etc.) require end-user signature.
+        Critical operations (burn, transfer, etc.) require end-user signature.
       security:
         - developerToken: []
         - developerSignature: []
@@ -437,44 +932,8 @@ paths:
             schema:
               $ref: '#/components/schemas/ApiRequest_TransactRequest'
             examples:
-              BurnToken:
-                summary: "Burn tokens"
-                value:
-                  context:
-                    id: "api.token.transact"
-                    version: "1.0"
-                    ts: "2025-01-04T10:05:00Z"
-                    msgId: "d1e2f3a4-b5c6-7890-1234-567890abcdef"
-                    developerToken: "dev_pk_..."
-                    authorization: "Bearer eyJ..."
-                  payload:
-                    operation: "burn"
-                    tokenId: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
-                    amount: "100000000"
-                    reason: "Token redemption"
-                  signature:
-                    type: "JsonWebSignature2020"
-                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
-              FreezeToken:
-                summary: "Freeze a token"
-                value:
-                  context:
-                    id: "api.token.transact"
-                    version: "1.0"
-                    ts: "2025-01-04T10:10:00Z"
-                    msgId: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
-                    developerToken: "dev_pk_..."
-                    authorization: "Bearer eyJ..."
-                  payload:
-                    operation: "freeze"
-                    tokenId: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
-                    reason: "Compliance hold"
-                    frozenBy: "did:web:regulator.example"
-                  signature:
-                    type: "JsonWebSignature2020"
-                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
-              TransferToken:
-                summary: "Transfer token ownership"
+              TransferUSDC:
+                summary: "Transfer - USDC (P2P Payment)"
                 value:
                   context:
                     id: "api.token.transact"
@@ -485,9 +944,195 @@ paths:
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "transfer"
-                    tokenId: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
-                    to: "did:web:bob.example"
+                    tokenId: "a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                    to: "bob@finternet"
+                    amount: "100000000"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              TransferINRT:
+                summary: "Transfer - INRT (Cross-Border Remittance)"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:15:00Z"
+                    msgId: "g2b3c4d5-e6f7-8901-2345-67890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "transfer"
+                    tokenId: "1ab71000-1001-4001-8001-000000000001"
+                    to: "lakshmi@finternet"
+                    amount: "5000000000000"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              TransferARTNFT:
+                summary: "Transfer - ART-NFT (Art Sale)"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:15:00Z"
+                    msgId: "h3c4d5e6-f7a8-9012-3456-7890abcdef1"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "transfer"
+                    tokenId: "a4571f00-57a4-4001-8001-000000000001"
+                    to: "charlie@finternet"
+                    amount: "1"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              TransferRWANFT:
+                summary: "Transfer - RWA-NFT (Property Sale)"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:15:00Z"
+                    msgId: "i4d5e6f7-a8b9-0123-4567-890abcdef12"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "transfer"
+                    tokenId: "4ea1000a-1001-4001-8001-000000000001"
+                    to: "diana@finternet"
+                    amount: "1"
+                    data:
+                      salePrice: "2500000.00"
+                      saleCurrency: "USD"
+                      closingDate: "2025-03-15"
+                      escrowAgent: "titlecompany@finternet"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              BurnUSDT:
+                summary: "Burn - USDT (Redemption)"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:05:00Z"
+                    msgId: "d1e2f3a4-b5c6-7890-1234-567890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "burn"
+                    tokenId: "05d71000-1001-4001-8001-000000000001"
+                    amount: "1000000000"
+                    reason: "Fiat withdrawal - Bank transfer to Tether redemption account"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              BurnNFHT:
+                summary: "Burn - NFH-T (Community Token Burn)"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:05:00Z"
+                    msgId: "d2e3f4a5-b6c7-8901-2345-67890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "burn"
+                    tokenId: "0ffa1000-1001-4001-8001-000000000001"
+                    amount: "500000000000000000000"
+                    reason: "Deflationary burn event - Q1 2025"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              FreezeINRT:
+                summary: "Freeze - INRT (Compliance Hold)"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:10:00Z"
+                    msgId: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "freeze"
+                    tokenId: "1ab71000-5054-4001-8001-000000000001"
+                    reason: "AML investigation - Case #AML-2025-001"
+                    frozenBy: "hdfc@finternet:compliance"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              UnfreezeToken:
+                summary: "Unfreeze a token"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:10:00Z"
+                    msgId: "e2f3a4b5-c6d7-8901-2345-67890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "unfreeze"
+                    tokenId: "1ab71000-5054-4001-8001-000000000001"
+                    reason: "Compliance review completed"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              LockEURC:
+                summary: "Lock - EURC (DeFi Collateral)"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:20:00Z"
+                    msgId: "f3a4b5c6-d7e8-9012-3456-7890abcdef1"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "lock"
+                    tokenId: "e04c1000-1001-4001-8001-000000000001"
                     amount: "500000000"
+                    reason: "Collateral for DeFi loan - Protocol: Aave"
+                    lockUntil: "2025-12-31T23:59:59Z"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              LockGBPT:
+                summary: "Lock - GBPT (Escrow for Trade)"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:20:00Z"
+                    msgId: "f4a5b6c7-d8e9-0123-4567-890abcdef12"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "lock"
+                    tokenId: "6b971000-1001-4001-8001-000000000001"
+                    amount: "10000000000"
+                    reason: "Escrow for international trade - Invoice #INV-2025-001"
+                    lockUntil: "2025-06-30T23:59:59Z"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              UnlockToken:
+                summary: "Unlock previously locked tokens"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:20:00Z"
+                    msgId: "f5a6b7c8-d9e0-1234-5678-90abcdef123"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "unlock"
+                    tokenId: "e04c1000-1001-4001-8001-000000000001"
+                    amount: "500000000"
+                    reason: "Loan repaid"
                   signature:
                     type: "JsonWebSignature2020"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
@@ -503,42 +1148,10 @@ paths:
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "update"
-                    tokenId: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                    tokenId: "a1b2c3d4-e5f6-7890-abcd-1234567890ab"
                     data:
                       auditReport: "https://www.circle.com/en/usdc-transparency"
                       lastAuditDate: "2025-04-01T00:00:00Z"
-              AddClaim:
-                summary: "Add a verifiable claim"
-                value:
-                  context:
-                    id: "api.token.transact"
-                    version: "1.0"
-                    ts: "2025-01-04T10:25:00Z"
-                    msgId: "b3c4d5e6-f7a8-9012-3456-7890abcdef"
-                    developerToken: "dev_pk_..."
-                    authorization: "Bearer eyJ..."
-                  payload:
-                    operation: "addClaim"
-                    tokenId: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
-                    claim:
-                      id: "urn:uuid:claim-002"
-                      "@context": ["https://www.w3.org/2018/credentials/v1"]
-                      type: ["VerifiableCredential", "ComplianceCertificate"]
-                      issuer: "did:web:regulator.example"
-                      issuanceDate: "2025-01-04T00:00:00Z"
-                      credentialSubject:
-                        id: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
-                        compliant: true
-                        jurisdiction: "US"
-                      proof:
-                        type: "Ed25519Signature2018"
-                        created: "2025-01-04T00:00:00Z"
-                        verificationMethod: "did:web:regulator.example#key-1"
-                        proofPurpose: "assertionMethod"
-                        jws: "eyJhbGciOiJFZERTQSJ9..."
-                  signature:
-                    type: "JsonWebSignature2020"
-                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
       responses:
         '202':
           description: "Transaction accepted for processing (async)."
@@ -561,7 +1174,6 @@ paths:
                       txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
                       status: "submitted"
                       message: "Transaction submitted for processing"
-                      estimatedCompletionTime: "2025-01-04T10:00:05Z"
                 TransferAccepted:
                   summary: "Transfer transaction accepted"
                   value:
@@ -602,6 +1214,7 @@ paths:
         Use this endpoint to poll for transaction completion after submitting via /v1/token/transact.
       security:
         - developerToken: []
+        - userToken: []
       requestBody:
         required: true
         content:
@@ -615,6 +1228,7 @@ paths:
                 ts: "2025-01-04T10:00:02Z"
                 msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
                 developerToken: "dev_pk_..."
+                authorization: "Bearer eyJ..."
               payload:
                 txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
       responses:
@@ -704,6 +1318,7 @@ paths:
         Use this after transaction completion to get full audit trail.
       security:
         - developerToken: []
+        - userToken: []
       requestBody:
         required: true
         content:
@@ -717,6 +1332,7 @@ paths:
                 ts: "2025-01-04T10:00:10Z"
                 msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef"
                 developerToken: "dev_pk_..."
+                authorization: "Bearer eyJ..."
               payload:
                 txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
       responses:
@@ -741,6 +1357,7 @@ paths:
         Useful for transaction history, reconciliation, and reporting. Owner/initiator filtering inferred from JWT/ACL.
       security:
         - developerToken: []
+        - userToken: []
       requestBody:
         required: true
         content:
@@ -787,6 +1404,7 @@ paths:
         Provides complete audit trail and state history for the token.
       security:
         - developerToken: []
+        - userToken: []
       requestBody:
         required: true
         content:
@@ -800,13 +1418,12 @@ paths:
                 ts: "2025-01-04T10:00:00Z"
                 msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef"
                 developerToken: "dev_pk_..."
+                authorization: "Bearer eyJ..."
               payload:
                 filters:
                   tokenId: "urn:uuid:usdc-a1b2c3d4"
                   operation: "transfer"
-                  dateRange:
-                    from: "2025-01-01T00:00:00Z"
-                    to: "2025-01-31T23:59:59Z"
+                  entryType: "credit"
                 pagination:
                   limit: 100
                   offset: 0
@@ -843,6 +1460,7 @@ paths:
         The response includes all data needed for independent verification.
       security:
         - developerToken: []
+        - userToken: []
       requestBody:
         required: true
         content:
@@ -856,6 +1474,7 @@ paths:
                 ts: "2026-01-19T10:00:00Z"
                 msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
                 developerToken: "dev_pk_..."
+                authorization: "Bearer eyJ..."
               payload:
                 txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
       responses:
@@ -929,6 +1548,7 @@ paths:
         The leaf data includes the transaction and all its token_transactions.
       security:
         - developerToken: []
+        - userToken: []
       requestBody:
         required: true
         content:
@@ -942,6 +1562,7 @@ paths:
                 ts: "2026-01-19T10:00:00Z"
                 msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef"
                 developerToken: "dev_pk_..."
+                authorization: "Bearer eyJ..."
               payload:
                 txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
       responses:
@@ -970,20 +1591,20 @@ paths:
                       entryType: "debit"
                       amount: "1000000"
                       identities:
-                        - id: "did:web:alice.example"
+                        - id: "alice@finternet"
                           type: "owner"
                       participants:
-                        - accountId: "did:web:alice.example"
+                        - accountId: "alice@finternet"
                           role: "sender"
                     - id: "urn:uuid:tt-002"
                       tokenId: "urn:uuid:token-def456"
                       entryType: "credit"
                       amount: "1000000"
                       identities:
-                        - id: "did:web:bob.example"
+                        - id: "bob@finternet"
                           type: "owner"
                       participants:
-                        - accountId: "did:web:bob.example"
+                        - accountId: "bob@finternet"
                           role: "receiver"
         '404':
           $ref: '#/components/responses/NotFoundError'
@@ -1006,6 +1627,7 @@ paths:
         using the data from `/v1/transaction/proof` and `/v1/transaction/proof/leaf`.
       security:
         - developerToken: []
+        - userToken: []
       requestBody:
         required: true
         content:
@@ -1019,6 +1641,7 @@ paths:
                 ts: "2026-01-19T10:00:00Z"
                 msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
                 developerToken: "dev_pk_..."
+                authorization: "Bearer eyJ..."
               payload:
                 txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
       responses:
@@ -1188,74 +1811,11 @@ components:
           default: desc
           description: "Sort direction"
 
-    FilterFieldConvention:
-      type: string
-      description: |
-        **Filter Field Naming Convention**
-
-        Filters are resolved in the following order. `defaultFilterScope` ONLY affects
-        unqualified custom fields (category 3 below).
-
-        ┌─────────────────────────────────────────────────────────────────────────┐
-        │  FILTER RESOLUTION ORDER                                                │
-        ├─────────────────────────────────────────────────────────────────────────┤
-        │                                                                         │
-        │  1. KNOWN FIELDS (top-level table columns):                            │
-        │     - Examples: status, tokenClass, tokenStandard, fungibility, owner  │
-        │     - These are direct database columns, NOT in JSONB                  │
-        │     - ⚠️  defaultFilterScope has NO effect on these                    │
-        │     - Usage: "status": "active"                                        │
-        │                                                                         │
-        │  2. EXPLICIT PATHS (dot-notation):                                     │
-        │     - Examples: "data.reserveAccount", "metadata.category"             │
-        │     - Explicitly specifies which JSONB column to search                │
-        │     - ⚠️  defaultFilterScope has NO effect on these                    │
-        │     - Usage: "data.jurisdiction": "US"                                 │
-        │                                                                         │
-        │  3. UNQUALIFIED CUSTOM FIELDS (no dot, not a known field):             │
-        │     - Examples: "customField", "myProperty"                            │
-        │     - ✅ defaultFilterScope ONLY affects these fields                  │
-        │     - If defaultFilterScope="metadata" → metadata.customField          │
-        │     - If defaultFilterScope="data" → data.customField                  │
-        │                                                                         │
-        └─────────────────────────────────────────────────────────────────────────┘
-
-        **Known Fields by Entity:**
-        - TokenClass: tokenClass, tokenStandard, name, status
-        - Token: tokenClass, tokenStandard, status, fungibility, owner
-        - Transaction: status, tokenId
-        - TokenTransaction: tokenId, operation, entryType, fromAccount, toAccount
-
-        **Example 1: Default scope is metadata**
-        ```json
-        {
-          "filters": {
-            "status": "active",           // → tokens.status (known field)
-            "tokenClass": "USDC",         // → tokens.token_class (known field)
-            "category": "stablecoin",     // → metadata.category (unqualified)
-            "data.jurisdiction": "US"     // → data.jurisdiction (explicit path)
-          },
-          "defaultFilterScope": "metadata"
-        }
-        ```
-
-        **Example 2: Default scope is data**
-        ```json
-        {
-          "filters": {
-            "status": "active",           // → tokens.status (known field, unchanged!)
-            "reserveAccount": "acct-123", // → data.reserveAccount (unqualified)
-            "metadata.tags": ["regulated"] // → metadata.tags (explicit path)
-          },
-          "defaultFilterScope": "data"
-        }
-        ```
-
     # --- TokenClass Schemas ---
 
     TokenClass:
       type: object
-      required: [tokenClass, tokenStandard, name, schema]
+      required: [tokenClass, tokenStandard, name, schema, status]
       description: "Token class definition with schema and authorized identities"
       properties:
         tokenClass:
@@ -1270,6 +1830,11 @@ components:
         description:
           type: string
           description: "Detailed description"
+        status:
+          type: string
+          enum: [active, inactive, deprecated, test]
+          description: "Token class status"
+          example: "active"
         schema:
           type: object
           description: "JSON Schema definition for token instances"
@@ -1286,20 +1851,19 @@ components:
           description: "Authorized identities who can mint tokens of this class"
         metadata:
           type: object
-          description: "Token class metadata including balance model configuration"
+          description: "Token class metadata including fungibility configuration"
           properties:
-            balanceModel:
-              type: string
-              enum: [per_owner, single_token]
-              default: single_token
+            fungible:
+              type: boolean
+              default: true
               description: |
-                Defines how token balances are managed:
-                - "per_owner": Each owner has their own token with balance (fungible tokens).
-                              Mint creates/updates token for the owner.
-                              Transfer debits sender's token, credits recipient's token.
-                - "single_token": One token per class (NFTs, unique assets).
-                                  Mint creates/updates the single token.
-                                  Transfer changes ownership of the token.
+                Defines whether tokens of this class are fungible:
+                - true: Fungible tokens (FT) - each owner has their own token with balance.
+                        Mint creates/updates token for the owner.
+                        Transfer debits sender's token, credits recipient's token.
+                - false: Non-fungible tokens (NFT) - unique assets.
+                         Mint creates the unique token.
+                         Transfer changes ownership of the token.
             decimals:
               type: integer
               minimum: 0
@@ -1370,18 +1934,13 @@ components:
           type: object
           description: |
             Search filters for token classes.
-            Known fields: tokenStandard, category, tags.
-            Custom fields default to metadata scope (see FilterFieldConvention).
+            Known fields: tokenStandard, status, name.
+            Use explicit paths for JSONB fields (e.g., metadata.category).
           properties:
             tokenStandard: { type: string, description: "Filter by protocol standard" }
-            category: { type: string, description: "Filter by category (searches metadata.category)" }
-            tags: { type: array, items: { type: string }, description: "Filter by tags" }
+            status: { type: string, description: "Filter by status" }
+            "metadata.category": { type: string, description: "Filter by metadata.category" }
           additionalProperties: true
-        defaultFilterScope:
-          type: string
-          enum: [metadata, data]
-          default: metadata
-          description: "Default scope for unqualified filter fields (default: metadata)"
         pagination:
           $ref: '#/components/schemas/PaginationRequest'
         sort:
@@ -1448,7 +2007,11 @@ components:
             transferable: { type: boolean, default: true }
             locked: { type: boolean, default: false }
             revocable: { type: boolean, default: false }
-        tags: { type: array, items: { type: string } }
+        tags:
+          type: object
+          description: "Key-value pairs for categorization and filtering"
+          additionalProperties: { type: string }
+          example: { "category": "stablecoin", "region": "US", "compliance": "regulated" }
         description: { type: string }
         externalUrls: { type: array, items: { type: string, format: uri } }
         createdAt: { type: string, format: date-time }
@@ -1542,7 +2105,7 @@ components:
 
     MintTokenRequest:
       type: object
-      required: [tokenClass, metadata, initialSupply]
+      required: [tokenClass, initialSupply]
       description: "Request to mint a new token instance"
       properties:
         tokenClass:
@@ -1551,7 +2114,7 @@ components:
           example: "USDC"
         metadata:
           type: object
-          description: "Token metadata"
+          description: "Token metadata (optional)"
           additionalProperties: true
         data:
           type: object
@@ -1577,20 +2140,13 @@ components:
           type: object
           description: |
             Search filters for tokens. Owner filtering inferred from JWT/ACL.
-            Known fields: tokenClass, tokenStandard, fungibility, status, tags.
-            Custom fields default to metadata scope (see FilterFieldConvention).
+            Known fields: tokenClass, tokenStandard, tokenClassId, id, identities.
+            Use explicit paths for JSONB fields (e.g., metadata.category, data.field).
           properties:
             tokenClass: { type: string, description: "Filter by token class (e.g., USDC, USDT)" }
             tokenStandard: { type: string, description: "Filter by protocol standard" }
-            fungibility: { type: string, enum: [fungible, nonFungible, semiFungible] }
-            status: { type: string, enum: [active, frozen, redeemed, burned, expired] }
-            tags: { type: array, items: { type: string } }
+            tokenClassId: { type: string, description: "Filter by token class ID (UUID)" }
           additionalProperties: true
-        defaultFilterScope:
-          type: string
-          enum: [metadata, data]
-          default: metadata
-          description: "Default scope for unqualified filter fields (default: metadata)"
         pagination:
           $ref: '#/components/schemas/PaginationRequest'
         sort:
@@ -1603,15 +2159,13 @@ components:
         Request payload for token operations. The structure varies by operation:
 
         **For update:** `operation`, `tokenId`, `data` (optional), `metadata` (optional)
-        **For addClaim:** `operation`, `tokenId`, `claim`
-        **For revokeClaim:** `operation`, `tokenId`, `claimId`
         **For burn/freeze/transfer:** `operation`, `tokenId`, plus operation-specific params at root level
 
         **Note:** `mint` operation is handled by separate `/v1/token/mint` endpoint.
       properties:
         operation:
           type: string
-          enum: [burn, freeze, unfreeze, lock, unlock, redeem, transfer, update, addClaim, revokeClaim, updateClaimStatus]
+          enum: [burn, freeze, unfreeze, lock, unlock, redeem, transfer, update]
         tokenId:
           type: string
           format: uri-reference
@@ -1624,13 +2178,6 @@ components:
           type: object
           description: "Token data section (for mint, update operations)"
           additionalProperties: true
-        claim:
-          type: object
-          description: "Verifiable credential to add (for addClaim operation)"
-          additionalProperties: true
-        claimId:
-          type: string
-          description: "Claim ID to revoke (for revokeClaim operation)"
         amount:
           type: string
           description: "Amount for burn/transfer operations"
@@ -1640,11 +2187,19 @@ components:
           description: "Recipient for transfer operation"
         reason:
           type: string
-          description: "Reason for burn/freeze operations"
+          description: "Reason for burn/freeze/lock operations"
         frozenBy:
           type: string
           format: uri-reference
           description: "Entity performing freeze operation"
+        lockedBy:
+          type: string
+          format: uri-reference
+          description: "Entity performing lock operation"
+        lockUntil:
+          type: string
+          format: date-time
+          description: "Lock expiration timestamp (optional)"
         initialSupply:
           type: string
           description: "Initial supply for mint operation (fungible tokens)"
@@ -1859,7 +2414,7 @@ components:
           format: uri-reference
         operation:
           type: string
-          enum: [mint, burn, transfer, freeze, unfreeze, lock, unlock, redeem, update, addClaim, revokeClaim]
+          enum: [mint, burn, transfer, freeze, unfreeze, lock, unlock, redeem, update]
         entryType:
           type: string
           enum: [debit, credit]
@@ -1998,14 +2553,16 @@ components:
       properties:
         filters:
           type: object
-          description: "Search filters for transactions. Initiator filtering inferred from JWT/ACL."
+          description: |
+            Search filters for transactions. Initiator filtering inferred from JWT/ACL.
+            Known fields: status, correlationId, initiator, workflowInstanceId.
+            Use explicit paths for JSONB fields (e.g., metadata.field).
           properties:
             status:
               $ref: '#/components/schemas/ExecutionStatus'
-            tokenId:
+            correlationId:
               type: string
-              format: uri-reference
-              description: "Filter by token ID"
+              description: "Filter by correlation ID"
             dateRange:
               type: object
               description: "Filter by date range"
@@ -2013,11 +2570,6 @@ components:
                 from: { type: string, format: date-time }
                 to: { type: string, format: date-time }
           additionalProperties: true
-        defaultFilterScope:
-          type: string
-          enum: [metadata, data]
-          default: metadata
-          description: "Default scope for unqualified filter fields"
         pagination:
           $ref: '#/components/schemas/PaginationRequest'
         sort:
@@ -2034,7 +2586,10 @@ components:
       properties:
         filters:
           type: object
-          description: "Transaction history filters"
+          description: |
+            Transaction history filters.
+            Known fields: tokenId, operation, entryType, fromAccount, toAccount.
+            Use explicit paths for JSONB fields (e.g., metadata.field).
           properties:
             tokenId:
               type: string
@@ -2042,7 +2597,7 @@ components:
               description: "Token ID to get history for"
             operation:
               type: string
-              enum: [mint, burn, transfer, freeze, unfreeze, lock, unlock, redeem, update, addClaim, revokeClaim]
+              enum: [mint, burn, transfer, freeze, unfreeze, lock, unlock, redeem, update]
               description: "Filter by operation type"
             entryType:
               type: string
@@ -2055,11 +2610,6 @@ components:
                 from: { type: string, format: date-time }
                 to: { type: string, format: date-time }
           additionalProperties: true
-        defaultFilterScope:
-          type: string
-          enum: [metadata, data]
-          default: metadata
-          description: "Default scope for unqualified filter fields"
         pagination:
           allOf:
             - $ref: '#/components/schemas/PaginationRequest'
@@ -2559,3 +3109,12 @@ components:
       description: |
         The IETF HTTP Signature (RFC 9421) used by B2B developers to ensure message
         integrity and non-repudiation. This is passed in the `Signature` header.
+
+    userToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        A JWT token that identifies the end-user making the request. This is obtained
+        after user authentication (e.g., via `/v1/account/login`) and is passed in
+        the `context.authorization` field as `Bearer <token>`.

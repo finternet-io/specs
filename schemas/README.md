@@ -15,15 +15,44 @@ schema/
 │       ├── core.yaml      # OpenAPI 3.1 schema definitions
 │       └── README.md      # Core schema documentation
 │
-└── account/           # Account domain schema
-    ├── v1/            # Version 1 of account schema
-    │   ├── context.jsonld   # Account-specific context (imports core)
-    │   ├── vocab.jsonld     # Account vocabulary definitions
-    │   ├── attributes.yaml  # OpenAPI schema with x-jsonld annotations
-    │   └── README.md        # Account schema documentation
+├── account/           # Account domain schema
+│   ├── v1/            # Version 1 of account schema
+│   │   ├── context.jsonld   # Account-specific context (imports core)
+│   │   ├── vocab.jsonld     # Account vocabulary definitions
+│   │   ├── attributes.yaml  # OpenAPI schema with x-jsonld annotations
+│   │   └── README.md        # Account schema documentation
+│   │
+│   ├── account.jsonld       # Example account instance
+│   └── account.schema.json  # JSON Schema validator (references v1/)
+│
+├── token/             # Token domain schema (UNITS)
+│   ├── v1/            # Version 1 of token schema
+│   │   ├── context.jsonld   # Token-specific context
+│   │   ├── vocab.jsonld     # Token vocabulary definitions
+│   │   ├── attributes.yaml  # OpenAPI schema with x-jsonld annotations
+│   │   └── README.md        # Token schema documentation
+│   │
+│   ├── token.jsonld         # Example token instance
+│   └── token.schema.json    # JSON Schema validator
+│
+├── credential/        # Credential domain schema (extends Token + W3C VC)
+│   ├── v1/            # Version 1 of credential schema
+│   │   ├── context.jsonld   # Credential context (imports W3C VC + token)
+│   │   ├── vocab.jsonld     # Credential vocabulary definitions
+│   │   ├── attributes.yaml  # OpenAPI schema with W3C VC types
+│   │   └── README.md        # Credential schema documentation
+│   │
+│   ├── credential.jsonld    # Example credential token instance
+│   └── credential.schema.json # JSON Schema validator
+│
+└── transaction/       # Transaction domain schema
+    ├── v1/            # Version 1 of transaction schema
+    │   ├── context.jsonld   # Transaction-specific context
+    │   ├── vocab.jsonld     # Transaction vocabulary definitions
+    │   ├── attributes.yaml  # OpenAPI schema
+    │   └── README.md        # Transaction schema documentation
     │
-    ├── account.jsonld       # Example account instance
-    └── account.schema.json  # JSON Schema validator (references v1/)
+    └── *.jsonld             # Example transaction instances
 ```
 
 ## Design Principles
@@ -238,6 +267,93 @@ Implements a two-tier transaction architecture for tracking and recording token 
 }
 ```
 
+## Credential Schema (v1)
+
+Extends the Token schema to support **W3C Verifiable Credentials** as tokenized assets. Used to issue identity verification results from KYC providers.
+
+### Key Features
+
+- **W3C VC Compliance** - Full compliance with Verifiable Credentials Data Model 1.1/2.0
+  - Required `@context` with W3C credentials context
+  - Standard properties: issuer, issuanceDate, credentialSubject, proof
+  - Status list support for revocation
+
+- **Provider Integration** - Support for third-party KYC providers
+  - Signzy, Onfido, Jumio, Hyperverge mappings
+  - Raw response storage (encrypted)
+  - Provider-specific journey/flow tracking
+
+- **Verification Types** - Multiple credential categories
+  - `identityVerification` - Full identity check (document + biometric)
+  - `documentVerification` - Document-only verification
+  - `biometricVerification` - Liveness and face matching
+  - `kycVerification` - Comprehensive KYC
+  - `addressVerification` - Address proof
+  - `ageVerification` - Age verification (privacy-preserving)
+
+- **Assurance Levels** - Based on eIDAS framework
+  - `basic` - Self-attestation
+  - `standard` - Document OCR and validation
+  - `enhanced` - Liveness + face matching
+  - `premium` - Government DB checks + manual review
+
+### Credential-Specific Types
+
+- `CredentialToken` - UNITS token wrapping verifiable credential(s)
+- `CredentialMetadata` - Extended metadata with credential type, level, provider
+- `VerifiableCredential` - W3C VC embedded in claims array
+- `VerificationProvider` - Third-party provider metadata
+- `DocumentVerification` - Document verification results
+- `BiometricVerification` - Biometric verification results
+- `IdentityEvidence` - W3C VC Evidence extension
+
+### Usage
+
+```json
+{
+  "@context": "https://finternet-io.github.io/specs/schemas/credential/v1/context.jsonld",
+  "@type": "CredentialToken",
+  "id": "urn:uuid:...",
+  "metadata": {
+    "tokenStandard": "UNITS-CREDENTIAL",
+    "name": "KYC Verification - PAN",
+    "credentialType": "kycVerification",
+    "verificationLevel": "enhanced",
+    "provider": {
+      "providerName": "Signzy",
+      "journeyId": "PJGR095SLR"
+    }
+  },
+  "claims": [
+    {
+      "@context": ["https://www.w3.org/2018/credentials/v1", "..."],
+      "type": ["VerifiableCredential", "KYCCredential"],
+      "issuer": "did:web:finternet.io",
+      "issuanceDate": "2025-11-25T17:58:21Z",
+      "credentialSubject": {
+        "id": "did:web:user.example",
+        "fullName": "John Doe"
+      },
+      "evidence": [
+        {
+          "type": ["IdentityEvidence"],
+          "documentVerification": { "documentType": "pan", "documentValid": true },
+          "biometricVerification": { "livenessVerified": true }
+        }
+      ]
+    }
+  ],
+  "identities": [
+    { "id": "did:web:finternet.io", "type": "issuer" },
+    { "id": "did:web:user.example", "type": "subject" }
+  ],
+  "state": {
+    "status": "active",
+    "effectiveFrom": "2025-11-25T17:58:21Z"
+  }
+}
+```
+
 ## Account Schema (v1)
 
 Extends core Entity to represent user and organizational accounts:
@@ -304,8 +420,11 @@ To create a new domain schema:
 
 | Prefix | Namespace | Purpose |
 |--------|-----------|---------|
-| `finternet` | `https://finternet-io.github.io/specs/schemas/account/v1#` | Account-specific terms |
 | `finternet` | `https://finternet-io.github.io/specs/schemas/core/v1#` | Core Finternet terms |
+| `finternet` | `https://finternet-io.github.io/specs/schemas/account/v1#` | Account-specific terms |
+| `finternet` | `https://finternet-io.github.io/specs/schemas/token/v1#` | Token-specific terms |
+| `finternet` | `https://finternet-io.github.io/specs/schemas/credential/v1#` | Credential-specific terms |
+| `vc` | `https://www.w3.org/2018/credentials#` | W3C Verifiable Credentials |
 | `schema` | `https://schema.org/` | Schema.org vocabulary |
 | `didCore` | `https://www.w3.org/ns/did/v1#` | W3C Decentralized Identifiers |
 | `sec` | `https://w3id.org/security#` | W3C Security vocabulary |
@@ -356,6 +475,8 @@ riot --output=turtle account/account.jsonld
 - [JSON-LD 1.1 Specification](https://www.w3.org/TR/json-ld11/)
 - [Schema.org](https://schema.org/)
 - [W3C DID Specification](https://www.w3.org/TR/did-core/)
+- [W3C Verifiable Credentials Data Model 1.1](https://www.w3.org/TR/vc-data-model/)
+- [W3C Verifiable Credentials Data Model 2.0](https://www.w3.org/TR/vc-data-model-2.0/)
 - [OpenAPI 3.1 Specification](https://spec.openapis.org/oas/v3.1.0)
 - [RDF Schema](https://www.w3.org/TR/rdf-schema/)
 
