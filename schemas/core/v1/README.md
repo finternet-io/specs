@@ -17,7 +17,7 @@ Structured identifier for Finternet addressing:
 - `identifierDomain` - Domain part of the identifier (after @)
 
 Examples:
-- `alice@finternet` → `{identifierValue: "alice", identifierDomain: "finternet"}`
+- `alice` → `{identifierValue: "alice", identifierDomain: "finternet"}`
 - `bob@example.com` → `{identifierValue: "bob", identifierDomain: "example.com"}`
 
 ### Entity

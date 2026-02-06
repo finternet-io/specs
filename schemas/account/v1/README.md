@@ -18,7 +18,7 @@ The Account schema represents a user or organizational account in the Finternet 
 - **@id** - Unique URN identifier (e.g., `urn:uuid:...`)
 - **@type** - Must be `Account`
 - **did** - Decentralized Identifier (DID) for cryptographic verification
-- **primaryAddress** - Unique Finternet address (e.g., `alice@finternet`) - inherited from core `Entity`
+- **primaryAddress** - Unique Finternet address (e.g., `alice`) - inherited from core `Entity`
 - **name** - Legal name of individual or business
 - **email** - Primary contact email
 - **phone** - Primary contact phone (E.164 format)

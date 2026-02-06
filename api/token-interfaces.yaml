@@ -114,7 +114,7 @@ paths:
                             circulating: { type: "string", pattern: "^[0-9]+$" }
                       required: ["supply"]
                     identities:
-                      - id: "circle@finternet"
+                      - id: "circle"
                         type: "issuer"
                         roles: ["admin", "minter", "burner"]
                     metadata:
@@ -148,7 +148,7 @@ paths:
                             circulating: { type: "string", pattern: "^[0-9]+$" }
                       required: ["supply"]
                     identities:
-                      - id: "tether@finternet"
+                      - id: "tether"
                         type: "issuer"
                         roles: ["admin", "minter", "burner"]
                     metadata:
@@ -182,7 +182,7 @@ paths:
                             circulating: { type: "string", pattern: "^[0-9]+$" }
                       required: ["supply"]
                     identities:
-                      - id: "circle-eu@finternet"
+                      - id: "circle-eu"
                         type: "issuer"
                         roles: ["admin", "minter", "burner"]
                     metadata:
@@ -216,7 +216,7 @@ paths:
                             circulating: { type: "string", pattern: "^[0-9]+$" }
                       required: ["supply"]
                     identities:
-                      - id: "hsbc@finternet"
+                      - id: "hsbc"
                         type: "issuer"
                         roles: ["admin", "minter", "burner"]
                     metadata:
@@ -250,7 +250,7 @@ paths:
                             circulating: { type: "string", pattern: "^[0-9]+$" }
                       required: ["supply"]
                     identities:
-                      - id: "hdfc@finternet"
+                      - id: "hdfc"
                         type: "issuer"
                         roles: ["admin", "minter", "burner"]
                     metadata:
@@ -284,7 +284,7 @@ paths:
                             circulating: { type: "string", pattern: "^[0-9]+$" }
                       required: ["supply"]
                     identities:
-                      - id: "nfh@finternet"
+                      - id: "nfh"
                         type: "issuer"
                         roles: ["admin", "minter", "burner"]
                     metadata:
@@ -325,7 +325,7 @@ paths:
                         royaltyBps: { type: "integer", minimum: 0, maximum: 10000 }
                       required: ["tokenURI"]
                     identities:
-                      - id: "opensea@finternet"
+                      - id: "opensea"
                         type: "issuer"
                         roles: ["admin", "minter"]
                     metadata:
@@ -357,7 +357,7 @@ paths:
                         valuationUSD: { type: "string", pattern: "^[0-9]+\\.?[0-9]*$" }
                       required: ["assetId", "assetType", "legalDocHash"]
                     identities:
-                      - id: "realassets@finternet"
+                      - id: "realassets"
                         type: "issuer"
                         roles: ["admin", "minter", "compliance"]
                     metadata:
@@ -395,7 +395,7 @@ paths:
                           circulating: { type: "string", pattern: "^[0-9]+$" }
                     required: ["supply"]
                   identities:
-                    - id: "circle@finternet"
+                    - id: "circle"
                       type: "issuer"
                       roles: ["admin", "minter", "burner"]
                   metadata:
@@ -519,7 +519,7 @@ paths:
                           circulating: { type: "string", pattern: "^[0-9]+$" }
                     required: ["supply"]
                   identities:
-                    - id: "circle@finternet"
+                    - id: "circle"
                       type: "issuer"
                       roles: ["admin", "minter", "burner"]
                   metadata:
@@ -599,7 +599,7 @@ paths:
                               circulating: { type: "string", pattern: "^[0-9]+$" }
                         required: ["supply"]
                       identities:
-                        - id: "circle@finternet"
+                        - id: "circle"
                           type: "issuer"
                           roles: ["admin", "minter", "burner"]
                       metadata:
@@ -625,7 +625,7 @@ paths:
                               circulating: { type: "string", pattern: "^[0-9]+$" }
                         required: ["supply"]
                       identities:
-                        - id: "tether@finternet"
+                        - id: "tether"
                           type: "issuer"
                           roles: ["admin", "minter", "burner"]
                       metadata:
@@ -714,10 +714,10 @@ paths:
                   payload:
                     tokenClass: "USDC"
                     identities:
-                      - id: "circle@finternet"
+                      - id: "circle"
                         type: "issuer"
                         roles: ["admin", "minter"]
-                      - id: "circle@finternet"
+                      - id: "circle"
                         type: "owner"
                         roles: ["owner"]
                     initialSupply: "1000000000000"
@@ -737,10 +737,10 @@ paths:
                   payload:
                     tokenClass: "INRT"
                     identities:
-                      - id: "hdfc@finternet"
+                      - id: "hdfc"
                         type: "issuer"
                         roles: ["admin", "minter"]
-                      - id: "hdfc@finternet"
+                      - id: "hdfc"
                         type: "owner"
                         roles: ["owner"]
                     initialSupply: "1000000"
@@ -760,10 +760,10 @@ paths:
                   payload:
                     tokenClass: "NFH-T"
                     identities:
-                      - id: "nfh@finternet"
+                      - id: "nfh"
                         type: "issuer"
                         roles: ["admin", "minter"]
-                      - id: "nfh@finternet"
+                      - id: "nfh"
                         type: "owner"
                         roles: ["owner"]
                     initialSupply: "500000"
@@ -795,14 +795,14 @@ paths:
                           value: 2024
                         - trait_type: "Rarity"
                           value: "Legendary"
-                      creator: "alice@finternet"
+                      creator: "alice"
                       royaltyBps: 500
                       valuationUSD: "5000.00"
                     identities:
-                      - id: "opensea@finternet"
+                      - id: "opensea"
                         type: "issuer"
                         roles: ["admin", "minter"]
-                      - id: "alice@finternet"
+                      - id: "alice"
                         type: "owner"
                         roles: ["owner"]
                     initialSupply: "1"
@@ -831,10 +831,10 @@ paths:
                       valuationUSD: "750000.00"
                       propertyAddress: "123 Main Street, San Francisco, CA 94102"
                     identities:
-                      - id: "realassets@finternet"
+                      - id: "realassets"
                         type: "issuer"
                         roles: ["admin", "minter", "compliance"]
-                      - id: "bob@finternet"
+                      - id: "bob"
                         type: "owner"
                         roles: ["owner"]
                     initialSupply: "1"
@@ -945,7 +945,7 @@ paths:
                   payload:
                     operation: "transfer"
                     tokenId: "a1b2c3d4-e5f6-7890-abcd-1234567890ab"
-                    to: "bob@finternet"
+                    to: "bob"
                     amount: "100000000"
                   signature:
                     type: "JsonWebSignature2020"
@@ -963,7 +963,7 @@ paths:
                   payload:
                     operation: "transfer"
                     tokenId: "1ab71000-1001-4001-8001-000000000001"
-                    to: "lakshmi@finternet"
+                    to: "lakshmi"
                     amount: "5000000000000"
                   signature:
                     type: "JsonWebSignature2020"
@@ -981,7 +981,7 @@ paths:
                   payload:
                     operation: "transfer"
                     tokenId: "a4571f00-57a4-4001-8001-000000000001"
-                    to: "charlie@finternet"
+                    to: "charlie"
                     amount: "1"
                   signature:
                     type: "JsonWebSignature2020"
@@ -999,13 +999,13 @@ paths:
                   payload:
                     operation: "transfer"
                     tokenId: "4ea1000a-1001-4001-8001-000000000001"
-                    to: "diana@finternet"
+                    to: "diana"
                     amount: "1"
                     data:
                       salePrice: "2500000.00"
                       saleCurrency: "USD"
                       closingDate: "2025-03-15"
-                      escrowAgent: "titlecompany@finternet"
+                      escrowAgent: "titlecompany"
                   signature:
                     type: "JsonWebSignature2020"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
@@ -1059,7 +1059,7 @@ paths:
                     operation: "freeze"
                     tokenId: "1ab71000-5054-4001-8001-000000000001"
                     reason: "AML investigation - Case #AML-2025-001"
-                    frozenBy: "hdfc@finternet:compliance"
+                    frozenBy: "hdfc:compliance"
                   signature:
                     type: "JsonWebSignature2020"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
@@ -1442,6 +1442,155 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedError'
 
+  /v1/token/add:
+    post:
+      tags:
+        - "Token"
+      summary: "Import token from external provider"
+      description: |
+        Process a completed journey from an external provider and mint a token.
+
+        This is a **backend-to-backend** endpoint called by Finternet App Backend after receiving a
+        successful callback from a provider (Signzy, DigiLocker, etc.).
+
+        **No User JWT Required:** This endpoint does not require end-user authentication.
+        The token owner address must be provided in the payload.
+
+        **Processing Steps:**
+        1. Re-query provider API to verify journey status (security)
+        2. Download and encrypt relevant data/images to blob storage
+        3. Transform provider response to W3C Verifiable Credential format
+        4. Mint token based on specified tokenClass
+        5. Store minimal integration data for re-verification
+        6. Return transaction ID (async processing)
+
+        **Token Characteristics vary by tokenClass:**
+        - CREDENTIAL: Soulbound (non-transferable, non-burnable, revocable)
+        - Other token classes: Per token class configuration
+
+        **Note:** Token audit trail is handled by standard token_audit mechanism.
+        Blob storage uses journey hash as key - failures override same blob.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_AddCredentialRequest'
+            examples:
+              SignzyAadhaar:
+                summary: "Import Aadhaar credential from Signzy"
+                value:
+                  context:
+                    id: "api.token.add"
+                    version: "1.0"
+                    ts: "2025-01-28T10:15:00Z"
+                    msgId: "550e8400-e29b-41d4-a716-446655440000"
+                    developerToken: "dev_pk_..."
+                  payload:
+                    tokenClass: "CREDENTIAL"
+                    owner: "alice"
+                    provider: "signzy"
+                    providerDetails:
+                      flowId: "922e2a58-6afa-4a81-a13b-37aa76793641"
+                      journeyId: "YIRJ0UBX87"
+              SignzyPassport:
+                summary: "Import Passport credential from Signzy"
+                value:
+                  context:
+                    id: "api.token.add"
+                    version: "1.0"
+                    ts: "2025-01-28T10:15:00Z"
+                    msgId: "550e8400-e29b-41d4-a716-446655440001"
+                    developerToken: "dev_pk_..."
+                  payload:
+                    tokenClass: "CREDENTIAL"
+                    owner: "bob"
+                    provider: "signzy"
+                    providerDetails:
+                      flowId: "922e2a58-6afa-4a81-a13b-37aa76793641"
+                      journeyId: "PJGR096ABC"
+      responses:
+        '202':
+          description: "Token processing accepted (async)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_AddCredentialAccepted'
+              example:
+                context:
+                  id: "api.token.add"
+                  version: "1.0"
+                  ts: "2025-01-28T10:15:05Z"
+                  msgId: "550e8400-e29b-41d4-a716-446655440002"
+                  status: "accepted"
+                  transactionId: "urn:uuid:tx-credential-12345"
+                response:
+                  txId: "urn:uuid:tx-credential-12345"
+                  status: "submitted"
+                  message: "Credential processing submitted"
+                  journeyId: "PJGR095SLR"
+                  documentType: "PAN"
+        '400':
+          description: "Invalid request or journey not completed"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              examples:
+                JourneyNotCompleted:
+                  summary: "Journey not in COMPLETED status"
+                  value:
+                    context:
+                      id: "api.token.credential.add"
+                      status: "failed"
+                      error:
+                        code: "JOURNEY_NOT_COMPLETED"
+                        message: "Journey PJGR095SLR is not in COMPLETED status"
+                    response: {}
+                VerificationFailed:
+                  summary: "Provider verification failed"
+                  value:
+                    context:
+                      id: "api.token.credential.add"
+                      status: "failed"
+                      error:
+                        code: "VERIFICATION_FAILED"
+                        message: "Document verification failed: Face match below threshold"
+                    response: {}
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: "Journey not found at provider"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                context:
+                  id: "api.token.credential.add"
+                  status: "failed"
+                  error:
+                    code: "JOURNEY_NOT_FOUND"
+                    message: "Journey PJGR095SLR not found at provider"
+                response: {}
+        '409':
+          description: "Credential already exists for this journey"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                context:
+                  id: "api.token.credential.add"
+                  status: "failed"
+                  error:
+                    code: "CREDENTIAL_EXISTS"
+                    message: "Credential already minted for journey PJGR095SLR"
+                response: {}
+
   # -------------------- Proof APIs --------------------
   /v1/transaction/proof:
     post:
@@ -1591,20 +1740,20 @@ paths:
                       entryType: "debit"
                       amount: "1000000"
                       identities:
-                        - id: "alice@finternet"
+                        - id: "alice"
                           type: "owner"
                       participants:
-                        - accountId: "alice@finternet"
+                        - accountId: "alice"
                           role: "sender"
                     - id: "urn:uuid:tt-002"
                       tokenId: "urn:uuid:token-def456"
                       entryType: "credit"
                       amount: "1000000"
                       identities:
-                        - id: "bob@finternet"
+                        - id: "bob"
                           type: "owner"
                       participants:
-                        - accountId: "bob@finternet"
+                        - accountId: "bob"
                           role: "receiver"
         '404':
           $ref: '#/components/responses/NotFoundError'
@@ -2204,6 +2353,45 @@ components:
           type: string
           description: "Initial supply for mint operation (fungible tokens)"
 
+    AddCredentialRequest:
+      type: object
+      required: [tokenClass, owner, provider, providerDetails]
+      description: |
+        Request to import a token from an external provider journey.
+        Called by Finternet App Backend after successful provider callback.
+
+        The owner address must be provided in the payload (no user JWT required).
+        This supports any token type - credential, asset, or other token classes.
+      properties:
+        tokenClass:
+          type: string
+          description: "Token class to mint (e.g., CREDENTIAL)"
+          example: "CREDENTIAL"
+        owner:
+          type: string
+          description: "Finternet address of the token owner (e.g., alice)"
+          example: "alice"
+        provider:
+          type: string
+          description: "Provider identifier (signzy, digilocker, etc.)"
+          example: "signzy"
+        providerDetails:
+          type: object
+          description: "Provider-specific details (structure varies by provider)"
+          properties:
+            flowId:
+              type: string
+              format: uuid
+              description: "Flow ID from provider (Signzy)"
+            providerId:
+              type: string
+              format: uuid
+              description: "Provider ID from integration_providers table"
+            journeyId:
+              type: string
+              description: "Journey ID from provider"
+          required: [journeyId]
+
     # --- Response Payloads ---
     TokenDetails:
       allOf:
@@ -2239,6 +2427,33 @@ components:
           type: string
           format: date-time
           description: "Estimated completion time (optional)"
+
+    AddCredentialAccepted:
+      type: object
+      description: "Credential processing accepted response"
+      required: [txId, status, message, journeyId]
+      properties:
+        txId:
+          type: string
+          format: uri-reference
+          description: "Transaction ID for tracking credential minting"
+        status:
+          type: string
+          enum: [submitted, queued]
+          description: "Processing status"
+        message:
+          type: string
+          description: "Confirmation message"
+        journeyId:
+          type: string
+          description: "Provider journey ID being processed"
+        documentType:
+          type: string
+          description: "Document type detected from journey (PAN, AADHAAR, etc.)"
+        tokenId:
+          type: string
+          format: uuid
+          description: "Token ID (only present if sync processing completed)"
 
     # --- Transaction Schemas ---
 
@@ -2716,6 +2931,12 @@ components:
             payload: { $ref: '#/components/schemas/TransactRequest' }
             signature: { $ref: '#/components/schemas/Signature' }
 
+    ApiRequest_AddCredentialRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/AddCredentialRequest' }
+
     # --- Specific Response Envelopes ---
     ApiResponse_TokenDetails:
       allOf:
@@ -2744,6 +2965,22 @@ components:
                       type: string
                       format: uri-reference
             response: { $ref: '#/components/schemas/TransactAccepted' }
+
+    ApiResponse_AddCredentialAccepted:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            context:
+              allOf:
+                - $ref: '#/components/schemas/ResponseContext'
+                - properties:
+                    status:
+                      type: string
+                      enum: ["accepted"]
+                    transactionId:
+                      type: string
+                      format: uri-reference
+            response: { $ref: '#/components/schemas/AddCredentialAccepted' }
 
     # --- Transaction API Request Envelopes ---
     ApiRequest_TransactionStatusRequest:

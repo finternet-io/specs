@@ -90,7 +90,7 @@ paths:
                     developerToken: "dev_pk_..."
                     authorization: "Bearer eyJ..."
                   payload:
-                    address: "alice@finternet"
+                    address: "alice"
                     name: "Alice Smith"
                     entityType: "PERSONAL"
               BusinessRegistration:
@@ -104,7 +104,7 @@ paths:
                     developerToken: "dev_pk_..."
                     authorization: "Bearer eyJ..."
                   payload:
-                    address: "acmecorp@finternet"
+                    address: "acmecorp"
                     name: "Acme Corporation"
                     entityType: "BUSINESS"
       responses:
@@ -163,7 +163,7 @@ paths:
                       status: "failed"
                       error:
                         code: "IDENTIFIER_TAKEN"
-                        message: "The address 'alice@finternet' is already in use."
+                        message: "The address 'alice' is already in use."
                     response: {}
 
   /v1/account/update:
@@ -242,7 +242,7 @@ paths:
                 msgId: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
                 developerToken: "dev_pk_..."
               payload:
-                address: "newuser@finternet"
+                address: "newuser"
       responses:
         '200':
           description: "Availability status of the identifier."
@@ -494,7 +494,7 @@ paths:
                 msgId: "f1a2b3c4-d5e6-7890-1234-567890abcdef"
                 developerToken: "dev_pk_..."
               payload:
-                address: "alice@finternet"
+                address: "alice"
       responses:
         '200':
           description: "Public key and DID retrieved."
@@ -601,7 +601,7 @@ components:
       type: object
       required: [address, name, entityType]
       properties:
-        address: { type: string, example: "alice@finternet" }
+        address: { type: string, example: "alice" }
         name: { type: string, example: "Alice Smith" }
         entityType: { type: string, enum: [PERSONAL, BUSINESS] }
     UpdateAccountRequest:
@@ -620,18 +620,18 @@ components:
       type: object
       required: [address]
       properties:
-        address: { type: string, example: "alice@finternet" }
+        address: { type: string, example: "alice" }
     ResolveRequest:
       type: object
       required: [address]
       properties:
-        address: { type: string, example: "alice@finternet" }
+        address: { type: string, example: "alice" }
         purpose: { type: string, enum: [authentication, assertion, keyAgreement, capabilityInvocation, capabilityDelegation], nullable: true, description: "Filter keys by purpose" }
     LoginRequest:
       type: object
       required: [username]
       properties:
-        username: { type: string, example: "alice@finternet" }
+        username: { type: string, example: "alice" }
         otp: { type: string, example: "1234", nullable: true, description: "One-time password for verification" }
     AvailabilityResponse:
       type: object
@@ -640,14 +640,14 @@ components:
     ResolveResponse:
       type: object
       properties:
-        address: { type: string, example: "alice@finternet" }
+        address: { type: string, example: "alice" }
         did: { type: string, example: "did:key:z..." }
     AccountProfile:
       type: object
       required: [did, address, name, entityType]
       properties:
         did: { type: string, example: "did:key:z..." }
-        address: { type: string, example: "alice@finternet" }
+        address: { type: string, example: "alice" }
         email: { type: string, format: email, example: "u***@example.com", nullable: true }
         name: { type: string, example: "Alice Smith" }
         mobile: { type: string, example: "+9***3210", nullable: true }
@@ -665,7 +665,7 @@ components:
       required: [did, address, name, entityType]
       properties:
         did: { type: string, example: "did:key:z..." }
-        address: { type: string, example: "alice@finternet" }
+        address: { type: string, example: "alice" }
         email: { type: string, format: email, example: "u***@example.com", nullable: true }
         name: { type: string, example: "Alice Smith" }
         mobile: { type: string, example: "+9***3210", nullable: true }
