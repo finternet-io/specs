@@ -17,7 +17,7 @@
       "properties": {
         "identifierValue": {
           "type": "string",
-          "pattern": "^[a-z0-9_-]+$",
+          "pattern": "^[a-z0-9._-]+$",
           "minLength": 1,
           "maxLength": 64,
           "description": "Local part of the identifier (before @)"
@@ -201,6 +201,8 @@
       "description": "The legal name of the individual or business.",
       "type": "string",
       "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[\\p{L} ]+$",
       "examples": [
         "Alice Smith"
       ]

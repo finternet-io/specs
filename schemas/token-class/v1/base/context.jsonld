@@ -23,6 +23,7 @@
         "locked": { "@id": "finternet:locked", "@type": "xsd:boolean" },
         "revocable": { "@id": "finternet:revocable", "@type": "xsd:boolean" },
         "burnable": { "@id": "finternet:burnable", "@type": "xsd:boolean" },
+        "soulbound": { "@id": "finternet:soulbound", "@type": "xsd:boolean" },
 
         "identities": { "@id": "finternet:identities", "@container": "@set" },
         "Identity": "finternet:Identity",
@@ -42,6 +43,13 @@
         "valuationType": { "@id": "finternet:valuationType", "@type": "@vocab" },
         "valuationModel": "finternet:valuationModel",
         "ValuationModel": "finternet:ValuationModel",
+
+        "chainDeployments": { "@id": "finternet:chainDeployments", "@container": "@set" },
+        "ChainDeployment": "finternet:ChainDeployment",
+        "chainId": "finternet:chainId",
+        "contractAddress": "finternet:contractAddress",
+        "assetType": { "@id": "finternet:assetType", "@type": "@vocab" },
+        "deploymentDecimals": { "@id": "finternet:deploymentDecimals", "@type": "xsd:integer" },
 
         "programId": "finternet:programId",
         "tags": { "@id": "schema:keywords", "@container": "@set" },

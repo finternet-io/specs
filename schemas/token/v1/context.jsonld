@@ -22,6 +22,10 @@
         "effectiveFrom": { "@id": "finternet:effectiveFrom", "@type": "xsd:dateTime" },
         "effectiveUntil": { "@id": "finternet:effectiveUntil", "@type": "xsd:dateTime" },
         "stateCommitment": "finternet:stateCommitment",
+        "chainId": "finternet:chainId",
+        "contractId": "finternet:contractId",
+        "syncStatus": { "@id": "finternet:syncStatus", "@type": "@vocab" },
+        "lastSyncedAt": { "@id": "finternet:lastSyncedAt", "@type": "xsd:dateTime" },
 
         "lockState": "finternet:lockState",
         "LockState": "finternet:LockState",

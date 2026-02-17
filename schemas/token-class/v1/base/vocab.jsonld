@@ -140,6 +140,14 @@
             "rdfs:range": { "@id": "xsd:boolean" }
         },
         {
+            "@id": "finternet:soulbound",
+            "@type": "rdf:Property",
+            "rdfs:label": "soulbound",
+            "rdfs:comment": "Whether this token is permanently bound to its owner (non-transferable, non-burnable). Implies transferable=false.",
+            "rdfs:domain": { "@id": "finternet:TokenFlags" },
+            "rdfs:range": { "@id": "xsd:boolean" }
+        },
+        {
             "@id": "finternet:Identity",
             "@type": "rdfs:Class",
             "rdfs:label": "Identity",
@@ -213,6 +221,65 @@
             "rdfs:comment": "Reference to the token program that handles operations for this class.",
             "rdfs:domain": { "@id": "finternet:TokenClass" },
             "rdfs:range": { "@id": "xsd:string" }
+        },
+        {
+            "@id": "finternet:ChainDeployment",
+            "@type": "rdfs:Class",
+            "rdfs:label": "ChainDeployment",
+            "rdfs:comment": "On-chain contract deployment mapping for a token class. Maps a CAIP-2 chain ID to a contract address."
+        },
+        {
+            "@id": "finternet:chainDeployments",
+            "@type": "rdf:Property",
+            "rdfs:label": "chainDeployments",
+            "rdfs:comment": "On-chain contract deployments for this token class. Used for anti-spam filtering during proxy token import.",
+            "rdfs:domain": { "@id": "finternet:TokenClass" },
+            "rdfs:range": { "@id": "finternet:ChainDeployment" }
+        },
+        {
+            "@id": "finternet:chainId",
+            "@type": "rdf:Property",
+            "rdfs:label": "chainId",
+            "rdfs:comment": "CAIP-2 chain identifier (e.g., eip155:1).",
+            "rdfs:domain": { "@id": "finternet:ChainDeployment" },
+            "rdfs:range": { "@id": "xsd:string" }
+        },
+        {
+            "@id": "finternet:contractAddress",
+            "@type": "rdf:Property",
+            "rdfs:label": "contractAddress",
+            "rdfs:comment": "Contract address on chain, or 'native' for native assets.",
+            "rdfs:domain": { "@id": "finternet:ChainDeployment" },
+            "rdfs:range": { "@id": "xsd:string" }
+        },
+        {
+            "@id": "finternet:assetType",
+            "@type": "rdf:Property",
+            "rdfs:label": "assetType",
+            "rdfs:comment": "Asset standard on chain (erc20, erc721, erc1155, native, spl).",
+            "rdfs:domain": { "@id": "finternet:ChainDeployment" },
+            "rdfs:range": { "@id": "finternet:AssetType" }
+        },
+        {
+            "@id": "finternet:AssetType",
+            "@type": "rdfs:Class",
+            "owl:oneOf": {
+                "@list": [
+                    { "@id": "finternet:erc20" },
+                    { "@id": "finternet:erc721" },
+                    { "@id": "finternet:erc1155" },
+                    { "@id": "finternet:native" },
+                    { "@id": "finternet:spl" }
+                ]
+            }
+        },
+        {
+            "@id": "finternet:deploymentDecimals",
+            "@type": "rdf:Property",
+            "rdfs:label": "deploymentDecimals",
+            "rdfs:comment": "Decimal precision on this specific chain deployment (may differ from class-level decimals).",
+            "rdfs:domain": { "@id": "finternet:ChainDeployment" },
+            "rdfs:range": { "@id": "xsd:integer" }
         }
     ]
 }

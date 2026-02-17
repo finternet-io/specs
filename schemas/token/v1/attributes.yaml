@@ -139,6 +139,36 @@ components:
           x-jsonld: { "@id": "finternet:effectiveUntil", "@type": "xsd:dateTime" }
         lockState:
           $ref: "#/components/schemas/LockState"
+        chainId:
+          type: string
+          description: |
+            CAIP-2 chain identifier of the source blockchain (proxy tokens only).
+            NULL for native tokens. When present, indicates this token is a proxy
+            (shadow copy) of an external blockchain asset whose balance is sourced
+            from an external chain and operations route through chain adapters.
+            Example: "eip155:1" for Ethereum Mainnet.
+          x-jsonld: { "@id": "finternet:chainId" }
+        contractId:
+          type: string
+          description: |
+            Contract address on the source chain (proxy tokens only).
+            Use "native" for native assets (ETH, POL, etc.).
+            NULL for native tokens.
+          x-jsonld: { "@id": "finternet:contractId" }
+        syncStatus:
+          type: string
+          description: Balance synchronization status (proxy tokens only)
+          enum:
+            - SYNCED
+            - STALE
+            - SYNCING
+            - ERROR
+          x-jsonld: { "@id": "finternet:syncStatus", "@type": "@vocab" }
+        lastSyncedAt:
+          type: string
+          format: date-time
+          description: Timestamp of the last successful balance sync (proxy tokens only)
+          x-jsonld: { "@id": "finternet:lastSyncedAt", "@type": "xsd:dateTime" }
         stateCommitment:
           type: string
           description: Cryptographic hash/commitment representing this state

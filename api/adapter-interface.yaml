@@ -1,0 +1,2402 @@
+openapi: 3.0.4
+info:
+  title: "Finternet Chain Adapter — Standard Interface"
+  description: |
+    Standard API specification that every Finternet chain adapter must implement.
+
+    Chain adapters are **standalone services** that bridge UNITS with external blockchain networks.
+    They can be built by the core team or the community. Each adapter handles chain-specific
+    RPC calls, data normalization, and transaction lifecycle.
+
+    ### Key Design Principles
+
+    - **All POST, Envelope Pattern** — Every endpoint uses POST with the UNITS envelope
+      (`{context, payload}` request / `{context, response}` response). This enables:
+      - End-to-end request tracing via `context.msgId` across all services
+      - Future gRPC migration without changing request/response bodies (no HTTP hard-binding)
+      - Consistent error handling across all endpoints
+    - **Lighter Context** — Adapter context carries `id`, `version`, `ts`, `msgId` only.
+      No `developerToken` or `authorization` — adapter auth uses mTLS or shared secret at the transport layer.
+    - **Normalization contract** — The adapter is the authoritative source for decimal conversion.
+      Hex conversion happens INSIDE the adapter. All amounts are opaque strings — never parsed as float.
+      The `context.valueFormat` field controls the representation:
+      - `raw` (default): Smallest-unit integer strings (`"100500000"` for 100.5 USDC). Used by internal callers.
+      - `display`: Human-readable decimal strings (`"100.50"` for 100.5 USDC). Used by UI-facing callers.
+      No `decimals` field is ever sent alongside an amount. The adapter converts both directions using
+      token class / chain metadata. This avoids cross-ecosystem issues (JS overflow, floating-point precision).
+    - **Stateless** — Adapters do not store state. They are proxies to on-chain data.
+    - **Multi-chain capable** — A single adapter deployment MAY serve multiple chains (e.g., all EVM chains via Alchemy).
+      The `chainId` (CAIP-2) is **always required** in every payload — even for single-chain adapters.
+      This avoids ambiguity, supports adapters serving both mainnet and testnet, and means the
+      caller (which already knows the chainId from the registry lookup) simply passes it through.
+
+    ### Envelope Format
+
+    **Request:**
+    ```json
+    {
+      "context": {
+        "id": "adapter.chain.info",
+        "version": "1.0",
+        "ts": "2026-02-17T10:00:00Z",
+        "msgId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      },
+      "payload": { ... }
+    }
+    ```
+
+    **Response (Success):**
+    ```json
+    {
+      "context": {
+        "id": "adapter.chain.info",
+        "version": "1.0",
+        "ts": "2026-02-17T10:00:01Z",
+        "msgId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "status": "successful"
+      },
+      "response": { ... }
+    }
+    ```
+
+    **Response (Error):**
+    ```json
+    {
+      "context": {
+        "id": "adapter.chain.info",
+        "version": "1.0",
+        "ts": "2026-02-17T10:00:01Z",
+        "msgId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "status": "failed",
+        "error": { "code": "UPSTREAM_UNAVAILABLE", "message": "Chain RPC endpoint is not responding" }
+      },
+      "response": {}
+    }
+    ```
+
+    ### End-to-End Tracing
+
+    The `context.msgId` flows from App Backend → UNITS Workflow → Adapter → UNITS Callback,
+    enabling grep-based log correlation across all services in a single transaction flow.
+
+    ### Authentication
+
+    Adapters manage their own authentication with upstream providers (API keys, bearer tokens).
+    UNITS authenticates to adapters via a shared secret or mTLS (configured per deployment).
+    No authentication fields appear in the envelope — auth is at the transport layer.
+
+    ### Callback Contract
+
+    For asynchronous transaction monitoring, the `/transactions/submit` endpoint accepts a
+    `callbackUrl` and `transactionId`. When the adapter detects transaction confirmation on-chain,
+    it calls UNITS back at `POST /v1/token/transact` with `operation: "update"` and the
+    `transactionId` for reverse mapping. The adapter owns the monitoring loop.
+
+    ### Building a Community Adapter
+
+    1. Implement all required endpoints (Chain Discovery + Balance Discovery + Transaction Lifecycle)
+    2. Pass the conformance test suite (published alongside this spec)
+    3. Register your adapter URL in the UNITS chain registry via `POST /v1/registry/chains/register`
+  version: "1.0.0"
+  contact:
+    name: "Finternet Adapter Team"
+servers:
+  - url: "https://adapter-alchemy.finternet.io"
+    description: "Alchemy Adapter (Reference Implementation)"
+  - url: "http://localhost:4000"
+    description: "Local Adapter Development"
+tags:
+  - name: "Chain"
+    description: "Chain discovery endpoints — identity, capabilities, and current state."
+  - name: "Accounts"
+    description: "Account and balance discovery endpoints. Called by App Backend during import and by TokenEngine during pre-hook verification."
+  - name: "Assets"
+    description: "Asset resolution endpoints. Resolve on-chain token metadata from contract address."
+  - name: "Transactions"
+    description: "Transaction lifecycle endpoints — build, sign, submit, status, receipt. Called by TokenEngine during proxy transfer execution."
+  - name: "Meta"
+    description: "Adapter metadata and health endpoints."
+
+# ===============================================================
+#   PATHS
+# ===============================================================
+
+paths:
+  # -------------------- Chain Discovery --------------------
+  /chain/info:
+    post:
+      tags: ["Chain"]
+      summary: "Get chain identity and metadata"
+      description: |
+        Returns static identity and metadata for the specified chain — name, native currency,
+        block time, consensus mechanism, and explorer URLs.
+
+        Called during chain registration and by monitoring dashboards.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_ChainInfoRequest'
+            examples:
+              single_chain_adapter:
+                summary: "Single-chain adapter (e.g., Solana-only)"
+                value:
+                  context:
+                    id: "adapter.chain.info"
+                    version: "1.0"
+                    ts: "2026-02-17T10:00:00Z"
+                    msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                  payload:
+                    chainId: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+              multi_chain_adapter:
+                summary: "Multi-chain adapter (e.g., Alchemy serving all EVM)"
+                value:
+                  context:
+                    id: "adapter.chain.info"
+                    version: "1.0"
+                    ts: "2026-02-17T10:00:00Z"
+                    msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef0"
+                  payload:
+                    chainId: "eip155:1"
+      responses:
+        '200':
+          description: "Chain info retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_ChainInfo'
+              examples:
+                ethereum:
+                  summary: "Ethereum Mainnet"
+                  value:
+                    context:
+                      id: "adapter.chain.info"
+                      version: "1.0"
+                      ts: "2026-02-17T10:00:01Z"
+                      msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef0"
+                      status: "successful"
+                    response:
+                      chainId: "eip155:1"
+                      name: "Ethereum Mainnet"
+                      chainFamily: "evm"
+                      isTestnet: false
+                      nativeCurrency:
+                        name: "Ether"
+                        symbol: "ETH"
+                        decimals: 18
+                      blockTime: 12
+                      consensus: "proof-of-stake"
+                      explorers:
+                        - name: "Etherscan"
+                          url: "https://etherscan.io"
+                          type: "primary"
+                solana:
+                  summary: "Solana Mainnet"
+                  value:
+                    context:
+                      id: "adapter.chain.info"
+                      version: "1.0"
+                      ts: "2026-02-17T10:00:01Z"
+                      msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                      status: "successful"
+                    response:
+                      chainId: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+                      name: "Solana Mainnet"
+                      chainFamily: "solana"
+                      isTestnet: false
+                      nativeCurrency:
+                        name: "SOL"
+                        symbol: "SOL"
+                        decimals: 9
+                      blockTime: 0.4
+                      consensus: "proof-of-history"
+                      explorers:
+                        - name: "Solana Explorer"
+                          url: "https://explorer.solana.com"
+                          type: "primary"
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailableError'
+
+  /chain/capabilities:
+    post:
+      tags: ["Chain"]
+      summary: "Get chain capabilities"
+      description: |
+        Returns the capability matrix for the specified chain — which operations the adapter
+        supports, which asset types are available, and any chain-specific constraints.
+
+        Used by UNITS to determine which operations can be routed to this adapter.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_ChainCapabilitiesRequest'
+            examples:
+              evm_chain:
+                summary: "EVM chain capabilities"
+                value:
+                  context:
+                    id: "adapter.chain.capabilities"
+                    version: "1.0"
+                    ts: "2026-02-17T10:00:00Z"
+                    msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef0"
+                  payload:
+                    chainId: "eip155:1"
+              solana_chain:
+                summary: "Solana chain capabilities"
+                value:
+                  context:
+                    id: "adapter.chain.capabilities"
+                    version: "1.0"
+                    ts: "2026-02-17T10:00:00Z"
+                    msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef01"
+                  payload:
+                    chainId: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+      responses:
+        '200':
+          description: "Capabilities retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_ChainCapabilities'
+              examples:
+                evm_capabilities:
+                  summary: "Ethereum capabilities (full feature set)"
+                  value:
+                    context:
+                      id: "adapter.chain.capabilities"
+                      version: "1.0"
+                      ts: "2026-02-17T10:00:01Z"
+                      msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef0"
+                      status: "successful"
+                    response:
+                      chainId: "eip155:1"
+                      supportedAssetTypes: ["native", "erc20", "erc721", "erc1155"]
+                      supportedOperations:
+                        - "chain.info"
+                        - "chain.capabilities"
+                        - "chain.head"
+                        - "accounts.resolve"
+                        - "accounts.holdings"
+                        - "balance.get"
+                        - "assets.resolve"
+                        - "transactions.build"
+                        - "transactions.submit"
+                        - "transactions.status"
+                        - "transactions.receipt"
+                      features:
+                        multisig: false
+                        batchTransactions: false
+                        callbacks: true
+                        gasEstimation: true
+                        feePreference: true
+                      constraints:
+                        maxBatchSize: 1
+                        maxGasLimit: "30000000"
+                solana_capabilities:
+                  summary: "Solana capabilities (no feePreference)"
+                  value:
+                    context:
+                      id: "adapter.chain.capabilities"
+                      version: "1.0"
+                      ts: "2026-02-17T10:00:01Z"
+                      msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef01"
+                      status: "successful"
+                    response:
+                      chainId: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+                      supportedAssetTypes: ["native", "spl"]
+                      supportedOperations:
+                        - "chain.info"
+                        - "chain.capabilities"
+                        - "chain.head"
+                        - "accounts.holdings"
+                        - "balance.get"
+                        - "transactions.build"
+                        - "transactions.submit"
+                        - "transactions.status"
+                      features:
+                        multisig: false
+                        batchTransactions: false
+                        callbacks: true
+                        gasEstimation: true
+                        feePreference: false
+                      constraints:
+                        maxBatchSize: 1
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailableError'
+
+  /chain/head:
+    post:
+      tags: ["Chain"]
+      summary: "Get latest block/slot"
+      description: |
+        Returns the latest block (or slot) information for the specified chain.
+        Used for liveness monitoring and to determine confirmation depth.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_ChainHeadRequest'
+            example:
+              context:
+                id: "adapter.chain.head"
+                version: "1.0"
+                ts: "2026-02-17T10:00:00Z"
+                msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef01"
+              payload:
+                chainId: "eip155:1"
+      responses:
+        '200':
+          description: "Chain head retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_ChainHead'
+              example:
+                context:
+                  id: "adapter.chain.head"
+                  version: "1.0"
+                  ts: "2026-02-17T10:00:01Z"
+                  msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef01"
+                  status: "successful"
+                response:
+                  chainId: "eip155:1"
+                  blockNumber: 19234567
+                  blockHash: "0xabc123def456..."
+                  timestamp: "2026-02-17T09:59:48Z"
+                  parentHash: "0xdef789abc012..."
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailableError'
+
+  # -------------------- Accounts & Balance --------------------
+  /accounts/resolve:
+    post:
+      tags: ["Accounts"]
+      summary: "Resolve account metadata"
+      description: |
+        Returns metadata about an on-chain account — type (EOA, contract, multisig),
+        whether it exists, and chain-specific attributes.
+
+        Used during proxy token import to validate addresses before creating shadow ledger entries.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_AccountResolveRequest'
+            example:
+              context:
+                id: "adapter.accounts.resolve"
+                version: "1.0"
+                ts: "2026-02-17T10:00:00Z"
+                msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef012"
+              payload:
+                chainId: "eip155:1"
+                address: "0x24596184fccdf7b5f2e93711f39cee4926ec7b2d"
+      responses:
+        '200':
+          description: "Account resolved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_AccountInfo'
+              example:
+                context:
+                  id: "adapter.accounts.resolve"
+                  version: "1.0"
+                  ts: "2026-02-17T10:00:01Z"
+                  msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef012"
+                  status: "successful"
+                response:
+                  chainId: "eip155:1"
+                  address: "0x24596184fccdf7b5f2e93711f39cee4926ec7b2d"
+                  exists: true
+                  accountType: "eoa"
+                  nonce: 42
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailableError'
+
+  /accounts/holdings:
+    post:
+      tags: ["Accounts"]
+      summary: "Get all token holdings for an address"
+      description: |
+        Returns all known token holdings for the given address on the specified chain.
+        Used by App Backend during wallet import to discover tokens for proxy creation.
+
+        **Normalization:** Balance format depends on `context.valueFormat` (raw: integer strings, display: decimal strings).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_HoldingsRequest'
+            examples:
+              raw_holdings:
+                summary: "Get holdings — raw mode (default, no valueFormat needed)"
+                value:
+                  context:
+                    id: "adapter.accounts.holdings"
+                    version: "1.0"
+                    ts: "2026-02-17T10:00:00Z"
+                    msgId: "e5f6a7b8-c9d0-1234-5678-90abcdef0123"
+                  payload:
+                    chainId: "eip155:1"
+                    address: "0x24596184fccdf7b5f2e93711f39cee4926ec7b2d"
+                    includeNative: true
+              display_holdings:
+                summary: "Get holdings — display mode (human-readable)"
+                value:
+                  context:
+                    id: "adapter.accounts.holdings"
+                    version: "1.0"
+                    ts: "2026-02-17T10:00:00Z"
+                    msgId: "e5f6a7b8-c9d0-1234-5678-90abcdef0124"
+                    valueFormat: "display"
+                  payload:
+                    chainId: "eip155:1"
+                    address: "0x24596184fccdf7b5f2e93711f39cee4926ec7b2d"
+                    includeNative: true
+      responses:
+        '200':
+          description: "Holdings retrieved successfully"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_Holdings'
+              examples:
+                raw_holdings:
+                  summary: "Holdings — raw mode (smallest-unit integers)"
+                  value:
+                    context:
+                      id: "adapter.accounts.holdings"
+                      version: "1.0"
+                      ts: "2026-02-17T10:00:01Z"
+                      msgId: "e5f6a7b8-c9d0-1234-5678-90abcdef0123"
+                      status: "successful"
+                    response:
+                      address: "0x24596184fccdf7b5f2e93711f39cee4926ec7b2d"
+                      chainId: "eip155:1"
+                      holdings:
+                        - contractAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+                          assetType: "erc20"
+                          symbol: "USDC"
+                          name: "USD Coin"
+                          balance: "1000000000"
+                          decimals: 6
+                        - contractAddress: "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+                          assetType: "erc20"
+                          symbol: "USDT"
+                          name: "Tether USD"
+                          balance: "500000000"
+                          decimals: 6
+                        - contractAddress: "native"
+                          assetType: "native"
+                          symbol: "ETH"
+                          name: "Ether"
+                          balance: "3245000000000000000"
+                          decimals: 18
+                display_holdings:
+                  summary: "Holdings — display mode (human-readable decimals)"
+                  value:
+                    context:
+                      id: "adapter.accounts.holdings"
+                      version: "1.0"
+                      ts: "2026-02-17T10:00:01Z"
+                      msgId: "e5f6a7b8-c9d0-1234-5678-90abcdef0124"
+                      status: "successful"
+                    response:
+                      address: "0x24596184fccdf7b5f2e93711f39cee4926ec7b2d"
+                      chainId: "eip155:1"
+                      holdings:
+                        - contractAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+                          assetType: "erc20"
+                          symbol: "USDC"
+                          name: "USD Coin"
+                          balance: "1000.00"
+                          decimals: 6
+                        - contractAddress: "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+                          assetType: "erc20"
+                          symbol: "USDT"
+                          name: "Tether USD"
+                          balance: "500.00"
+                          decimals: 6
+                        - contractAddress: "native"
+                          assetType: "native"
+                          symbol: "ETH"
+                          name: "Ether"
+                          balance: "3.245"
+                          decimals: 18
+                empty_wallet:
+                  summary: "Wallet with no token holdings"
+                  value:
+                    context:
+                      id: "adapter.accounts.holdings"
+                      version: "1.0"
+                      ts: "2026-02-17T10:00:01Z"
+                      msgId: "e5f6a7b8-c9d0-1234-5678-90abcdef0125"
+                      status: "successful"
+                    response:
+                      address: "0x0000000000000000000000000000000000000001"
+                      chainId: "eip155:1"
+                      holdings: []
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailableError'
+
+  /balance/get:
+    post:
+      tags: ["Accounts"]
+      summary: "Get specific token balance"
+      description: |
+        Returns the balance of a specific token for an address. Used by TokenEngine as a
+        pre-hook verification step before building proxy transfer transactions.
+
+        Use `native` as the `contractAddress` for native asset balance.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_BalanceRequest'
+            examples:
+              raw_usdc:
+                summary: "Get USDC balance — raw mode (default)"
+                value:
+                  context:
+                    id: "adapter.balance.get"
+                    version: "1.0"
+                    ts: "2026-02-17T10:00:00Z"
+                    msgId: "f6a7b8c9-d0e1-2345-6789-0abcdef01234"
+                  payload:
+                    chainId: "eip155:1"
+                    address: "0x24596184fccdf7b5f2e93711f39cee4926ec7b2d"
+                    contractAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+              display_eth:
+                summary: "Get native ETH balance — display mode"
+                value:
+                  context:
+                    id: "adapter.balance.get"
+                    version: "1.0"
+                    ts: "2026-02-17T10:00:00Z"
+                    msgId: "a7b8c9d0-e1f2-3456-7890-abcdef012345"
+                    valueFormat: "display"
+                  payload:
+                    chainId: "eip155:1"
+                    address: "0x24596184fccdf7b5f2e93711f39cee4926ec7b2d"
+                    contractAddress: "native"
+      responses:
+        '200':
+          description: "Balance retrieved successfully"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_Balance'
+              examples:
+                raw_usdc:
+                  summary: "USDC balance — raw (smallest-unit integer)"
+                  value:
+                    context:
+                      id: "adapter.balance.get"
+                      version: "1.0"
+                      ts: "2026-02-17T10:00:01Z"
+                      msgId: "f6a7b8c9-d0e1-2345-6789-0abcdef01234"
+                      status: "successful"
+                    response:
+                      address: "0x24596184fccdf7b5f2e93711f39cee4926ec7b2d"
+                      chainId: "eip155:1"
+                      contractAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+                      assetType: "erc20"
+                      symbol: "USDC"
+                      balance: "1000000000"
+                display_eth:
+                  summary: "ETH balance — display (human-readable decimal)"
+                  value:
+                    context:
+                      id: "adapter.balance.get"
+                      version: "1.0"
+                      ts: "2026-02-17T10:00:01Z"
+                      msgId: "a7b8c9d0-e1f2-3456-7890-abcdef012345"
+                      status: "successful"
+                    response:
+                      address: "0x24596184fccdf7b5f2e93711f39cee4926ec7b2d"
+                      chainId: "eip155:1"
+                      contractAddress: "native"
+                      assetType: "native"
+                      symbol: "ETH"
+                      balance: "3.245"
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailableError'
+
+  # -------------------- Asset Resolution --------------------
+  /assets/resolve:
+    post:
+      tags: ["Assets"]
+      summary: "Resolve on-chain asset metadata"
+      description: |
+        Given a contract address, resolves the asset's on-chain metadata — name, symbol,
+        decimals, total supply, and asset type.
+
+        Used during proxy token import when the App Backend encounters an unknown token
+        in a user's wallet holdings. Also used for anti-spam filtering by verifying the
+        contract matches the expected TokenClass configuration.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_AssetResolveRequest'
+            example:
+              context:
+                id: "adapter.assets.resolve"
+                version: "1.0"
+                ts: "2026-02-17T10:00:00Z"
+                msgId: "b8c9d0e1-f2a3-4567-8901-bcdef0123456"
+              payload:
+                chainId: "eip155:1"
+                contractAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+      responses:
+        '200':
+          description: "Asset resolved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_AssetInfo'
+              example:
+                context:
+                  id: "adapter.assets.resolve"
+                  version: "1.0"
+                  ts: "2026-02-17T10:00:01Z"
+                  msgId: "b8c9d0e1-f2a3-4567-8901-bcdef0123456"
+                  status: "successful"
+                response:
+                  chainId: "eip155:1"
+                  contractAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+                  assetType: "erc20"
+                  name: "USD Coin"
+                  symbol: "USDC"
+                  decimals: 6
+                  totalSupply: "26000000000000000"
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailableError'
+
+  # -------------------- Fees --------------------
+  /fees/estimate:
+    post:
+      tags: ["Transactions"]
+      summary: "Get current fee estimates"
+      description: |
+        Returns current fee conditions for the specified chain, including tier-based
+        estimates and chain-specific fee model details. This is the **single authoritative
+        source** for fee information — the build response does not echo fees back.
+
+        The adapter maintains an in-memory cache of fee data, refreshed every block
+        (or every few seconds). This endpoint is lightweight and suitable for polling
+        to keep the UI fee display fresh.
+
+        Fee amount format depends on `context.valueFormat` (`raw` or `display`).
+        No `decimals` field is included — the adapter owns decimal conversion.
+
+        ### Fee Models by Chain
+
+        | Chain Family | Fee Model | Key Fields |
+        |-------------|-----------|------------|
+        | EVM (EIP-1559) | baseFee + priorityFee | `baseFee`, tiers have `maxPriorityFee` |
+        | EVM (legacy) | Single gasPrice | Tiers have `gasPrice` |
+        | Solana | Compute units + priority fee | `computeUnitPrice` in tiers |
+        | L2 (Optimistic) | L1 data fee + L2 execution | `l1DataFee` + `l2ExecutionFee` |
+
+        The `tiers` array always provides at least a `standard` tier. Additional tiers
+        (slow, fast, urgent, etc.) are chain-dependent. The `feePreference` on
+        `/transactions/build` maps to a tier name here.
+
+        ### Suggested UI Flow
+
+        1. Call `/fees/estimate` to get current tiers and display options
+        2. User selects a tier (or keep default)
+        3. Call `/transactions/build` with `feePreference` matching the tier name
+        4. Show final confirmation with exact amounts
+        5. Optionally re-poll `/fees/estimate` if user takes too long (fee drift)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_FeeEstimateRequest'
+            examples:
+              raw_evm_fees:
+                summary: "Ethereum fees — raw mode (default)"
+                value:
+                  context:
+                    id: "adapter.fees.estimate"
+                    version: "1.0"
+                    ts: "2026-02-17T10:00:00Z"
+                    msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                  payload:
+                    chainId: "eip155:1"
+                    gasUnits: "65000"
+              display_evm_fees:
+                summary: "Ethereum fees — display mode (human-readable)"
+                value:
+                  context:
+                    id: "adapter.fees.estimate"
+                    version: "1.0"
+                    ts: "2026-02-17T10:00:00Z"
+                    msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567891"
+                    valueFormat: "display"
+                  payload:
+                    chainId: "eip155:1"
+                    gasUnits: "65000"
+              raw_solana_fees:
+                summary: "Solana fees — raw mode"
+                value:
+                  context:
+                    id: "adapter.fees.estimate"
+                    version: "1.0"
+                    ts: "2026-02-17T10:00:00Z"
+                    msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef0"
+                  payload:
+                    chainId: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+      responses:
+        '200':
+          description: "Fee estimates retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_FeeEstimate'
+              examples:
+                raw_evm_eip1559:
+                  summary: "Ethereum EIP-1559 fees — raw"
+                  value:
+                    context:
+                      id: "adapter.fees.estimate"
+                      version: "1.0"
+                      ts: "2026-02-17T10:00:01Z"
+                      msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                      status: "successful"
+                    response:
+                      chainId: "eip155:1"
+                      feeModel: "eip1559"
+                      baseFee: "15000000000"
+                      nativeCurrency: "ETH"
+                      tiers:
+                        - name: "slow"
+                          maxPriorityFee: "1000000000"
+                          estimatedFee: "1040000000000000"
+                          estimatedTimeSeconds: 120
+                        - name: "standard"
+                          maxPriorityFee: "2000000000"
+                          estimatedFee: "1105000000000000"
+                          estimatedTimeSeconds: 30
+                        - name: "fast"
+                          maxPriorityFee: "5000000000"
+                          estimatedFee: "1300000000000000"
+                          estimatedTimeSeconds: 12
+                      updatedAt: "2026-02-17T10:00:00Z"
+                display_evm_eip1559:
+                  summary: "Ethereum EIP-1559 fees — display (human-readable ETH)"
+                  value:
+                    context:
+                      id: "adapter.fees.estimate"
+                      version: "1.0"
+                      ts: "2026-02-17T10:00:01Z"
+                      msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567891"
+                      status: "successful"
+                    response:
+                      chainId: "eip155:1"
+                      feeModel: "eip1559"
+                      baseFee: "0.000000015"
+                      nativeCurrency: "ETH"
+                      tiers:
+                        - name: "slow"
+                          maxPriorityFee: "0.000000001"
+                          estimatedFee: "0.00104"
+                          estimatedTimeSeconds: 120
+                        - name: "standard"
+                          maxPriorityFee: "0.000000002"
+                          estimatedFee: "0.001105"
+                          estimatedTimeSeconds: 30
+                        - name: "fast"
+                          maxPriorityFee: "0.000000005"
+                          estimatedFee: "0.0013"
+                          estimatedTimeSeconds: 12
+                      updatedAt: "2026-02-17T10:00:00Z"
+                raw_solana_fees:
+                  summary: "Solana fees — raw (flat + optional priority)"
+                  value:
+                    context:
+                      id: "adapter.fees.estimate"
+                      version: "1.0"
+                      ts: "2026-02-17T10:00:01Z"
+                      msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef0"
+                      status: "successful"
+                    response:
+                      chainId: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+                      feeModel: "solana"
+                      nativeCurrency: "SOL"
+                      tiers:
+                        - name: "standard"
+                          estimatedFee: "5000"
+                          estimatedTimeSeconds: 1
+                        - name: "fast"
+                          computeUnitPrice: "1000"
+                          estimatedFee: "10000"
+                          estimatedTimeSeconds: 1
+                      updatedAt: "2026-02-17T10:00:00Z"
+                display_solana_fees:
+                  summary: "Solana fees — display (human-readable SOL)"
+                  value:
+                    context:
+                      id: "adapter.fees.estimate"
+                      version: "1.0"
+                      ts: "2026-02-17T10:00:01Z"
+                      msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
+                      status: "successful"
+                    response:
+                      chainId: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+                      feeModel: "solana"
+                      nativeCurrency: "SOL"
+                      tiers:
+                        - name: "standard"
+                          estimatedFee: "0.000005"
+                          estimatedTimeSeconds: 1
+                        - name: "fast"
+                          computeUnitPrice: "0.000001"
+                          estimatedFee: "0.00001"
+                          estimatedTimeSeconds: 1
+                      updatedAt: "2026-02-17T10:00:00Z"
+                raw_l2_fees:
+                  summary: "Base L2 fees — raw (two-component)"
+                  value:
+                    context:
+                      id: "adapter.fees.estimate"
+                      version: "1.0"
+                      ts: "2026-02-17T10:00:01Z"
+                      msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef01"
+                      status: "successful"
+                    response:
+                      chainId: "eip155:8453"
+                      feeModel: "optimistic-l2"
+                      baseFee: "100000000"
+                      l1DataFee: "250000000000000"
+                      nativeCurrency: "ETH"
+                      tiers:
+                        - name: "standard"
+                          maxPriorityFee: "1000000"
+                          estimatedFee: "256500000000000"
+                          estimatedTimeSeconds: 2
+                        - name: "fast"
+                          maxPriorityFee: "5000000"
+                          estimatedFee: "260500000000000"
+                          estimatedTimeSeconds: 2
+                      updatedAt: "2026-02-17T10:00:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailableError'
+
+  # -------------------- Transactions --------------------
+  /transactions/build:
+    post:
+      tags: ["Transactions"]
+      summary: "Build unsigned transaction"
+      description: |
+        Builds an unsigned transaction payload for the given transfer parameters.
+        Called by TokenEngine during proxy transfer Phase 1.
+
+        The response contains the raw unsigned transaction that must be signed externally
+        (e.g., by the user via WalletConnect) before submission.
+
+        The `feePreference` maps to a tier name from `/fees/estimate`. Returns
+        `requiredSignatures` for multisig wallets.
+
+        ### Fee Selection UX Flow
+
+        1. Call `/fees/estimate` to get current tiers and fee breakdown
+        2. Show user: amount, fee tiers with estimated cost and time
+        3. User selects a tier (or default to "standard")
+        4. Call `/transactions/build` with `feePreference` matching the selected tier name
+        5. Show final confirmation: amount, exact fee, remaining balance
+        6. User confirms → sign → submit
+        7. Optionally re-poll `/fees/estimate` if user takes too long (fee drift)
+
+        Fee information lives entirely in `/fees/estimate` — the build response does NOT
+        echo fee tiers back. This avoids duplication and keeps one authoritative source.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_BuildTransactionRequest'
+            examples:
+              raw_erc20_transfer:
+                summary: "Build USDC transfer — raw mode (default)"
+                value:
+                  context:
+                    id: "adapter.transactions.build"
+                    version: "1.0"
+                    ts: "2026-02-17T10:00:00Z"
+                    msgId: "c9d0e1f2-a3b4-5678-9012-cdef01234567"
+                  payload:
+                    chainId: "eip155:1"
+                    from: "0x24596184fccdf7b5f2e93711f39cee4926ec7b2d"
+                    to: "0xBobAddress1234567890abcdef1234567890abcdef"
+                    contractAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+                    amount: "100000000"
+                    assetType: "erc20"
+                    feePreference: "standard"
+              display_eth_transfer:
+                summary: "Build native ETH transfer — display mode"
+                value:
+                  context:
+                    id: "adapter.transactions.build"
+                    version: "1.0"
+                    ts: "2026-02-17T10:00:00Z"
+                    msgId: "d0e1f2a3-b4c5-6789-0123-def012345678"
+                    valueFormat: "display"
+                  payload:
+                    chainId: "eip155:1"
+                    from: "0x24596184fccdf7b5f2e93711f39cee4926ec7b2d"
+                    to: "0xBobAddress1234567890abcdef1234567890abcdef"
+                    contractAddress: "native"
+                    amount: "1.0"
+                    assetType: "native"
+                    feePreference: "fast"
+      responses:
+        '200':
+          description: "Unsigned transaction built successfully"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_BuildTransaction'
+              examples:
+                raw_erc20_response:
+                  summary: "Build response — raw (smallest-unit integers)"
+                  value:
+                    context:
+                      id: "adapter.transactions.build"
+                      version: "1.0"
+                      ts: "2026-02-17T10:00:01Z"
+                      msgId: "c9d0e1f2-a3b4-5678-9012-cdef01234567"
+                      status: "successful"
+                    response:
+                      unsignedTx: "0x02f87001808459682f0085174876e80082520894a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4880b844a9059cbb..."
+                      chainId: "eip155:1"
+                      from: "0x24596184fccdf7b5f2e93711f39cee4926ec7b2d"
+                      to: "0xBobAddress1234567890abcdef1234567890abcdef"
+                      contractAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+                      amount: "100000000"
+                      estimatedGas: "65000"
+                      gasPrice: "25000000000"
+                      nonce: 42
+                      requiredSignatures: 1
+                      expiresAt: "2026-02-17T12:10:00Z"
+                display_eth_response:
+                  summary: "Build response — display (human-readable decimals)"
+                  value:
+                    context:
+                      id: "adapter.transactions.build"
+                      version: "1.0"
+                      ts: "2026-02-17T10:00:01Z"
+                      msgId: "d0e1f2a3-b4c5-6789-0123-def012345678"
+                      status: "successful"
+                    response:
+                      unsignedTx: "0x02f87001808459682f0085174876e80082520894..."
+                      chainId: "eip155:1"
+                      from: "0x24596184fccdf7b5f2e93711f39cee4926ec7b2d"
+                      to: "0xBobAddress1234567890abcdef1234567890abcdef"
+                      contractAddress: "native"
+                      amount: "1.0"
+                      estimatedGas: "21000"
+                      gasPrice: "0.000000025"
+                      nonce: 42
+                      requiredSignatures: 1
+                      expiresAt: "2026-02-17T12:10:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailableError'
+
+  /transactions/sign:
+    post:
+      tags: ["Transactions"]
+      summary: "Sign transaction (custodial)"
+      description: |
+        **Future endpoint** — Signs an unsigned transaction using adapter-managed keys.
+        Only applicable for custodial adapters or HSM-backed signing services.
+
+        For non-custodial flows (WalletConnect), signing happens client-side and this
+        endpoint is not called. The signed transaction is submitted directly to `/transactions/submit`.
+
+        Included for specification completeness — adapters MAY return `501 Not Implemented`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_SignTransactionRequest'
+            example:
+              context:
+                id: "adapter.transactions.sign"
+                version: "1.0"
+                ts: "2026-02-17T10:00:00Z"
+                msgId: "e1f2a3b4-c5d6-7890-1234-ef0123456789"
+              payload:
+                chainId: "eip155:1"
+                unsignedTx: "0x02f87001808459682f0085174876e80082520894..."
+                signerAddress: "0x24596184fccdf7b5f2e93711f39cee4926ec7b2d"
+      responses:
+        '200':
+          description: "Transaction signed"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_SignTransaction'
+              example:
+                context:
+                  id: "adapter.transactions.sign"
+                  version: "1.0"
+                  ts: "2026-02-17T10:00:01Z"
+                  msgId: "e1f2a3b4-c5d6-7890-1234-ef0123456789"
+                  status: "successful"
+                response:
+                  signedTx: "0x02f87001808459682f0085174876e80082520894...signed"
+                  chainId: "eip155:1"
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '501':
+          description: "Signing not supported by this adapter"
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailableError'
+
+  /transactions/submit:
+    post:
+      tags: ["Transactions"]
+      summary: "Submit signed transaction"
+      description: |
+        Submits a signed transaction to the blockchain network.
+        Called by TokenEngine during proxy transfer Phase 2 after the user has signed.
+
+        Returns the chain transaction hash. If `callbackUrl` and `transactionId` are provided,
+        the adapter will monitor the transaction on-chain and call back UNITS when the transaction
+        is confirmed or fails:
+
+        **Callback flow:**
+        1. UNITS submits tx with `callbackUrl` + `transactionId`
+        2. Adapter submits to chain, returns `txHash`
+        3. Adapter monitors chain for confirmation
+        4. On confirmation/failure, adapter calls `POST {callbackUrl}` (typically UNITS `/v1/token/transact`)
+           with `operation: "update"` and the `transactionId` for reverse mapping
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_SubmitTransactionRequest'
+            examples:
+              with_callback:
+                summary: "Submit with callback for async monitoring"
+                value:
+                  context:
+                    id: "adapter.transactions.submit"
+                    version: "1.0"
+                    ts: "2026-02-17T10:00:00Z"
+                    msgId: "f2a3b4c5-d6e7-8901-2345-f01234567890"
+                  payload:
+                    chainId: "eip155:1"
+                    signedTx: "0x02f87001808459682f0085174876e80082520894...signed_payload"
+                    transactionId: "units-tx-550e8400-e29b-41d4-a716-446655440000"
+                    callbackUrl: "https://foundry.finternetlab.io/v1/token/transact"
+              without_callback:
+                summary: "Submit without callback (poll mode)"
+                value:
+                  context:
+                    id: "adapter.transactions.submit"
+                    version: "1.0"
+                    ts: "2026-02-17T10:00:00Z"
+                    msgId: "a3b4c5d6-e7f8-9012-3456-012345678901"
+                  payload:
+                    chainId: "eip155:1"
+                    signedTx: "0x02f87001808459682f0085174876e80082520894...signed_payload"
+      responses:
+        '200':
+          description: "Transaction submitted to chain"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_SubmitTransaction'
+              example:
+                context:
+                  id: "adapter.transactions.submit"
+                  version: "1.0"
+                  ts: "2026-02-17T10:00:01Z"
+                  msgId: "f2a3b4c5-d6e7-8901-2345-f01234567890"
+                  status: "successful"
+                response:
+                  txHash: "0xabc123def456789012345678901234567890123456789012345678901234abcd"
+                  chainId: "eip155:1"
+                  status: "submitted"
+                  submittedAt: "2026-02-17T12:01:30Z"
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailableError'
+
+  /transactions/status:
+    post:
+      tags: ["Transactions"]
+      summary: "Get transaction status"
+      description: |
+        Returns the current status of a submitted transaction by its chain transaction hash.
+        Called by TokenEngine to poll on-chain execution status (when not using callbacks).
+
+        The `confirmations` field indicates the number of block confirmations since the
+        transaction was included, useful for determining finality.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_TransactionStatusRequest'
+            example:
+              context:
+                id: "adapter.transactions.status"
+                version: "1.0"
+                ts: "2026-02-17T10:00:00Z"
+                msgId: "b4c5d6e7-f8a9-0123-4567-123456789012"
+              payload:
+                chainId: "eip155:1"
+                txHash: "0xabc123def456789012345678901234567890123456789012345678901234abcd"
+      responses:
+        '200':
+          description: "Transaction status retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TransactionStatus'
+              examples:
+                pending:
+                  summary: "Transaction pending in mempool"
+                  value:
+                    context:
+                      id: "adapter.transactions.status"
+                      version: "1.0"
+                      ts: "2026-02-17T10:00:01Z"
+                      msgId: "b4c5d6e7-f8a9-0123-4567-123456789012"
+                      status: "successful"
+                    response:
+                      txHash: "0xabc123..."
+                      chainId: "eip155:1"
+                      status: "pending"
+                      confirmations: 0
+                confirmed:
+                  summary: "Transaction confirmed"
+                  value:
+                    context:
+                      id: "adapter.transactions.status"
+                      version: "1.0"
+                      ts: "2026-02-17T10:00:01Z"
+                      msgId: "b4c5d6e7-f8a9-0123-4567-123456789012"
+                      status: "successful"
+                    response:
+                      txHash: "0xabc123..."
+                      chainId: "eip155:1"
+                      status: "confirmed"
+                      blockNumber: 19234567
+                      blockHash: "0xblock..."
+                      gasUsed: "52000"
+                      confirmations: 12
+                      confirmedAt: "2026-02-17T12:02:15Z"
+                failed:
+                  summary: "Transaction reverted"
+                  value:
+                    context:
+                      id: "adapter.transactions.status"
+                      version: "1.0"
+                      ts: "2026-02-17T10:00:01Z"
+                      msgId: "b4c5d6e7-f8a9-0123-4567-123456789012"
+                      status: "successful"
+                    response:
+                      txHash: "0xabc123..."
+                      chainId: "eip155:1"
+                      status: "failed"
+                      blockNumber: 19234567
+                      failureReason: "execution reverted: ERC20: transfer amount exceeds balance"
+                      confirmations: 12
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailableError'
+
+  /transactions/receipt:
+    post:
+      tags: ["Transactions"]
+      summary: "Get transaction receipt"
+      description: |
+        Returns the full transaction receipt including event logs and gas details.
+        Only available after a transaction has been included in a block (confirmed or failed).
+
+        Used for detailed auditing, event log extraction, and proof generation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_TransactionReceiptRequest'
+            example:
+              context:
+                id: "adapter.transactions.receipt"
+                version: "1.0"
+                ts: "2026-02-17T10:00:00Z"
+                msgId: "c5d6e7f8-a9b0-1234-5678-234567890123"
+              payload:
+                chainId: "eip155:1"
+                txHash: "0xabc123def456789012345678901234567890123456789012345678901234abcd"
+      responses:
+        '200':
+          description: "Receipt retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TransactionReceipt'
+              example:
+                context:
+                  id: "adapter.transactions.receipt"
+                  version: "1.0"
+                  ts: "2026-02-17T10:00:01Z"
+                  msgId: "c5d6e7f8-a9b0-1234-5678-234567890123"
+                  status: "successful"
+                response:
+                  txHash: "0xabc123def456..."
+                  chainId: "eip155:1"
+                  status: "confirmed"
+                  blockNumber: 19234567
+                  blockHash: "0xblock..."
+                  from: "0x24596184fccdf7b5f2e93711f39cee4926ec7b2d"
+                  to: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+                  gasUsed: "52000"
+                  effectiveGasPrice: "25000000000"
+                  confirmations: 12
+                  logs:
+                    - address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+                      topics:
+                        - "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+                        - "0x00000000000000000000000024596184fccdf7b5f2e93711f39cee4926ec7b2d"
+                        - "0x000000000000000000000000BobAddress1234567890abcdef1234567890abcdef"
+                      data: "0x0000000000000000000000000000000000000000000000000000000005f5e100"
+                      logIndex: 0
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '503':
+          $ref: '#/components/responses/UpstreamUnavailableError'
+
+  # -------------------- Meta --------------------
+  /info:
+    post:
+      tags: ["Meta"]
+      summary: "Get adapter metadata"
+      description: |
+        Returns metadata about this adapter: supported chains, version, upstream provider.
+        Used by admin tools, monitoring, and the chain registry for validation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_Empty'
+            example:
+              context:
+                id: "adapter.info"
+                version: "1.0"
+                ts: "2026-02-17T10:00:00Z"
+                msgId: "d6e7f8a9-b0c1-2345-6789-345678901234"
+              payload: {}
+      responses:
+        '200':
+          description: "Adapter info retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_AdapterInfo'
+              example:
+                context:
+                  id: "adapter.info"
+                  version: "1.0"
+                  ts: "2026-02-17T10:00:01Z"
+                  msgId: "d6e7f8a9-b0c1-2345-6789-345678901234"
+                  status: "successful"
+                response:
+                  name: "Finternet Alchemy Adapter"
+                  version: "1.0.0"
+                  provider: "alchemy"
+                  supportedChains:
+                    - chainId: "eip155:1"
+                      name: "Ethereum Mainnet"
+                    - chainId: "eip155:137"
+                      name: "Polygon Mainnet"
+                    - chainId: "eip155:8453"
+                      name: "Base"
+                    - chainId: "eip155:42161"
+                      name: "Arbitrum One"
+
+  /health:
+    post:
+      tags: ["Meta"]
+      summary: "Health check"
+      description: |
+        Liveness and upstream connectivity check. Returns the adapter's status
+        and whether it can reach its upstream RPC provider(s).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_Empty'
+            example:
+              context:
+                id: "adapter.health"
+                version: "1.0"
+                ts: "2026-02-17T10:00:00Z"
+                msgId: "e7f8a9b0-c1d2-3456-7890-456789012345"
+              payload: {}
+      responses:
+        '200':
+          description: "Adapter is healthy"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_Health'
+              example:
+                context:
+                  id: "adapter.health"
+                  version: "1.0"
+                  ts: "2026-02-17T10:00:01Z"
+                  msgId: "e7f8a9b0-c1d2-3456-7890-456789012345"
+                  status: "successful"
+                response:
+                  status: "healthy"
+                  uptime: 86400
+                  upstream:
+                    status: "connected"
+                    latencyMs: 45
+                    lastCheckedAt: "2026-02-17T12:00:00Z"
+        '503':
+          description: "Adapter is unhealthy"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_Health'
+              example:
+                context:
+                  id: "adapter.health"
+                  version: "1.0"
+                  ts: "2026-02-17T10:00:01Z"
+                  msgId: "e7f8a9b0-c1d2-3456-7890-456789012345"
+                  status: "successful"
+                response:
+                  status: "unhealthy"
+                  uptime: 86400
+                  upstream:
+                    status: "disconnected"
+                    lastCheckedAt: "2026-02-17T12:00:00Z"
+                    error: "Connection timeout to Alchemy RPC"
+
+# ===============================================================
+#   COMPONENTS
+# ===============================================================
+
+components:
+  schemas:
+    # --- Envelope Schemas (Lighter Context — No Auth Fields) ---
+    AdapterContext:
+      type: object
+      description: |
+        Lighter request context for adapter calls. No auth fields — adapter auth
+        is at the transport layer (mTLS / shared secret). The `msgId` flows end-to-end
+        for log correlation across all services.
+      required: [id, version, ts, msgId]
+      properties:
+        id:
+          type: string
+          description: "API identifier (e.g., adapter.chain.info)"
+          example: "adapter.chain.info"
+        version:
+          type: string
+          description: "API version"
+          example: "1.0"
+        ts:
+          type: string
+          format: date-time
+          description: "Request timestamp (UTC RFC3339)"
+        msgId:
+          type: string
+          format: uuid
+          description: "Unique message ID — same value flows App Backend → UNITS → Adapter → Callback for end-to-end tracing"
+        valueFormat:
+          type: string
+          enum: [raw, display]
+          default: "raw"
+          description: |
+            Controls how numeric amounts (balances, fees, transfer values) are represented
+            in both the request payload and the response.
+
+            - `raw` (default) — Smallest-unit integer strings. No decimal point.
+              Example: `"100500000"` (100.5 USDC with 6 decimals), `"1625000000000000"` (0.001625 ETH).
+              Used by: TokenEngine, internal system-to-system calls.
+
+            - `display` — Human-readable decimal strings. The adapter applies the correct
+              decimal precision based on the token class or native currency.
+              Example: `"100.50"` (USDC), `"0.001625"` (ETH).
+              Used by: UI-facing callers, direct adapter access for transaction building.
+
+            The adapter is the authoritative source for decimal conversion. When `display`
+            is requested, the adapter converts raw chain values to decimal strings on the way
+            out, and converts decimal strings back to raw values on the way in.
+
+            This avoids cross-ecosystem issues: JS `Number.MAX_SAFE_INTEGER` overflow,
+            language-specific floating-point precision, and consumer burden of doing
+            `value / 10^decimals` arithmetic. Amounts are always opaque strings — never
+            parsed as float by any system.
+          example: "raw"
+
+    AdapterResponseContext:
+      type: object
+      required: [id, version, ts, msgId, status]
+      properties:
+        id: { type: string }
+        version: { type: string }
+        ts: { type: string, format: date-time }
+        msgId: { type: string, format: uuid }
+        status:
+          type: string
+          enum: [successful, failed]
+        error:
+          $ref: '#/components/schemas/ErrorPayload'
+
+    ErrorPayload:
+      type: object
+      required: [code, message]
+      nullable: true
+      properties:
+        code:
+          type: string
+          description: "Machine-readable error code"
+          example: "INVALID_ADDRESS"
+        message:
+          type: string
+          description: "Human-readable error description"
+
+    AdapterRequest:
+      type: object
+      required: [context, payload]
+      properties:
+        context: { $ref: '#/components/schemas/AdapterContext' }
+        payload: { type: object }
+
+    AdapterResponse:
+      type: object
+      required: [context, response]
+      properties:
+        context: { $ref: '#/components/schemas/AdapterResponseContext' }
+        response: { type: object }
+
+    ApiError:
+      type: object
+      required: [context, response]
+      properties:
+        context: { $ref: '#/components/schemas/AdapterResponseContext' }
+        response: { type: object, example: {} }
+
+    # --- Chain Discovery Schemas ---
+    ChainInfoRequest:
+      type: object
+      required: [chainId]
+      properties:
+        chainId:
+          type: string
+          description: "CAIP-2 chain identifier"
+          example: "eip155:1"
+
+    ChainInfo:
+      type: object
+      required: [chainId, name, chainFamily]
+      properties:
+        chainId: { type: string, example: "eip155:1" }
+        name: { type: string, example: "Ethereum Mainnet" }
+        chainFamily:
+          type: string
+          enum: [evm, solana, cosmos, substrate]
+          example: "evm"
+        isTestnet: { type: boolean }
+        nativeCurrency:
+          type: object
+          properties:
+            name: { type: string, example: "Ether" }
+            symbol: { type: string, example: "ETH" }
+            decimals: { type: integer, example: 18 }
+        blockTime:
+          type: number
+          description: "Average block time in seconds"
+          example: 12
+        consensus:
+          type: string
+          description: "Consensus mechanism"
+          example: "proof-of-stake"
+        explorers:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              url: { type: string, format: uri }
+              type: { type: string, enum: [primary, secondary] }
+
+    ChainCapabilitiesRequest:
+      type: object
+      required: [chainId]
+      properties:
+        chainId: { type: string, example: "eip155:1" }
+
+    ChainCapabilities:
+      type: object
+      required: [chainId, supportedAssetTypes, supportedOperations]
+      properties:
+        chainId: { type: string, example: "eip155:1" }
+        supportedAssetTypes:
+          type: array
+          items:
+            type: string
+            enum: [native, erc20, erc721, erc1155, spl]
+          description: "Asset types this adapter can handle for this chain"
+        supportedOperations:
+          type: array
+          items: { type: string }
+          description: "List of operations supported (e.g., chain.info, balance.get, transactions.build)"
+        features:
+          type: object
+          description: "Feature flags for advanced capabilities"
+          properties:
+            multisig: { type: boolean, default: false }
+            batchTransactions: { type: boolean, default: false }
+            callbacks: { type: boolean, default: true }
+            gasEstimation: { type: boolean, default: true }
+            feePreference: { type: boolean, default: true }
+          additionalProperties: true
+        constraints:
+          type: object
+          description: "Chain-specific constraints"
+          properties:
+            maxBatchSize: { type: integer }
+            maxGasLimit: { type: string }
+          additionalProperties: true
+
+    ChainHeadRequest:
+      type: object
+      required: [chainId]
+      properties:
+        chainId: { type: string, example: "eip155:1" }
+
+    ChainHead:
+      type: object
+      required: [chainId, blockNumber, timestamp]
+      properties:
+        chainId: { type: string, example: "eip155:1" }
+        blockNumber:
+          type: integer
+          description: "Latest block number (or slot for Solana)"
+          example: 19234567
+        blockHash:
+          type: string
+          description: "Latest block hash"
+        timestamp:
+          type: string
+          format: date-time
+          description: "Block timestamp"
+        parentHash:
+          type: string
+          description: "Parent block hash"
+
+    # --- Account & Balance Schemas ---
+    AccountResolveRequest:
+      type: object
+      required: [chainId, address]
+      properties:
+        chainId: { type: string, example: "eip155:1" }
+        address:
+          type: string
+          description: "On-chain wallet address"
+          example: "0x24596184fccdf7b5f2e93711f39cee4926ec7b2d"
+
+    AccountInfo:
+      type: object
+      required: [chainId, address, exists]
+      properties:
+        chainId: { type: string, example: "eip155:1" }
+        address: { type: string }
+        exists:
+          type: boolean
+          description: "Whether the account exists on-chain (has any history)"
+        accountType:
+          type: string
+          enum: [eoa, contract, multisig]
+          description: "Account type (EVM-specific: EOA vs contract)"
+        nonce:
+          type: integer
+          description: "Current transaction nonce"
+
+    HoldingsRequest:
+      type: object
+      required: [chainId, address]
+      properties:
+        chainId: { type: string, example: "eip155:1" }
+        address:
+          type: string
+          description: "On-chain wallet address"
+          example: "0x24596184fccdf7b5f2e93711f39cee4926ec7b2d"
+        includeNative:
+          type: boolean
+          default: true
+          description: "Whether to include native asset (ETH, POL, etc.) in results"
+
+    TokenHolding:
+      type: object
+      required: [contractAddress, assetType, balance, decimals]
+      properties:
+        contractAddress:
+          type: string
+          description: "Contract address, or 'native' for native assets"
+          example: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+        assetType:
+          type: string
+          enum: [erc20, erc721, erc1155, native, spl]
+          description: "Asset standard on chain"
+          example: "erc20"
+        symbol:
+          type: string
+          description: "Token symbol"
+          example: "USDC"
+        name:
+          type: string
+          description: "Token name"
+          example: "USD Coin"
+        balance:
+          type: string
+          description: |
+            Token balance. Format depends on `context.valueFormat`:
+            - `raw`: smallest-unit integer string (e.g., `"1000000000"` for 1000 USDC)
+            - `display`: human-readable decimal string (e.g., `"1000.00"` for 1000 USDC)
+            Adapter MUST normalize upstream responses (never hex, never float).
+          example: "1000000000"
+        decimals:
+          type: integer
+          minimum: 0
+          maximum: 18
+          description: "Asset metadata: decimal precision for this token on chain. Used during import to create token classes — NOT a conversion hint for the balance field."
+          example: 6
+
+    HoldingsResponse:
+      type: object
+      required: [address, chainId, holdings]
+      properties:
+        address: { type: string }
+        chainId: { type: string, example: "eip155:1" }
+        holdings:
+          type: array
+          items: { $ref: '#/components/schemas/TokenHolding' }
+          description: "Token holdings (may be empty if wallet has no tokens)"
+
+    BalanceRequest:
+      type: object
+      required: [chainId, address, contractAddress]
+      properties:
+        chainId: { type: string, example: "eip155:1" }
+        address:
+          type: string
+          description: "On-chain wallet address"
+          example: "0x24596184fccdf7b5f2e93711f39cee4926ec7b2d"
+        contractAddress:
+          type: string
+          description: "Contract address, or 'native' for native asset"
+          example: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+
+    BalanceResponse:
+      type: object
+      required: [address, chainId, contractAddress, balance]
+      properties:
+        address: { type: string }
+        chainId: { type: string, example: "eip155:1" }
+        contractAddress: { type: string }
+        assetType: { type: string, enum: [erc20, erc721, erc1155, native, spl] }
+        symbol: { type: string }
+        balance:
+          type: string
+          description: "Balance. Format depends on `context.valueFormat` (raw: smallest-unit integer, display: human-readable decimal)"
+
+    # --- Fee Estimation Schemas ---
+    FeeEstimateRequest:
+      type: object
+      required: [chainId]
+      properties:
+        chainId:
+          type: string
+          description: "CAIP-2 chain identifier"
+          example: "eip155:1"
+        gasUnits:
+          type: string
+          pattern: "^[0-9]+$"
+          description: |
+            Optional: estimated gas units for the operation. If provided, the adapter
+            will calculate `estimatedFee` based on these units. If omitted, uses a
+            default (e.g., 21000 for native transfer, 65000 for ERC-20).
+          example: "65000"
+
+    FeeTier:
+      type: object
+      description: |
+        A single fee tier. The `name` field is the tier identifier that maps to
+        `feePreference` on `/transactions/build`. Additional fields are chain-specific.
+
+        Fee amount format depends on `context.valueFormat`:
+        - `raw`: smallest-unit integer string (e.g., `"1625000000000000"` wei)
+        - `display`: human-readable decimal string (e.g., `"0.001625"` ETH)
+        No `decimals` field is included — the adapter owns decimal conversion.
+      required: [name, estimatedFee]
+      properties:
+        name:
+          type: string
+          description: "Tier name — used as `feePreference` value in build requests"
+          example: "standard"
+        estimatedFee:
+          type: string
+          description: |
+            Total estimated fee in native currency.
+            Format depends on `context.valueFormat`:
+            - `raw`: `"1625000000000000"` (wei)
+            - `display`: `"0.001625"` (ETH)
+          example: "1625000000000000"
+        estimatedTimeSeconds:
+          type: integer
+          description: "Estimated time to block inclusion in seconds"
+          example: 30
+        gasPrice:
+          type: string
+          description: "Legacy gas price (for non-EIP-1559 chains)"
+        maxPriorityFee:
+          type: string
+          description: "EIP-1559 max priority fee per gas (tip)"
+        computeUnitPrice:
+          type: string
+          description: "Solana compute unit price"
+      additionalProperties: true
+
+    FeeEstimateResponse:
+      type: object
+      required: [chainId, feeModel, tiers]
+      properties:
+        chainId:
+          type: string
+          example: "eip155:1"
+        feeModel:
+          type: string
+          description: |
+            Fee model identifier for this chain. Tells the UI how to interpret
+            the tier fields and whether to show fee breakdown components.
+          enum: [legacy, eip1559, solana, optimistic-l2, fixed]
+          example: "eip1559"
+        baseFee:
+          type: string
+          description: "Current base fee (EIP-1559 chains). Burns on inclusion."
+        l1DataFee:
+          type: string
+          description: "L1 data availability fee component (L2 chains)"
+        nativeCurrency:
+          type: string
+          description: "Native currency symbol for fee display"
+          example: "ETH"
+        tiers:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeeTier'
+          description: |
+            Available fee tiers. Always includes at least "standard".
+            Tier names are free-form — the adapter defines them based on the chain's fee model.
+            Common: ["slow", "standard", "fast"]. Some chains may have fewer or more tiers.
+          minItems: 1
+        updatedAt:
+          type: string
+          format: date-time
+          description: "When these fee estimates were last refreshed (cache age indicator)"
+
+    # --- Asset Resolution Schemas ---
+    AssetResolveRequest:
+      type: object
+      required: [chainId, contractAddress]
+      properties:
+        chainId: { type: string, example: "eip155:1" }
+        contractAddress:
+          type: string
+          description: "Contract address to resolve"
+          example: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+
+    AssetInfo:
+      type: object
+      required: [chainId, contractAddress, assetType]
+      properties:
+        chainId: { type: string, example: "eip155:1" }
+        contractAddress: { type: string }
+        assetType:
+          type: string
+          enum: [erc20, erc721, erc1155, spl]
+        name: { type: string, example: "USD Coin" }
+        symbol: { type: string, example: "USDC" }
+        decimals:
+          type: integer
+          minimum: 0
+          maximum: 18
+          example: 6
+        totalSupply:
+          type: string
+          description: "Total supply. Format depends on `context.valueFormat` (raw: smallest-unit integer, display: human-readable decimal)"
+
+    # --- Transaction Schemas ---
+    BuildTransactionRequest:
+      type: object
+      required: [chainId, from, to, contractAddress, amount, assetType]
+      properties:
+        chainId:
+          type: string
+          description: "CAIP-2 chain identifier"
+          example: "eip155:1"
+        from:
+          type: string
+          description: "Sender wallet address"
+          example: "0x24596184fccdf7b5f2e93711f39cee4926ec7b2d"
+        to:
+          type: string
+          description: "Recipient wallet address"
+          example: "0xBobAddress1234567890abcdef1234567890abcdef"
+        contractAddress:
+          type: string
+          description: "Token contract address, or 'native' for native asset transfer"
+          example: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+        amount:
+          type: string
+          description: |
+            Transfer amount. Format depends on `context.valueFormat`:
+            - `raw`: smallest-unit integer string (e.g., `"100000000"` for 100 USDC)
+            - `display`: human-readable decimal string (e.g., `"100.00"` for 100 USDC)
+            The adapter converts between formats using the token's decimal precision.
+          example: "100000000"
+        assetType:
+          type: string
+          enum: [erc20, erc721, erc1155, native, spl]
+          description: "Asset standard"
+          example: "erc20"
+        feePreference:
+          type: string
+          default: "standard"
+          description: |
+            Fee tier name — must match a tier `name` from `/fees/estimate` response.
+            Common tiers: "slow", "standard", "fast". Adapters may define additional
+            chain-specific tiers. Defaults to "standard" if omitted.
+          example: "standard"
+
+    BuildTransactionResponse:
+      type: object
+      required: [unsignedTx, chainId, from, to, amount]
+      properties:
+        unsignedTx:
+          type: string
+          description: "Raw unsigned transaction payload (hex-encoded for EVM)"
+          example: "0x02f87001..."
+        chainId: { type: string, example: "eip155:1" }
+        from: { type: string }
+        to: { type: string }
+        contractAddress: { type: string }
+        amount: { type: string }
+        estimatedGas:
+          type: string
+          description: "Estimated gas units"
+          example: "65000"
+        gasPrice:
+          type: string
+          description: "Current gas price. Format depends on `context.valueFormat`"
+          example: "25000000000"
+        nonce:
+          type: integer
+          description: "Transaction nonce"
+          example: 42
+        requiredSignatures:
+          type: integer
+          description: "Number of signatures required (1 for EOA, >1 for multisig)"
+          default: 1
+          example: 1
+        expiresAt:
+          type: string
+          format: date-time
+          description: "Timestamp after which this unsigned tx may be stale (gas/nonce drift)"
+          example: "2026-02-17T12:10:00Z"
+    SignTransactionRequest:
+      type: object
+      required: [chainId, unsignedTx, signerAddress]
+      properties:
+        chainId: { type: string, example: "eip155:1" }
+        unsignedTx:
+          type: string
+          description: "Unsigned transaction payload from /transactions/build"
+        signerAddress:
+          type: string
+          description: "Address of the signer (must match adapter-managed key)"
+
+    SignTransactionResponse:
+      type: object
+      required: [signedTx, chainId]
+      properties:
+        signedTx:
+          type: string
+          description: "Signed transaction payload ready for submission"
+        chainId: { type: string, example: "eip155:1" }
+
+    SubmitTransactionRequest:
+      type: object
+      required: [chainId, signedTx]
+      properties:
+        chainId:
+          type: string
+          description: "CAIP-2 chain identifier"
+          example: "eip155:1"
+        signedTx:
+          type: string
+          description: "Signed transaction payload (hex-encoded for EVM)"
+        transactionId:
+          type: string
+          description: |
+            UNITS internal transaction ID. Passed to the adapter so it can include it
+            in the callback for reverse mapping. Optional — omit for poll-only mode.
+          example: "units-tx-550e8400-e29b-41d4-a716-446655440000"
+        callbackUrl:
+          type: string
+          format: uri
+          description: |
+            URL the adapter should call when the transaction is confirmed or fails on-chain.
+            Typically UNITS `/v1/token/transact`. Optional — omit for poll-only mode.
+          example: "https://foundry.finternetlab.io/v1/token/transact"
+
+    SubmitTransactionResponse:
+      type: object
+      required: [txHash, chainId, status]
+      properties:
+        txHash:
+          type: string
+          description: "On-chain transaction hash"
+          example: "0xabc123..."
+        chainId: { type: string, example: "eip155:1" }
+        status:
+          type: string
+          enum: [submitted, pending]
+          description: "Initial status after submission"
+        submittedAt:
+          type: string
+          format: date-time
+
+    TransactionStatusRequest:
+      type: object
+      required: [chainId, txHash]
+      properties:
+        chainId: { type: string, example: "eip155:1" }
+        txHash:
+          type: string
+          description: "On-chain transaction hash"
+          example: "0xabc123def456789012345678901234567890123456789012345678901234abcd"
+
+    TransactionStatusResponse:
+      type: object
+      required: [txHash, chainId, status]
+      properties:
+        txHash: { type: string }
+        chainId: { type: string, example: "eip155:1" }
+        status:
+          type: string
+          enum: [pending, confirmed, failed]
+          description: "On-chain transaction status"
+        blockNumber:
+          type: integer
+          description: "Block number where tx was included (if confirmed or failed)"
+        blockHash:
+          type: string
+          description: "Block hash (if confirmed)"
+        gasUsed:
+          type: string
+          description: "Actual gas consumed"
+        confirmations:
+          type: integer
+          description: "Number of block confirmations since inclusion (0 if pending)"
+          example: 12
+        confirmedAt:
+          type: string
+          format: date-time
+          description: "Block timestamp (if confirmed)"
+        failureReason:
+          type: string
+          description: "Revert reason (if failed)"
+
+    TransactionReceiptRequest:
+      type: object
+      required: [chainId, txHash]
+      properties:
+        chainId: { type: string, example: "eip155:1" }
+        txHash:
+          type: string
+          description: "On-chain transaction hash"
+
+    TransactionReceipt:
+      type: object
+      required: [txHash, chainId, status]
+      properties:
+        txHash: { type: string }
+        chainId: { type: string, example: "eip155:1" }
+        status:
+          type: string
+          enum: [confirmed, failed]
+        blockNumber: { type: integer }
+        blockHash: { type: string }
+        from: { type: string }
+        to: { type: string }
+        gasUsed: { type: string }
+        effectiveGasPrice:
+          type: string
+          description: "Actual gas price paid (decimal integer string)"
+        confirmations: { type: integer }
+        logs:
+          type: array
+          description: "Event logs emitted during transaction execution"
+          items:
+            $ref: '#/components/schemas/EventLog'
+
+    EventLog:
+      type: object
+      description: "On-chain event log entry"
+      properties:
+        address:
+          type: string
+          description: "Contract address that emitted the event"
+        topics:
+          type: array
+          items: { type: string }
+          description: "Indexed event topics (first topic is the event signature hash)"
+        data:
+          type: string
+          description: "Non-indexed event data (hex-encoded)"
+        logIndex:
+          type: integer
+          description: "Log position within the block"
+
+    # --- Meta Schemas ---
+    SupportedChain:
+      type: object
+      required: [chainId, name]
+      properties:
+        chainId: { type: string, example: "eip155:1" }
+        name: { type: string, example: "Ethereum Mainnet" }
+
+    AdapterInfo:
+      type: object
+      required: [name, version, provider, supportedChains]
+      properties:
+        name:
+          type: string
+          description: "Adapter display name"
+          example: "Finternet Alchemy Adapter"
+        version:
+          type: string
+          description: "Adapter software version"
+          example: "1.0.0"
+        provider:
+          type: string
+          description: "Upstream data provider"
+          example: "alchemy"
+        supportedChains:
+          type: array
+          items: { $ref: '#/components/schemas/SupportedChain' }
+
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          description: "Overall adapter health"
+        uptime:
+          type: integer
+          description: "Uptime in seconds"
+        upstream:
+          type: object
+          description: "Upstream provider connectivity"
+          properties:
+            status:
+              type: string
+              enum: [connected, degraded, disconnected]
+            latencyMs:
+              type: integer
+              description: "Last measured roundtrip latency to upstream"
+            lastCheckedAt:
+              type: string
+              format: date-time
+            error:
+              type: string
+              description: "Error message if upstream is not connected"
+
+    # --- Request Envelopes ---
+    ApiRequest_Empty:
+      allOf:
+        - $ref: '#/components/schemas/AdapterRequest'
+        - properties:
+            payload: { type: object }
+
+    ApiRequest_ChainInfoRequest:
+      allOf:
+        - $ref: '#/components/schemas/AdapterRequest'
+        - properties:
+            payload: { $ref: '#/components/schemas/ChainInfoRequest' }
+
+    ApiRequest_ChainCapabilitiesRequest:
+      allOf:
+        - $ref: '#/components/schemas/AdapterRequest'
+        - properties:
+            payload: { $ref: '#/components/schemas/ChainCapabilitiesRequest' }
+
+    ApiRequest_ChainHeadRequest:
+      allOf:
+        - $ref: '#/components/schemas/AdapterRequest'
+        - properties:
+            payload: { $ref: '#/components/schemas/ChainHeadRequest' }
+
+    ApiRequest_AccountResolveRequest:
+      allOf:
+        - $ref: '#/components/schemas/AdapterRequest'
+        - properties:
+            payload: { $ref: '#/components/schemas/AccountResolveRequest' }
+
+    ApiRequest_HoldingsRequest:
+      allOf:
+        - $ref: '#/components/schemas/AdapterRequest'
+        - properties:
+            payload: { $ref: '#/components/schemas/HoldingsRequest' }
+
+    ApiRequest_BalanceRequest:
+      allOf:
+        - $ref: '#/components/schemas/AdapterRequest'
+        - properties:
+            payload: { $ref: '#/components/schemas/BalanceRequest' }
+
+    ApiRequest_AssetResolveRequest:
+      allOf:
+        - $ref: '#/components/schemas/AdapterRequest'
+        - properties:
+            payload: { $ref: '#/components/schemas/AssetResolveRequest' }
+
+    ApiRequest_FeeEstimateRequest:
+      allOf:
+        - $ref: '#/components/schemas/AdapterRequest'
+        - properties:
+            payload: { $ref: '#/components/schemas/FeeEstimateRequest' }
+
+    ApiRequest_BuildTransactionRequest:
+      allOf:
+        - $ref: '#/components/schemas/AdapterRequest'
+        - properties:
+            payload: { $ref: '#/components/schemas/BuildTransactionRequest' }
+
+    ApiRequest_SignTransactionRequest:
+      allOf:
+        - $ref: '#/components/schemas/AdapterRequest'
+        - properties:
+            payload: { $ref: '#/components/schemas/SignTransactionRequest' }
+
+    ApiRequest_SubmitTransactionRequest:
+      allOf:
+        - $ref: '#/components/schemas/AdapterRequest'
+        - properties:
+            payload: { $ref: '#/components/schemas/SubmitTransactionRequest' }
+
+    ApiRequest_TransactionStatusRequest:
+      allOf:
+        - $ref: '#/components/schemas/AdapterRequest'
+        - properties:
+            payload: { $ref: '#/components/schemas/TransactionStatusRequest' }
+
+    ApiRequest_TransactionReceiptRequest:
+      allOf:
+        - $ref: '#/components/schemas/AdapterRequest'
+        - properties:
+            payload: { $ref: '#/components/schemas/TransactionReceiptRequest' }
+
+    # --- Response Envelopes ---
+    ApiResponse_ChainInfo:
+      allOf:
+        - $ref: '#/components/schemas/AdapterResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/ChainInfo' }
+
+    ApiResponse_ChainCapabilities:
+      allOf:
+        - $ref: '#/components/schemas/AdapterResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/ChainCapabilities' }
+
+    ApiResponse_ChainHead:
+      allOf:
+        - $ref: '#/components/schemas/AdapterResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/ChainHead' }
+
+    ApiResponse_AccountInfo:
+      allOf:
+        - $ref: '#/components/schemas/AdapterResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/AccountInfo' }
+
+    ApiResponse_Holdings:
+      allOf:
+        - $ref: '#/components/schemas/AdapterResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/HoldingsResponse' }
+
+    ApiResponse_Balance:
+      allOf:
+        - $ref: '#/components/schemas/AdapterResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/BalanceResponse' }
+
+    ApiResponse_AssetInfo:
+      allOf:
+        - $ref: '#/components/schemas/AdapterResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/AssetInfo' }
+
+    ApiResponse_FeeEstimate:
+      allOf:
+        - $ref: '#/components/schemas/AdapterResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/FeeEstimateResponse' }
+
+    ApiResponse_BuildTransaction:
+      allOf:
+        - $ref: '#/components/schemas/AdapterResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/BuildTransactionResponse' }
+
+    ApiResponse_SignTransaction:
+      allOf:
+        - $ref: '#/components/schemas/AdapterResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/SignTransactionResponse' }
+
+    ApiResponse_SubmitTransaction:
+      allOf:
+        - $ref: '#/components/schemas/AdapterResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/SubmitTransactionResponse' }
+
+    ApiResponse_TransactionStatus:
+      allOf:
+        - $ref: '#/components/schemas/AdapterResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/TransactionStatusResponse' }
+
+    ApiResponse_TransactionReceipt:
+      allOf:
+        - $ref: '#/components/schemas/AdapterResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/TransactionReceipt' }
+
+    ApiResponse_AdapterInfo:
+      allOf:
+        - $ref: '#/components/schemas/AdapterResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/AdapterInfo' }
+
+    ApiResponse_Health:
+      allOf:
+        - $ref: '#/components/schemas/AdapterResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/HealthResponse' }
+
+  # -------------------- Error Responses --------------------
+  responses:
+    BadRequestError:
+      description: "Invalid request parameters"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context:
+              id: "adapter.balance.get"
+              version: "1.0"
+              ts: "2026-02-17T10:00:01Z"
+              msgId: "..."
+              status: "failed"
+              error:
+                code: "INVALID_REQUEST"
+                message: "Invalid address format for this chain"
+            response: {}
+
+    NotFoundError:
+      description: "Resource not found"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context:
+              id: "adapter.transactions.status"
+              version: "1.0"
+              ts: "2026-02-17T10:00:01Z"
+              msgId: "..."
+              status: "failed"
+              error:
+                code: "NOT_FOUND"
+                message: "Transaction not found"
+            response: {}
+
+    UpstreamUnavailableError:
+      description: "Upstream chain RPC unavailable"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context:
+              id: "adapter.chain.info"
+              version: "1.0"
+              ts: "2026-02-17T10:00:01Z"
+              msgId: "..."
+              status: "failed"
+              error:
+                code: "UPSTREAM_UNAVAILABLE"
+                message: "Chain RPC endpoint is not responding"
+            response: {}

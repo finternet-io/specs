@@ -217,6 +217,47 @@ components:
               type: string
               description: Source authority
 
+    # -------------------- Chain Deployment --------------------
+
+    ChainDeployment:
+      type: object
+      description: |
+        On-chain contract deployment for a token class.
+        Maps a specific chain to the contract address where this token exists.
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/token-class/v1/context.jsonld
+        "@type": finternet:ChainDeployment
+      required:
+        - chainId
+        - contractAddress
+        - assetType
+        - decimals
+      properties:
+        chainId:
+          type: string
+          description: CAIP-2 chain identifier (e.g., "eip155:1")
+          x-jsonld: { "@id": "finternet:chainId" }
+        contractAddress:
+          type: string
+          description: Contract address on chain, or "native" for native assets
+          x-jsonld: { "@id": "finternet:contractAddress" }
+        assetType:
+          type: string
+          description: Asset standard on chain
+          enum:
+            - erc20
+            - erc721
+            - erc1155
+            - native
+            - spl
+          x-jsonld: { "@id": "finternet:assetType", "@type": "@vocab" }
+        decimals:
+          type: integer
+          minimum: 0
+          maximum: 18
+          description: Decimal precision on this specific chain deployment
+          x-jsonld: { "@id": "finternet:deploymentDecimals", "@type": "xsd:integer" }
+
     # -------------------- TokenClass (Base) --------------------
 
     TokenClass:
@@ -325,6 +366,15 @@ components:
           type: string
           description: Reference to the token program that handles operations
           x-jsonld: { "@id": "finternet:programId" }
+        chainDeployments:
+          type: array
+          description: |
+            On-chain contract deployments for this token class.
+            Maps chain IDs to contract addresses. Used for anti-spam filtering
+            during proxy token import — only holdings matching a known deployment are imported.
+          items:
+            $ref: "#/components/schemas/ChainDeployment"
+          x-jsonld: { "@id": "finternet:chainDeployments", "@container": "@set" }
         tags:
           type: array
           items:

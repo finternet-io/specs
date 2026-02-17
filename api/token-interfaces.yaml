@@ -70,7 +70,7 @@ tags:
 
 paths:
   # -------------------- TokenClass --------------------
-  /v1/tokenclass/register:
+  /v1/registry/tokenclasses/register:
     post:
       tags:
         - "TokenClass"
@@ -92,7 +92,7 @@ paths:
                 summary: "Register USDC - Circle's USD stablecoin"
                 value:
                   context:
-                    id: "api.tokenclass.register"
+                    id: "api.registry.tokenclasses.register"
                     version: "1.0"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
@@ -123,11 +123,24 @@ paths:
                       currency: "USD"
                       fungible: true
                       category: "stablecoin"
+                    chainDeployments:
+                      - chainId: "eip155:1"
+                        contractAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+                        assetType: "erc20"
+                        decimals: 6
+                      - chainId: "eip155:137"
+                        contractAddress: "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"
+                        assetType: "erc20"
+                        decimals: 6
+                      - chainId: "eip155:8453"
+                        contractAddress: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+                        assetType: "erc20"
+                        decimals: 6
               USDT:
                 summary: "Register USDT - Tether's USD stablecoin"
                 value:
                   context:
-                    id: "api.tokenclass.register"
+                    id: "api.registry.tokenclasses.register"
                     version: "1.0"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef"
@@ -161,7 +174,7 @@ paths:
                 summary: "Register EURC - Circle's Euro stablecoin"
                 value:
                   context:
-                    id: "api.tokenclass.register"
+                    id: "api.registry.tokenclasses.register"
                     version: "1.0"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
@@ -195,7 +208,7 @@ paths:
                 summary: "Register GBPT - British Pound stablecoin"
                 value:
                   context:
-                    id: "api.tokenclass.register"
+                    id: "api.registry.tokenclasses.register"
                     version: "1.0"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef"
@@ -229,7 +242,7 @@ paths:
                 summary: "Register INRT - Indian Rupee token"
                 value:
                   context:
-                    id: "api.tokenclass.register"
+                    id: "api.registry.tokenclasses.register"
                     version: "1.0"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "e5f6a7b8-c9d0-1234-5678-90abcdef1"
@@ -263,7 +276,7 @@ paths:
                 summary: "Register NFH-T - Utility token with constraints"
                 value:
                   context:
-                    id: "api.tokenclass.register"
+                    id: "api.registry.tokenclasses.register"
                     version: "1.0"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "f6a7b8c9-d0e1-2345-6789-0abcdef12"
@@ -298,7 +311,7 @@ paths:
                 summary: "Register ART-NFT - Digital art collectibles"
                 value:
                   context:
-                    id: "api.tokenclass.register"
+                    id: "api.registry.tokenclasses.register"
                     version: "1.0"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "a7b8c9d0-e1f2-3456-7890-abcdef123"
@@ -336,7 +349,7 @@ paths:
                 summary: "Register RWA-NFT - Real world asset tokens"
                 value:
                   context:
-                    id: "api.tokenclass.register"
+                    id: "api.registry.tokenclasses.register"
                     version: "1.0"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "b8c9d0e1-f2a3-4567-8901-bcdef1234"
@@ -374,7 +387,7 @@ paths:
                 $ref: '#/components/schemas/ApiResponse_TokenClassDetails'
               example:
                 context:
-                  id: "api.tokenclass.register"
+                  id: "api.registry.tokenclasses.register"
                   version: "1.0"
                   ts: "2025-01-04T10:00:00Z"
                   msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
@@ -415,7 +428,7 @@ paths:
         '409':
           description: "Token class already exists"
 
-  /v1/tokenclass/update:
+  /v1/registry/tokenclasses/update:
     post:
       tags:
         - "TokenClass"
@@ -434,7 +447,7 @@ paths:
               $ref: '#/components/schemas/ApiRequest_UpdateTokenClassRequest'
             example:
               context:
-                id: "api.tokenclass.update"
+                id: "api.registry.tokenclasses.update"
                 version: "1.0"
                 ts: "2025-01-04T11:00:00Z"
                 msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef"
@@ -464,7 +477,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFoundError'
 
-  /v1/tokenclass/get:
+  /v1/registry/tokenclasses/get:
     post:
       tags:
         - "TokenClass"
@@ -481,7 +494,7 @@ paths:
               $ref: '#/components/schemas/ApiRequest_GetTokenClassRequest'
             example:
               context:
-                id: "api.tokenclass.get"
+                id: "api.registry.tokenclasses.get"
                 version: "1.0"
                 ts: "2025-01-04T10:00:00Z"
                 msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef12"
@@ -498,7 +511,7 @@ paths:
                 $ref: '#/components/schemas/ApiResponse_TokenClassDetails'
               example:
                 context:
-                  id: "api.tokenclass.get"
+                  id: "api.registry.tokenclasses.get"
                   version: "1.0"
                   ts: "2025-01-04T10:00:00Z"
                   msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
@@ -535,7 +548,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedError'
 
-  /v1/tokenclass/search:
+  /v1/registry/tokenclasses/search:
     post:
       tags:
         - "TokenClass"
@@ -552,7 +565,7 @@ paths:
               $ref: '#/components/schemas/ApiRequest_SearchTokenClassRequest'
             example:
               context:
-                id: "api.tokenclass.search"
+                id: "api.registry.tokenclasses.search"
                 version: "1.0"
                 ts: "2025-01-04T10:00:00Z"
                 msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef123"
@@ -577,7 +590,7 @@ paths:
                 $ref: '#/components/schemas/ApiResponse_TokenClassList'
               example:
                 context:
-                  id: "api.tokenclass.search"
+                  id: "api.registry.tokenclasses.search"
                   version: "1.0"
                   ts: "2025-01-04T10:00:00Z"
                   msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef"
@@ -659,16 +672,32 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ApiRequest_GetTokenRequest'
-            example:
-              context:
-                id: "api.token.get"
-                version: "1.0"
-                ts: "2025-01-04T10:00:00Z"
-                msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
-                developerToken: "dev_pk_..."
-                authorization: "Bearer eyJ..."
-              payload:
-                tokenId: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+            examples:
+              raw_get:
+                summary: "Get token — raw mode (default)"
+                value:
+                  context:
+                    id: "api.token.get"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenId: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+              display_get:
+                summary: "Get token — display mode (human-readable)"
+                value:
+                  context:
+                    id: "api.token.get"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdf0"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                    valueFormat: "display"
+                  payload:
+                    tokenId: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
       responses:
         '200':
           description: "Token details retrieved successfully."
@@ -676,6 +705,67 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse_TokenDetails'
+              examples:
+                raw_token:
+                  summary: "Token response — raw (smallest-unit integers)"
+                  value:
+                    context:
+                      id: "api.token.get"
+                      version: "1.0"
+                      ts: "2025-01-04T10:00:01Z"
+                      msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                      status: "successful"
+                    response:
+                      id: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                      metadata:
+                        tokenClassId: "urn:uuid:b2c3d4e5-f6a7-8901-2345-67890abcdef1"
+                        tokenClass: "USDC"
+                        tokenStandard: "UNITS-FT"
+                        name: "USD Coin"
+                        symbol: "USDC"
+                        decimals: 6
+                        fungibility: "fungible"
+                      identities:
+                        - id: "did:web:circle.com"
+                          type: "issuer"
+                        - id: "did:web:alice.example"
+                          type: "owner"
+                      state:
+                        status: "active"
+                        supply:
+                          totalSupply: "1000000000000"
+                          circulatingSupply: "500000000000"
+                        stateCommitment: "0xabcdef1234567890"
+                display_token:
+                  summary: "Token response — display (human-readable decimals)"
+                  value:
+                    context:
+                      id: "api.token.get"
+                      version: "1.0"
+                      ts: "2025-01-04T10:00:01Z"
+                      msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdf0"
+                      status: "successful"
+                    response:
+                      id: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                      metadata:
+                        tokenClassId: "urn:uuid:b2c3d4e5-f6a7-8901-2345-67890abcdef1"
+                        tokenClass: "USDC"
+                        tokenStandard: "UNITS-FT"
+                        name: "USD Coin"
+                        symbol: "USDC"
+                        decimals: 6
+                        fungibility: "fungible"
+                      identities:
+                        - id: "did:web:circle.com"
+                          type: "issuer"
+                        - id: "did:web:alice.example"
+                          type: "owner"
+                      state:
+                        status: "active"
+                        supply:
+                          totalSupply: "1000000.00"
+                          circulatingSupply: "500000.00"
+                        stateCommitment: "0xabcdef1234567890"
         '404':
           $ref: '#/components/responses/NotFoundError'
         '401':
@@ -870,27 +960,48 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ApiRequest_SearchTokensRequest'
-            example:
-              context:
-                id: "api.token.search"
-                version: "1.0"
-                ts: "2025-01-04T10:00:00Z"
-                msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
-                developerToken: "dev_pk_..."
-                authorization: "Bearer eyJ..."
-              payload:
-                filters:
-                  tokenStandard: "UNITS-FT"
-                  status: "active"
-                  fungibility: "fungible"
-                  tags:
-                    - "stablecoin"
-                pagination:
-                  limit: 50
-                  offset: 0
-                sort:
-                  field: "createdAt"
-                  order: "desc"
+            examples:
+              raw_search:
+                summary: "Search tokens — raw mode (default)"
+                value:
+                  context:
+                    id: "api.token.search"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    filters:
+                      tokenStandard: "UNITS-FT"
+                      status: "active"
+                      fungibility: "fungible"
+                      tags:
+                        - "stablecoin"
+                    pagination:
+                      limit: 50
+                      offset: 0
+                    sort:
+                      field: "createdAt"
+                      order: "desc"
+              display_search:
+                summary: "Search tokens — display mode (human-readable)"
+                value:
+                  context:
+                    id: "api.token.search"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef2"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                    valueFormat: "display"
+                  payload:
+                    filters:
+                      chainId: "eip155:1"
+                      tokenStandard: "UNITS-FT"
+                    pagination:
+                      limit: 20
+                      offset: 0
       responses:
         '200':
           description: "Token list retrieved successfully."
@@ -898,6 +1009,63 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse_TokenList'
+              examples:
+                raw_results:
+                  summary: "Search results — raw (smallest-unit integers)"
+                  value:
+                    context:
+                      id: "api.token.search"
+                      version: "1.0"
+                      ts: "2025-01-04T10:00:01Z"
+                      msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
+                      status: "successful"
+                    response:
+                      tokens:
+                        - id: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                          metadata:
+                            tokenClass: "USDC"
+                            tokenStandard: "UNITS-FT"
+                            name: "USD Coin"
+                            symbol: "USDC"
+                            decimals: 6
+                            fungibility: "fungible"
+                          state:
+                            status: "active"
+                            supply:
+                              totalSupply: "1000000000000"
+                              circulatingSupply: "500000000000"
+                      pagination:
+                        total: 1
+                        limit: 50
+                        offset: 0
+                display_results:
+                  summary: "Search results — display (human-readable decimals)"
+                  value:
+                    context:
+                      id: "api.token.search"
+                      version: "1.0"
+                      ts: "2025-01-04T10:00:01Z"
+                      msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef2"
+                      status: "successful"
+                    response:
+                      tokens:
+                        - id: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                          metadata:
+                            tokenClass: "USDC"
+                            tokenStandard: "UNITS-FT"
+                            name: "USD Coin"
+                            symbol: "USDC"
+                            decimals: 6
+                            fungibility: "fungible"
+                          state:
+                            status: "active"
+                            supply:
+                              totalSupply: "1000000.00"
+                              circulatingSupply: "500000.00"
+                      pagination:
+                        total: 1
+                        limit: 20
+                        offset: 0
         '401':
           $ref: '#/components/responses/UnauthorizedError'
 
@@ -1873,6 +2041,16 @@ components:
         developerToken: { type: string, example: "dev_pk_...", nullable: true, description: "B2B Developer API Key/Token" }
         developerSignature: { type: string, example: "t=...,v1=...", nullable: true, description: "B2B Developer Signature" }
         authorization: { type: string, example: "Bearer eyJ...", nullable: true, description: "End-user's session token" }
+        valueFormat:
+          type: string
+          enum: [raw, display]
+          default: "raw"
+          description: |
+            Controls how numeric amounts (balances, supply, fees) are represented in responses.
+            - `raw` (default): Smallest-unit integer strings (e.g., "100500000" for 100.5 USDC with 6 decimals).
+            - `display`: Human-readable decimal strings (e.g., "100.50" for 100.5 USDC).
+            The service layer performs decimal conversion using token class metadata.
+            Amounts are always opaque strings — never parsed as float by any system.
     ResponseContext:
       type: object
       required: [id, version, ts, msgId, status]
@@ -1998,6 +2176,13 @@ components:
           type: array
           items: { $ref: '#/components/schemas/Identity' }
           description: "Authorized identities who can mint tokens of this class"
+        chainDeployments:
+          type: array
+          description: |
+            On-chain contract deployments for this token class. Maps chain IDs to contract
+            addresses. Used for anti-spam filtering during proxy token import.
+          items:
+            $ref: '#/components/schemas/ChainDeployment'
         metadata:
           type: object
           description: "Token class metadata including fungibility configuration"
@@ -2031,6 +2216,31 @@ components:
               type: string
               format: date-time
 
+    ChainDeployment:
+      type: object
+      required: [chainId, contractAddress, assetType, decimals]
+      description: "On-chain contract deployment for a token class"
+      properties:
+        chainId:
+          type: string
+          description: "CAIP-2 chain identifier"
+          example: "eip155:1"
+        contractAddress:
+          type: string
+          description: "Contract address on chain, or 'native' for native assets"
+          example: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+        assetType:
+          type: string
+          enum: [erc20, erc721, erc1155, native, spl]
+          description: "Asset standard on chain"
+          example: "erc20"
+        decimals:
+          type: integer
+          minimum: 0
+          maximum: 18
+          description: "Decimal precision on this specific chain deployment"
+          example: 6
+
     RegisterTokenClassRequest:
       type: object
       required: [tokenClass, tokenStandard, name, schema]
@@ -2050,6 +2260,13 @@ components:
         metadata:
           type: object
           description: "Token class metadata"
+        chainDeployments:
+          type: array
+          description: |
+            On-chain contract deployments for this token class. Used for anti-spam filtering
+            during proxy token import — only holdings matching a known deployment are imported.
+          items:
+            $ref: '#/components/schemas/ChainDeployment'
 
     UpdateTokenClassRequest:
       type: object
@@ -2068,6 +2285,11 @@ components:
         metadata:
           type: object
           description: "Updated metadata"
+        chainDeployments:
+          type: array
+          description: "Updated on-chain contract deployments"
+          items:
+            $ref: '#/components/schemas/ChainDeployment'
 
     GetTokenClassRequest:
       type: object
@@ -2085,10 +2307,13 @@ components:
             Search filters for token classes.
             Known fields: tokenStandard, status, name.
             Use explicit paths for JSONB fields (e.g., metadata.category).
+            Use chainDeployments filter for reverse lookup by chain/contract.
           properties:
             tokenStandard: { type: string, description: "Filter by protocol standard" }
             status: { type: string, description: "Filter by status" }
             "metadata.category": { type: string, description: "Filter by metadata.category" }
+            "chainDeployments.chainId": { type: string, description: "Filter by chain ID in deployments (e.g., eip155:1)" }
+            "chainDeployments.contractAddress": { type: string, description: "Filter by contract address in deployments" }
           additionalProperties: true
         pagination:
           $ref: '#/components/schemas/PaginationRequest'
@@ -2176,9 +2401,10 @@ components:
         effectiveUntil: { type: string, format: date-time, nullable: true }
         supply:
           type: object
+          description: "Supply information. Amount format depends on `context.valueFormat` (raw: integer strings, display: decimal strings)."
           properties:
-            totalSupply: { type: string }
-            circulatingSupply: { type: string }
+            totalSupply: { type: string, description: "Total supply. Format depends on context.valueFormat." }
+            circulatingSupply: { type: string, description: "Circulating supply. Format depends on context.valueFormat." }
         lockState:
           type: object
           properties:
@@ -2279,7 +2505,7 @@ components:
           description: "Initial verifiable claims (optional)"
         initialSupply:
           type: string
-          description: "Initial token supply (for fungible tokens)"
+          description: "Initial token supply (for fungible tokens). Format depends on `context.valueFormat` (raw: integer string, display: decimal string)."
 
     SearchTokensRequest:
       type: object
@@ -2289,12 +2515,26 @@ components:
           type: object
           description: |
             Search filters for tokens. Owner filtering inferred from JWT/ACL.
-            Known fields: tokenClass, tokenStandard, tokenClassId, id, identities.
+
+            Known column filters:
+            - `tokenClass` — Token class name (e.g., "USDC")
+            - `tokenStandard` — Protocol standard (e.g., "UNITS-FT")
+            - `tokenClassId` — Token class UUID
+            - `chainId` — CAIP-2 chain ID (e.g., "eip155:1"). Filters to tokens
+              backed by assets on the specified chain. Omit to see all tokens.
+            - `contractId` — Contract address on source chain
+
             Use explicit paths for JSONB fields (e.g., metadata.category, data.field).
+
+            **Note:** There is no `isProxy` filter. Proxy vs native is an internal
+            representation detail. Use `chainId` to filter by chain origin, which
+            is the user-meaningful equivalent.
           properties:
             tokenClass: { type: string, description: "Filter by token class (e.g., USDC, USDT)" }
             tokenStandard: { type: string, description: "Filter by protocol standard" }
             tokenClassId: { type: string, description: "Filter by token class ID (UUID)" }
+            chainId: { type: string, description: "Filter by chain (CAIP-2 ID, e.g., eip155:1). Returns only tokens backed by assets on this chain." }
+            contractId: { type: string, description: "Filter by contract address on the source chain" }
           additionalProperties: true
         pagination:
           $ref: '#/components/schemas/PaginationRequest'
@@ -2309,12 +2549,13 @@ components:
 
         **For update:** `operation`, `tokenId`, `data` (optional), `metadata` (optional)
         **For burn/freeze/transfer:** `operation`, `tokenId`, plus operation-specific params at root level
+        **For sign (proxy tokens):** `operation`, `tokenId`, `transactionId`, `signedTx`
 
         **Note:** `mint` operation is handled by separate `/v1/token/mint` endpoint.
       properties:
         operation:
           type: string
-          enum: [burn, freeze, unfreeze, lock, unlock, redeem, transfer, update]
+          enum: [burn, freeze, unfreeze, lock, unlock, redeem, transfer, update, sign]
         tokenId:
           type: string
           format: uri-reference
@@ -2352,6 +2593,13 @@ components:
         initialSupply:
           type: string
           description: "Initial supply for mint operation (fungible tokens)"
+        transactionId:
+          type: string
+          format: uuid
+          description: "Reference to the original transaction in AWAITING_SIGNATURE state (for sign operation on proxy tokens)"
+        signedTx:
+          type: string
+          description: "Externally signed transaction payload (for sign operation on proxy tokens)"
 
     AddCredentialRequest:
       type: object
@@ -2460,7 +2708,7 @@ components:
     ExecutionStatus:
       type: string
       description: "Transaction execution status"
-      enum: [submitted, pending, executing, completed, failed, rolled_back]
+      enum: [submitted, pending, executing, awaiting_signature, completed, failed, rolled_back]
 
     ExecutionTimestamps:
       type: object
@@ -2550,6 +2798,12 @@ components:
           $ref: '#/components/schemas/TransactionSummary'
         error:
           $ref: '#/components/schemas/TransactionError'
+        responseData:
+          type: object
+          description: |
+            Operation-specific response data. For proxy transfers in AWAITING_SIGNATURE state,
+            contains the unsigned transaction payload for external signing.
+          additionalProperties: true
 
     TransactionLog:
       type: object
