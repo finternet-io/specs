@@ -106,13 +106,13 @@ servers:
   - url: "http://localhost:4000"
     description: "Local Adapter Development"
 tags:
-  - name: "Chain"
-    description: "Chain discovery endpoints — identity, capabilities, and current state."
-  - name: "Accounts"
-    description: "Account and balance discovery endpoints. Called by App Backend during import and by TokenEngine during pre-hook verification."
-  - name: "Assets"
-    description: "Asset resolution endpoints. Resolve on-chain token metadata from contract address."
-  - name: "Transactions"
+  - name: "Chain Discovery"
+    description: "Chain identity, capabilities, and current state endpoints."
+  - name: "Chain Address"
+    description: "On-chain address resolution and balance discovery. Called by App Backend during import and by TokenEngine during pre-hook verification."
+  - name: "Chain Assets"
+    description: "On-chain asset resolution. Resolve token metadata from contract address."
+  - name: "Chain Transactions"
     description: "Transaction lifecycle endpoints — build, sign, submit, status, receipt. Called by TokenEngine during proxy transfer execution."
   - name: "Meta"
     description: "Adapter metadata and health endpoints."
@@ -125,7 +125,7 @@ paths:
   # -------------------- Chain Discovery --------------------
   /chain/info:
     post:
-      tags: ["Chain"]
+      tags: ["Chain Discovery"]
       summary: "Get chain identity and metadata"
       description: |
         Returns static identity and metadata for the specified chain — name, native currency,
@@ -222,7 +222,7 @@ paths:
 
   /chain/capabilities:
     post:
-      tags: ["Chain"]
+      tags: ["Chain Discovery"]
       summary: "Get chain capabilities"
       description: |
         Returns the capability matrix for the specified chain — which operations the adapter
@@ -333,7 +333,7 @@ paths:
 
   /chain/head:
     post:
-      tags: ["Chain"]
+      tags: ["Chain Discovery"]
       summary: "Get latest block/slot"
       description: |
         Returns the latest block (or slot) information for the specified chain.
@@ -380,7 +380,7 @@ paths:
   # -------------------- Accounts & Balance --------------------
   /accounts/resolve:
     post:
-      tags: ["Accounts"]
+      tags: ["Chain Address"]
       summary: "Resolve account metadata"
       description: |
         Returns metadata about an on-chain account — type (EOA, contract, multisig),
@@ -429,7 +429,7 @@ paths:
 
   /accounts/holdings:
     post:
-      tags: ["Accounts"]
+      tags: ["Chain Address"]
       summary: "Get all token holdings for an address"
       description: |
         Returns all known token holdings for the given address on the specified chain.
@@ -558,7 +558,7 @@ paths:
 
   /balance/get:
     post:
-      tags: ["Accounts"]
+      tags: ["Chain Address"]
       summary: "Get specific token balance"
       description: |
         Returns the balance of a specific token for an address. Used by TokenEngine as a
@@ -645,7 +645,7 @@ paths:
   # -------------------- Asset Resolution --------------------
   /assets/resolve:
     post:
-      tags: ["Assets"]
+      tags: ["Chain Assets"]
       summary: "Resolve on-chain asset metadata"
       description: |
         Given a contract address, resolves the asset's on-chain metadata — name, symbol,
@@ -701,7 +701,7 @@ paths:
   # -------------------- Fees --------------------
   /fees/estimate:
     post:
-      tags: ["Transactions"]
+      tags: ["Chain Transactions"]
       summary: "Get current fee estimates"
       description: |
         Returns current fee conditions for the specified chain, including tier-based
@@ -916,7 +916,7 @@ paths:
   # -------------------- Transactions --------------------
   /transactions/build:
     post:
-      tags: ["Transactions"]
+      tags: ["Chain Transactions"]
       summary: "Build unsigned transaction"
       description: |
         Builds an unsigned transaction payload for the given transfer parameters.
@@ -1037,7 +1037,7 @@ paths:
 
   /transactions/sign:
     post:
-      tags: ["Transactions"]
+      tags: ["Chain Transactions"]
       summary: "Sign transaction (custodial)"
       description: |
         **Future endpoint** — Signs an unsigned transaction using adapter-managed keys.
@@ -1092,7 +1092,7 @@ paths:
 
   /transactions/submit:
     post:
-      tags: ["Transactions"]
+      tags: ["Chain Transactions"]
       summary: "Submit signed transaction"
       description: |
         Submits a signed transaction to the blockchain network.
@@ -1165,7 +1165,7 @@ paths:
 
   /transactions/status:
     post:
-      tags: ["Transactions"]
+      tags: ["Chain Transactions"]
       summary: "Get transaction status"
       description: |
         Returns the current status of a submitted transaction by its chain transaction hash.
@@ -1253,7 +1253,7 @@ paths:
 
   /transactions/receipt:
     post:
-      tags: ["Transactions"]
+      tags: ["Chain Transactions"]
       summary: "Get transaction receipt"
       description: |
         Returns the full transaction receipt including event logs and gas details.

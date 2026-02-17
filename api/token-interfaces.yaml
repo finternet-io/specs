@@ -55,7 +55,7 @@ servers:
   - url: "http://localhost:3000"
     description: "Local Server"
 tags:
-  - name: "TokenClass"
+  - name: "TokenClass Registry"
     description: "Endpoints for token class registration and management."
   - name: "Token"
     description: "Endpoints for token creation, querying, and lifecycle management."
@@ -73,7 +73,7 @@ paths:
   /v1/registry/tokenclasses/register:
     post:
       tags:
-        - "TokenClass"
+        - "TokenClass Registry"
       summary: "Register new token class"
       description: |
         Register a new token class with schema definition and metadata.
@@ -431,7 +431,7 @@ paths:
   /v1/registry/tokenclasses/update:
     post:
       tags:
-        - "TokenClass"
+        - "TokenClass Registry"
       summary: "Update token class"
       description: |
         Update token class metadata, schema, or identities/roles.
@@ -480,7 +480,7 @@ paths:
   /v1/registry/tokenclasses/get:
     post:
       tags:
-        - "TokenClass"
+        - "TokenClass Registry"
       summary: "Get token class details"
       description: "Retrieve detailed information about a specific token class"
       security:
@@ -551,7 +551,7 @@ paths:
   /v1/registry/tokenclasses/search:
     post:
       tags:
-        - "TokenClass"
+        - "TokenClass Registry"
       summary: "Search token classes"
       description: "Search and list all registered token classes with filters"
       security:
