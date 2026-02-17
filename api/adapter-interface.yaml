@@ -114,7 +114,7 @@ tags:
     description: "On-chain asset resolution. Resolve token metadata from contract address."
   - name: "Chain Transactions"
     description: "Transaction lifecycle endpoints — build, sign, submit, status, receipt. Called by TokenEngine during proxy transfer execution."
-  - name: "Meta"
+  - name: "Adapter Info"
     description: "Adapter metadata and health endpoints."
 
 # ===============================================================
@@ -1318,7 +1318,7 @@ paths:
   # -------------------- Meta --------------------
   /info:
     post:
-      tags: ["Meta"]
+      tags: ["Adapter Info"]
       summary: "Get adapter metadata"
       description: |
         Returns metadata about this adapter: supported chains, version, upstream provider.
@@ -1366,7 +1366,7 @@ paths:
 
   /health:
     post:
-      tags: ["Meta"]
+      tags: ["Adapter Info"]
       summary: "Health check"
       description: |
         Liveness and upstream connectivity check. Returns the adapter's status
