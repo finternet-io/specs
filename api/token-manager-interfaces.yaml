@@ -1,0 +1,605 @@
+openapi: "3.0.3"
+info:
+  title: "Finternet Token Manager API"
+  description: |
+    API specification for Token Managers on the Finternet.
+
+    Token Managers are institutions responsible for the issuance (tokenization),
+    management, redemption (detokenization), and synchronization of tokens with
+    their private ledgers.
+
+    This spec covers the APIs exposed by Token Managers to:
+    - Applications (for end-user operations)
+    - The Unified Ledger (for state synchronization)
+
+    Different token types (regulated money, land, art) share the same verb
+    interface but differ at the parameter level.
+  version: "0.1.0"
+  license:
+    name: "Apache v2.0"
+    url: "https://www.apache.org/licenses/LICENSE-2.0"
+
+tags:
+  - name: tokenization
+    description: "Token issuance and redemption (tokenization / detokenization)"
+  - name: token-lifecycle
+    description: "Token state management and lifecycle operations"
+  - name: token-query
+    description: "Token query and lookup operations"
+  - name: sync
+    description: "Synchronization between Token Manager's private ledger and the unified ledger"
+
+paths:
+  # --------------------------------------------------------------------------
+  # Tokenization
+  /v1/tokens/tokenize:
+    post:
+      tags:
+        - tokenization
+      summary: "Tokenize an asset"
+      description: |
+        Request the Token Manager to create a new token representing a real-world
+        asset. The Token Manager verifies the underlying asset and issues a token
+        on the unified ledger.
+
+        For regulated money: verifies the deposit and creates fungible tokens.
+        For land: verifies the land record and creates a non-fungible token.
+        For art: accepts self-attestation and creates a non-fungible token.
+      operationId: "tokenizeAsset"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - asset_type
+                - holder_id
+                - asset_details
+              properties:
+                asset_type:
+                  type: string
+                  enum:
+                    - regulated_money
+                    - land
+                    - art
+                  description: "Type of asset to tokenize"
+                holder_id:
+                  type: string
+                  description: "DID of the intended token holder"
+                asset_details:
+                  type: object
+                  description: "Asset-specific details (varies by asset_type)"
+                attestations:
+                  type: array
+                  description: "Supporting attestations or documents"
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                      document_hash:
+                        type: string
+                      attester_id:
+                        type: string
+                idempotency_key:
+                  type: string
+                  description: "Client-provided key to prevent duplicate tokenization"
+      responses:
+        "201":
+          description: "Token created successfully"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "400":
+          description: "Invalid request or asset verification failed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: "Duplicate tokenization request (idempotency key already used)"
+
+  /v1/tokens/{token_id}/detokenize:
+    post:
+      tags:
+        - tokenization
+      summary: "Detokenize (redeem) a token"
+      description: |
+        Request the Token Manager to redeem a token and release the underlying
+        asset. For regulated money, this means crediting the holder's bank
+        account. For land, this means releasing the token claim.
+      operationId: "detokenizeAsset"
+      parameters:
+        - name: token_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - holder_id
+              properties:
+                holder_id:
+                  type: string
+                  description: "DID of the token holder requesting redemption"
+                reason:
+                  type: string
+                  description: "Reason for detokenization"
+      responses:
+        "200":
+          description: "Token redeemed successfully"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "403":
+          description: "Holder is not authorized to redeem this token"
+        "404":
+          description: "Token not found"
+
+  # --------------------------------------------------------------------------
+  # Token Lifecycle Operations
+  /v1/tokens/{token_id}/transfer:
+    post:
+      tags:
+        - token-lifecycle
+      summary: "Transfer a token"
+      description: |
+        Transfer ownership of a token from one holder to another.
+        The Token Manager validates the transfer against asset-specific rules
+        (e.g., regulatory limits for money, encumbrance checks for land).
+      operationId: "transferToken"
+      parameters:
+        - name: token_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - from_holder_id
+                - to_holder_id
+              properties:
+                from_holder_id:
+                  type: string
+                  description: "DID of the current holder"
+                to_holder_id:
+                  type: string
+                  description: "DID of the recipient"
+                amount:
+                  type: string
+                  description: "Amount to transfer (for fungible tokens only)"
+                memo:
+                  type: string
+                  description: "Optional transfer memo"
+      responses:
+        "200":
+          description: "Transfer completed successfully"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionResponse"
+        "400":
+          description: "Transfer validation failed (e.g., insufficient balance, encumbrance)"
+        "403":
+          description: "Not authorized"
+
+  /v1/tokens/{token_id}/pledge:
+    post:
+      tags:
+        - token-lifecycle
+      summary: "Pledge a token as collateral"
+      description: |
+        Pledge a token as collateral for a loan or obligation.
+        The token remains with the holder but is encumbered and cannot be
+        transferred until the pledge is released.
+      operationId: "pledgeToken"
+      parameters:
+        - name: token_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - holder_id
+                - beneficiary_id
+              properties:
+                holder_id:
+                  type: string
+                  description: "DID of the token holder"
+                beneficiary_id:
+                  type: string
+                  description: "DID of the pledge beneficiary (e.g., lending institution)"
+                amount:
+                  type: string
+                  description: "Pledge amount (for fungible tokens)"
+                terms:
+                  type: object
+                  description: "Pledge terms and conditions"
+                  properties:
+                    start_date:
+                      type: string
+                      format: date
+                    end_date:
+                      type: string
+                      format: date
+                    interest_rate:
+                      type: string
+                      description: "Applicable interest rate"
+      responses:
+        "200":
+          description: "Token pledged successfully"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionResponse"
+        "400":
+          description: "Pledge validation failed"
+
+  /v1/tokens/{token_id}/pledge/release:
+    post:
+      tags:
+        - token-lifecycle
+      summary: "Release a pledge"
+      description: "Release a previously pledged token, removing the encumbrance."
+      operationId: "releasePledge"
+      parameters:
+        - name: token_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - beneficiary_id
+              properties:
+                beneficiary_id:
+                  type: string
+                  description: "DID of the pledge beneficiary authorizing release"
+                reason:
+                  type: string
+      responses:
+        "200":
+          description: "Pledge released successfully"
+
+  /v1/tokens/{token_id}/freeze:
+    post:
+      tags:
+        - token-lifecycle
+      summary: "Freeze a token"
+      description: |
+        Freeze a token, preventing any operations on it.
+        Typically used by regulators or Token Managers for compliance reasons.
+      operationId: "freezeToken"
+      parameters:
+        - name: token_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  description: "Reason for freezing"
+                authority_id:
+                  type: string
+                  description: "DID of the authority requesting the freeze"
+      responses:
+        "200":
+          description: "Token frozen successfully"
+
+  /v1/tokens/{token_id}/unfreeze:
+    post:
+      tags:
+        - token-lifecycle
+      summary: "Unfreeze a token"
+      description: "Unfreeze a previously frozen token, restoring normal operations."
+      operationId: "unfreezeToken"
+      parameters:
+        - name: token_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                authority_id:
+                  type: string
+                  description: "DID of the authority requesting the unfreeze"
+      responses:
+        "200":
+          description: "Token unfrozen successfully"
+
+  # --------------------------------------------------------------------------
+  # Token Query
+  /v1/tokens/{token_id}:
+    get:
+      tags:
+        - token-query
+      summary: "Get token details"
+      description: "Retrieve the current state of a token."
+      operationId: "getToken"
+      parameters:
+        - name: token_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Token details"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "404":
+          description: "Token not found"
+
+  /v1/tokens:
+    get:
+      tags:
+        - token-query
+      summary: "List tokens"
+      description: "List tokens with optional filters."
+      operationId: "listTokens"
+      parameters:
+        - name: holder_id
+          in: query
+          schema:
+            type: string
+          description: "Filter by holder DID"
+        - name: asset_type
+          in: query
+          schema:
+            type: string
+            enum:
+              - regulated_money
+              - land
+              - art
+          description: "Filter by asset type"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - active
+              - frozen
+              - pledged
+              - redeemed
+          description: "Filter by token status"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: "List of tokens"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tokens:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TokenResponse"
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+
+  /v1/tokens/{token_id}/history:
+    get:
+      tags:
+        - token-query
+      summary: "Get token transaction history"
+      description: "Retrieve the full transaction history of a token."
+      operationId: "getTokenHistory"
+      parameters:
+        - name: token_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: "Token transaction history"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transactions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TransactionResponse"
+                  total:
+                    type: integer
+
+  # --------------------------------------------------------------------------
+  # Synchronization
+  /v1/sync/status:
+    get:
+      tags:
+        - sync
+      summary: "Get synchronization status"
+      description: |
+        Check the synchronization status between the Token Manager's private
+        ledger and the unified ledger.
+      operationId: "getSyncStatus"
+      responses:
+        "200":
+          description: "Synchronization status"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  last_synced_at:
+                    type: string
+                    format: date-time
+                  pending_transactions:
+                    type: integer
+                  status:
+                    type: string
+                    enum:
+                      - synced
+                      - syncing
+                      - error
+
+  /v1/sync/reconcile:
+    post:
+      tags:
+        - sync
+      summary: "Trigger reconciliation"
+      description: |
+        Trigger a reconciliation between the Token Manager's private ledger
+        and the unified ledger. Identifies and resolves discrepancies.
+      operationId: "triggerReconciliation"
+      responses:
+        "202":
+          description: "Reconciliation started"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reconciliation_id:
+                    type: string
+                  status:
+                    type: string
+                    enum:
+                      - started
+
+components:
+  schemas:
+    TokenResponse:
+      type: object
+      properties:
+        token_id:
+          type: string
+          format: uuid
+        token_type:
+          type: string
+        fungible:
+          type: boolean
+        holder_id:
+          type: string
+        issuer_id:
+          type: string
+        status:
+          type: string
+        allowed_verbs:
+          type: array
+          items:
+            type: string
+        asset_details:
+          type: object
+          description: "Asset-type-specific details"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    TransactionResponse:
+      type: object
+      properties:
+        transaction_id:
+          type: string
+          format: uuid
+        token_id:
+          type: string
+        operation:
+          type: string
+          enum:
+            - tokenize
+            - detokenize
+            - transfer
+            - pledge
+            - release_pledge
+            - freeze
+            - unfreeze
+            - lease
+            - nominate
+        from_holder_id:
+          type: string
+        to_holder_id:
+          type: string
+        amount:
+          type: string
+        status:
+          type: string
+          enum:
+            - pending
+            - completed
+            - failed
+            - rolled_back
+        ledger_proof:
+          type: string
+          description: "Reference to the proof anchored on the unified ledger"
+        timestamp:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        error_code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
