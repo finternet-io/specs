@@ -1,0 +1,169 @@
+openapi: "3.0.3"
+info:
+  title: "Regulated Money - Fungible Token Schema"
+  description: |
+    Schema definition for a regulated money token on the Finternet.
+    Regulated money represents fiat currency issued by a regulated financial institution
+    (e.g., central bank digital currency, commercial bank money) and tokenized for use
+    on the Finternet unified ledger.
+
+    This is a fungible token - each unit is interchangeable with any other unit of the
+    same currency and denomination.
+  version: "0.1.0"
+
+components:
+  schemas:
+    RegulatedMoney:
+      type: object
+      description: |
+        A fungible token representing regulated money (e.g., digital rupee, tokenized bank deposit).
+        Follows the Finternet asset model with additional properties specific to regulated currencies.
+      required:
+        - token_id
+        - token_type
+        - currency_code
+        - amount
+        - issuer
+        - holder_id
+        - status
+      properties:
+        token_id:
+          type: string
+          format: uuid
+          description: "Unique identifier for this token instance"
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        token_type:
+          type: string
+          enum:
+            - regulated_money
+          description: "Type identifier for this token category"
+        fungible:
+          type: boolean
+          default: true
+          description: "Indicates this is a fungible token - always true for regulated money"
+        currency_code:
+          type: string
+          description: "ISO 4217 currency code"
+          pattern: "^[A-Z]{3}$"
+          example: "INR"
+        amount:
+          type: string
+          description: "Token amount represented as a string to avoid floating-point precision issues"
+          pattern: "^[0-9]+(\\.[0-9]{1,18})?$"
+          example: "1000.50"
+        denomination:
+          type: string
+          description: "Smallest unit of the currency (e.g., paise for INR, cents for USD)"
+          example: "paise"
+        issuer:
+          $ref: "#/components/schemas/RegulatedIssuer"
+        holder_id:
+          type: string
+          description: "DID or account address of the current token holder"
+          example: "did:finternet:holder:abc123"
+        status:
+          type: string
+          enum:
+            - active
+            - frozen
+            - redeemed
+            - expired
+          description: "Current lifecycle status of the token"
+        allowed_verbs:
+          type: array
+          description: "Permitted operations on this token"
+          items:
+            type: string
+            enum:
+              - transfer
+              - pledge
+              - redeem
+              - freeze
+              - unfreeze
+          example:
+            - transfer
+            - pledge
+            - redeem
+        regulatory_info:
+          $ref: "#/components/schemas/RegulatoryInfo"
+        metadata:
+          $ref: "#/components/schemas/TokenMetadata"
+        created_at:
+          type: string
+          format: date-time
+          description: "Timestamp of token issuance"
+        updated_at:
+          type: string
+          format: date-time
+          description: "Timestamp of last state change"
+
+    RegulatedIssuer:
+      type: object
+      description: "The regulated institution that issued this money token"
+      required:
+        - issuer_id
+        - name
+        - type
+      properties:
+        issuer_id:
+          type: string
+          description: "DID or identifier of the issuing institution"
+          example: "did:finternet:issuer:rbi-001"
+        name:
+          type: string
+          description: "Name of the issuing institution"
+          example: "Reserve Bank of India"
+        type:
+          type: string
+          enum:
+            - central_bank
+            - commercial_bank
+            - payment_bank
+            - nbfc
+          description: "Type of regulated institution"
+        jurisdiction:
+          type: string
+          description: "ISO 3166-1 alpha-2 country code of the regulatory jurisdiction"
+          pattern: "^[A-Z]{2}$"
+          example: "IN"
+        license_id:
+          type: string
+          description: "Regulatory license or registration identifier"
+
+    RegulatoryInfo:
+      type: object
+      description: "Regulatory compliance metadata"
+      properties:
+        regulation_type:
+          type: string
+          description: "Applicable regulatory framework"
+          example: "RBI Digital Currency Guidelines"
+        aml_verified:
+          type: boolean
+          description: "Whether AML checks have been completed"
+        kyc_level:
+          type: string
+          enum:
+            - none
+            - basic
+            - full
+          description: "KYC verification level of the holder"
+        daily_transaction_limit:
+          type: string
+          description: "Maximum daily transaction amount"
+          example: "200000.00"
+
+    TokenMetadata:
+      type: object
+      description: "Additional metadata for the token"
+      properties:
+        ledger_id:
+          type: string
+          description: "Identifier of the ledger where this token is recorded"
+        proof_anchor:
+          type: string
+          description: "Reference to the on-chain proof of this token's state"
+        version:
+          type: integer
+          description: "Version number for optimistic concurrency control"
+          minimum: 1

@@ -1,0 +1,339 @@
+openapi: "3.0.3"
+info:
+  title: "Land Token - Non-Fungible Token Schema"
+  description: |
+    Schema definition for a tokenized land asset on the Finternet.
+    Land is a non-fungible asset - each parcel is unique with distinct geographic,
+    legal, and valuation properties. Tokenizing land on the Finternet enables
+    use cases like pledging land to obtain commercial loans, transferring ownership,
+    and cross-jurisdictional property management.
+  version: "0.1.0"
+
+components:
+  schemas:
+    LandToken:
+      type: object
+      description: |
+        A non-fungible token representing a land parcel or property.
+        Each token is unique and maps to a specific real-world land record.
+      required:
+        - token_id
+        - token_type
+        - parcel_info
+        - ownership
+        - issuer
+        - status
+      properties:
+        token_id:
+          type: string
+          format: uuid
+          description: "Unique identifier for this land token"
+          example: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+        token_type:
+          type: string
+          enum:
+            - land
+          description: "Type identifier for this token category"
+        fungible:
+          type: boolean
+          default: false
+          description: "Indicates this is a non-fungible token - always false for land"
+        parcel_info:
+          $ref: "#/components/schemas/ParcelInfo"
+        ownership:
+          $ref: "#/components/schemas/OwnershipInfo"
+        issuer:
+          $ref: "#/components/schemas/LandIssuer"
+        valuation:
+          $ref: "#/components/schemas/ValuationInfo"
+        encumbrances:
+          type: array
+          description: "Existing encumbrances or liens on the property"
+          items:
+            $ref: "#/components/schemas/Encumbrance"
+        status:
+          type: string
+          enum:
+            - active
+            - pledged
+            - disputed
+            - transferred
+            - frozen
+          description: "Current lifecycle status of the land token"
+        allowed_verbs:
+          type: array
+          description: "Permitted operations on this token"
+          items:
+            type: string
+            enum:
+              - transfer
+              - pledge
+              - lease
+              - nominate
+              - subdivide
+              - merge
+          example:
+            - transfer
+            - pledge
+            - lease
+        legal_documents:
+          type: array
+          description: "References to legal documents backing this token"
+          items:
+            $ref: "#/components/schemas/DocumentReference"
+        metadata:
+          $ref: "#/components/schemas/LandTokenMetadata"
+        created_at:
+          type: string
+          format: date-time
+          description: "Timestamp of token creation (tokenization date)"
+        updated_at:
+          type: string
+          format: date-time
+          description: "Timestamp of last state change"
+
+    ParcelInfo:
+      type: object
+      description: "Geographic and identification details of the land parcel"
+      required:
+        - parcel_id
+        - area
+        - area_unit
+        - location
+      properties:
+        parcel_id:
+          type: string
+          description: "Official land record / survey number"
+          example: "SY-142/3A"
+        area:
+          type: number
+          format: double
+          description: "Total area of the parcel"
+          example: 2.5
+        area_unit:
+          type: string
+          enum:
+            - sq_meters
+            - sq_feet
+            - acres
+            - hectares
+          description: "Unit of measurement for the area"
+        location:
+          $ref: "#/components/schemas/Location"
+        land_use:
+          type: string
+          enum:
+            - residential
+            - commercial
+            - agricultural
+            - industrial
+            - mixed_use
+          description: "Designated land use classification"
+        boundaries:
+          type: string
+          description: "GeoJSON string representing the parcel boundaries"
+
+    Location:
+      type: object
+      description: "Geographic location details"
+      required:
+        - country
+      properties:
+        country:
+          type: string
+          description: "ISO 3166-1 alpha-2 country code"
+          pattern: "^[A-Z]{2}$"
+          example: "IN"
+        state:
+          type: string
+          description: "State or province"
+          example: "Karnataka"
+        district:
+          type: string
+          description: "District or county"
+          example: "Bengaluru Urban"
+        sub_district:
+          type: string
+          description: "Sub-district or taluk"
+        village:
+          type: string
+          description: "Village or locality"
+        pin_code:
+          type: string
+          description: "Postal / ZIP code"
+          example: "560001"
+        latitude:
+          type: number
+          format: double
+          description: "Latitude coordinate"
+          example: 12.9716
+        longitude:
+          type: number
+          format: double
+          description: "Longitude coordinate"
+          example: 77.5946
+
+    OwnershipInfo:
+      type: object
+      description: "Ownership details of the land"
+      required:
+        - holder_id
+        - ownership_type
+      properties:
+        holder_id:
+          type: string
+          description: "DID or account address of the current owner"
+          example: "did:finternet:holder:land-owner-001"
+        ownership_type:
+          type: string
+          enum:
+            - freehold
+            - leasehold
+            - joint
+            - government
+          description: "Type of ownership"
+        co_owners:
+          type: array
+          description: "List of co-owners if jointly held"
+          items:
+            type: object
+            properties:
+              holder_id:
+                type: string
+              share_percentage:
+                type: number
+                format: double
+                minimum: 0
+                maximum: 100
+        acquisition_date:
+          type: string
+          format: date
+          description: "Date the current owner acquired the property"
+
+    LandIssuer:
+      type: object
+      description: "The authority that tokenized this land record"
+      required:
+        - issuer_id
+        - name
+        - type
+      properties:
+        issuer_id:
+          type: string
+          description: "DID or identifier of the issuing authority"
+          example: "did:finternet:issuer:karnataka-land-registry"
+        name:
+          type: string
+          description: "Name of the issuing authority"
+          example: "Karnataka Land Records Authority"
+        type:
+          type: string
+          enum:
+            - government_registry
+            - land_authority
+            - revenue_department
+          description: "Type of issuing authority"
+        jurisdiction:
+          type: string
+          description: "ISO 3166-1 alpha-2 country code"
+          example: "IN"
+
+    ValuationInfo:
+      type: object
+      description: "Valuation details for the land"
+      properties:
+        market_value:
+          type: string
+          description: "Estimated market value"
+          example: "5000000.00"
+        guidance_value:
+          type: string
+          description: "Government guidance / circle rate value"
+          example: "3500000.00"
+        currency_code:
+          type: string
+          description: "ISO 4217 currency code for the valuation"
+          pattern: "^[A-Z]{3}$"
+          example: "INR"
+        valuation_date:
+          type: string
+          format: date
+          description: "Date of the last valuation"
+        valuator:
+          type: string
+          description: "Entity that performed the valuation"
+
+    Encumbrance:
+      type: object
+      description: "An existing encumbrance, lien, or charge on the property"
+      properties:
+        encumbrance_id:
+          type: string
+          description: "Unique identifier for this encumbrance"
+        type:
+          type: string
+          enum:
+            - mortgage
+            - lien
+            - easement
+            - lease
+            - court_order
+          description: "Type of encumbrance"
+        beneficiary:
+          type: string
+          description: "Entity holding the encumbrance"
+        amount:
+          type: string
+          description: "Amount involved (if applicable)"
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+
+    DocumentReference:
+      type: object
+      description: "Reference to a legal document"
+      properties:
+        document_id:
+          type: string
+          description: "Unique document identifier"
+        document_type:
+          type: string
+          enum:
+            - title_deed
+            - sale_deed
+            - mutation_record
+            - encumbrance_certificate
+            - survey_map
+            - tax_receipt
+          description: "Type of legal document"
+        document_hash:
+          type: string
+          description: "SHA-256 hash of the document for integrity verification"
+        issued_by:
+          type: string
+          description: "Authority that issued the document"
+        issued_date:
+          type: string
+          format: date
+
+    LandTokenMetadata:
+      type: object
+      description: "Additional metadata for the land token"
+      properties:
+        ledger_id:
+          type: string
+          description: "Identifier of the ledger where this token is recorded"
+        proof_anchor:
+          type: string
+          description: "Reference to the on-chain proof of this token's state"
+        source_record_url:
+          type: string
+          format: uri
+          description: "URL to the original land record in the government registry"
+        version:
+          type: integer
+          description: "Version number for optimistic concurrency control"
+          minimum: 1
