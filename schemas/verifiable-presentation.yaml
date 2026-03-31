@@ -49,6 +49,9 @@ properties:
     type: array
     items:
       type: string
+    minItems: 1
+    contains:
+      const: "VerifiablePresentation"
     example:
       - "VerifiablePresentation"
 
@@ -124,6 +127,21 @@ properties:
             memberSet:
               description: "Set of allowed values for membership predicates"
               type: array
+          # Conditional validation: require threshold for comparison predicates,
+          # memberSet for membership predicates
+          if:
+            properties:
+              predicateType:
+                enum: ["greaterThan", "greaterThanOrEqual", "lessThan", "lessThanOrEqual"]
+          then:
+            required: ["threshold"]
+          else:
+            if:
+              properties:
+                predicateType:
+                  enum: ["memberOf", "notMemberOf"]
+            then:
+              required: ["memberSet"]
               items:
                 type: string
               example: ["IN", "SG", "US"]
@@ -147,8 +165,11 @@ properties:
     type: object
     required:
       - type
+      - cryptosuite
       - verificationMethod
       - proofPurpose
+      - challenge
+      - proofValue
     properties:
       type:
         type: string
@@ -178,6 +199,7 @@ properties:
         example: "did:finternet:account:0xabc123def456#key-1"
       proofPurpose:
         type: string
+        const: "authentication"
         description: "Must be 'authentication' for presentations"
         example: "authentication"
       challenge:
@@ -191,9 +213,16 @@ properties:
         description: "Base64url-encoded proof value"
       zkProofData:
         description: >
-          Additional ZK proof metadata. Present only when type is
+          Additional ZK proof metadata. Required when type is
           'ZeroKnowledgeProof'. Contains scheme-specific proof artifacts.
         type: object
+    # Conditional: require zkProofData when proof type is ZeroKnowledgeProof
+    if:
+      properties:
+        type:
+          const: "ZeroKnowledgeProof"
+    then:
+      required: ["zkProofData"]
         properties:
           scheme:
             type: string

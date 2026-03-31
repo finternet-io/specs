@@ -61,7 +61,7 @@ The following schemas define the W3C Verifiable Credentials 2.0 compliant data s
 - [W3C Verifiable Credentials Data Model 2.0](https://www.w3.org/TR/vc-data-model-2.0/)
 - [W3C VC Data Integrity BBS Cryptosuites](https://www.w3.org/TR/vc-di-bbs/)
 - [Google Longfellow-ZK](https://github.com/nicebyte/niceshade)
-- [IETF draft-google-cfrg-libzk](https://datatracker.ietf.org/doc/)
+- [IETF draft-google-cfrg-libzk](https://datatracker.ietf.org/doc/draft-google-cfrg-libzk/)
 - [Finternet Technology Architecture](http://bit.ly/finternet-tech)
 
 If your digital asset or credential type is not found here, feel free to open a PR to add it.
