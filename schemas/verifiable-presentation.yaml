@@ -1,0 +1,301 @@
+# Finternet UNITS — Verifiable Presentation Schema
+# Aligned with W3C Verifiable Credentials Data Model 2.0
+# Reference: https://www.w3.org/TR/vc-data-model-2.0/#presentations
+#
+# A Verifiable Presentation (VP) allows a credential holder to present
+# only a SUBSET of claims from their credentials to a verifier, without
+# exposing the full credential. This is a core requirement for
+# privacy-preserving transfer policy evaluation in UNITS.
+#
+# This schema supports three proof modes:
+#   1. Full VP — present selected claims with a DataIntegrityProof
+#   2. ZK Selective Disclosure — BBS+ derived proof revealing only chosen claims
+#   3. ZK Predicate Proof — prove a claim satisfies a condition (e.g., age > 18)
+#     without revealing the raw value
+
+$schema: "http://json-schema.org/draft-07/schema#"
+title: "Finternet UNITS Verifiable Presentation"
+description: >
+  A W3C VC 2.0 compliant Verifiable Presentation for the Finternet UNITS system.
+  Enables holders to present credential subsets or ZK proofs during token transfer
+  policy evaluation, preserving privacy while satisfying compliance requirements.
+
+type: object
+required:
+  - "@context"
+  - type
+  - holder
+  - verifiableCredential
+  - proof
+
+properties:
+  "@context":
+    description: "JSON-LD context. Must include the W3C VC v2 context."
+    type: array
+    items:
+      type: string
+    default:
+      - "https://www.w3.org/ns/credentials/v2"
+      - "https://finternet.io/ns/credentials/v1"
+
+  id:
+    type: string
+    format: uri
+    description: "Unique identifier for this presentation"
+    example: "urn:uuid:vp-98765432-abcd-efgh-ijkl-123456789012"
+
+  type:
+    description: "Type of presentation. Must include 'VerifiablePresentation'."
+    type: array
+    items:
+      type: string
+    example:
+      - "VerifiablePresentation"
+
+  holder:
+    type: string
+    description: >
+      Finternet account address of the presenter. Must match the
+      credentialSubject.id in the enclosed credential(s).
+    example: "did:finternet:account:0xabc123def456"
+
+  verifiableCredential:
+    description: >
+      One or more credentials (or derived credentials) included in
+      this presentation. For ZK selective disclosure, this contains
+      a derived credential with only the revealed claims.
+    type: array
+    items:
+      type: object
+      description: "A VerifiableCredential or ZK-derived credential"
+
+  # -------------------------------------------------------------------
+  # Selective Disclosure Configuration (Finternet Extension)
+  # -------------------------------------------------------------------
+  selectiveDisclosure:
+    description: >
+      Finternet-specific extension specifying which claims are revealed
+      and which predicates are proven without revealing raw values.
+      Used by the VP Builder SDK to construct the presentation.
+    type: object
+    properties:
+      revealedClaims:
+        description: >
+          List of claim paths to reveal from the credential.
+          All other claims are hidden.
+        type: array
+        items:
+          type: string
+        example:
+          - "credentialSubject.kycStatus"
+          - "credentialSubject.jurisdiction"
+
+      predicateProofs:
+        description: >
+          Zero-knowledge predicate proofs. Each entry proves a condition
+          about a claim WITHOUT revealing the raw value.
+        type: array
+        items:
+          type: object
+          required:
+            - claimPath
+            - predicateType
+          properties:
+            claimPath:
+              type: string
+              description: "JSON path to the claim being proven"
+              example: "credentialSubject.creditScore"
+            predicateType:
+              type: string
+              description: "Type of predicate to prove"
+              enum:
+                - "greaterThan"       # value > threshold
+                - "greaterThanOrEqual" # value >= threshold
+                - "lessThan"          # value < threshold
+                - "lessThanOrEqual"   # value <= threshold
+                - "memberOf"          # value ∈ {set}
+                - "notMemberOf"       # value ∉ {set}
+            threshold:
+              description: "Threshold value for comparison predicates"
+              oneOf:
+                - type: integer
+                - type: number
+              example: 750
+            memberSet:
+              description: "Set of allowed values for membership predicates"
+              type: array
+              items:
+                type: string
+              example: ["IN", "SG", "US"]
+        example:
+          - claimPath: "credentialSubject.creditScore"
+            predicateType: "greaterThan"
+            threshold: 750
+          - claimPath: "credentialSubject.jurisdiction"
+            predicateType: "memberOf"
+            memberSet: ["IN", "SG"]
+
+  # -------------------------------------------------------------------
+  # Proof — signed by the holder's Finternet account key
+  # -------------------------------------------------------------------
+  proof:
+    description: >
+      Cryptographic proof binding this presentation to the holder's
+      Finternet account. For standard VPs, this is a DataIntegrityProof
+      signed with the holder's key. For ZK presentations, this includes
+      the zero-knowledge proof data.
+    type: object
+    required:
+      - type
+      - verificationMethod
+      - proofPurpose
+    properties:
+      type:
+        type: string
+        description: "Proof type"
+        enum:
+          - "DataIntegrityProof"    # Standard VP proof
+          - "ZeroKnowledgeProof"    # ZK predicate proof
+        example: "DataIntegrityProof"
+      cryptosuite:
+        type: string
+        description: "Cryptographic suite used"
+        enum:
+          - "ecdsa-rdfc-2019"       # Standard ECDSA signing
+          - "eddsa-rdfc-2022"       # EdDSA signing
+          - "bbs-2023"              # BBS+ selective disclosure
+          - "longfellow-zk-2026"    # Google Longfellow-ZK (ECDSA P-256)
+          - "groth16-circom"        # circom/Groth16 circuit proofs
+          - "sp1-succinct"          # SP1 ZKVM proofs
+        example: "bbs-2023"
+      created:
+        type: string
+        format: date-time
+      verificationMethod:
+        type: string
+        format: uri
+        description: "DID URL of the holder's Finternet account key"
+        example: "did:finternet:account:0xabc123def456#key-1"
+      proofPurpose:
+        type: string
+        description: "Must be 'authentication' for presentations"
+        example: "authentication"
+      challenge:
+        type: string
+        description: >
+          Nonce provided by the verifier to prevent replay attacks.
+          Required for transfer policy evaluation.
+        example: "units-transfer-challenge-xyz789"
+      proofValue:
+        type: string
+        description: "Base64url-encoded proof value"
+      zkProofData:
+        description: >
+          Additional ZK proof metadata. Present only when type is
+          'ZeroKnowledgeProof'. Contains scheme-specific proof artifacts.
+        type: object
+        properties:
+          scheme:
+            type: string
+            description: "ZK scheme identifier"
+            enum:
+              - "bbs-selective-disclosure"
+              - "longfellow-zk"
+              - "groth16"
+              - "sp1"
+              - "jolt"
+            example: "longfellow-zk"
+          verificationKey:
+            type: string
+            description: "Base64url-encoded verification key (for circuit-based proofs)"
+          publicInputs:
+            type: array
+            description: "Public inputs to the ZK circuit (predicates evaluated)"
+            items:
+              type: string
+          proofArtifact:
+            type: string
+            description: "Base64url-encoded ZK proof artifact"
+
+# -------------------------------------------------------------------
+# Transfer Policy Proof Requirement (used by Token Manager)
+# -------------------------------------------------------------------
+# The Token Manager configures which proof type is acceptable for
+# each compliance check in the token class policy:
+#
+# transferPolicy:
+#   credentialRequirements:
+#     - credentialType: "FinternetKYCCredential"
+#       acceptedProofTypes:
+#         - "VC"    # Full credential (legacy)
+#         - "VP"    # Verifiable Presentation (selective claims)
+#         - "ZKP"   # Zero-knowledge predicate proof
+#       requiredPredicates:
+#         - claimPath: "credentialSubject.creditScore"
+#           predicateType: "greaterThan"
+#           threshold: 750
+
+# -------------------------------------------------------------------
+# Example 1: Standard VP (reveal only KYC status + jurisdiction)
+# -------------------------------------------------------------------
+# {
+#   "@context": ["https://www.w3.org/ns/credentials/v2", "https://finternet.io/ns/credentials/v1"],
+#   "type": ["VerifiablePresentation"],
+#   "holder": "did:finternet:account:0xabc123def456",
+#   "verifiableCredential": [{
+#     "@context": ["https://www.w3.org/ns/credentials/v2"],
+#     "type": ["VerifiableCredential", "FinternetKYCCredential"],
+#     "credentialSubject": {
+#       "id": "did:finternet:account:0xabc123def456",
+#       "kycStatus": "verified",
+#       "jurisdiction": "IN"
+#     }
+#   }],
+#   "selectiveDisclosure": {
+#     "revealedClaims": ["credentialSubject.kycStatus", "credentialSubject.jurisdiction"]
+#   },
+#   "proof": {
+#     "type": "DataIntegrityProof",
+#     "cryptosuite": "bbs-2023",
+#     "verificationMethod": "did:finternet:account:0xabc123def456#key-1",
+#     "proofPurpose": "authentication",
+#     "challenge": "units-transfer-challenge-xyz789",
+#     "proofValue": "z3FXQawk..."
+#   }
+# }
+
+# -------------------------------------------------------------------
+# Example 2: ZK Predicate Proof (prove credit_score > 750 without revealing score)
+# -------------------------------------------------------------------
+# {
+#   "@context": ["https://www.w3.org/ns/credentials/v2", "https://finternet.io/ns/credentials/v1"],
+#   "type": ["VerifiablePresentation"],
+#   "holder": "did:finternet:account:0xabc123def456",
+#   "verifiableCredential": [{
+#     "@context": ["https://www.w3.org/ns/credentials/v2"],
+#     "type": ["VerifiableCredential", "FinternetKYCCredential"],
+#     "credentialSubject": {
+#       "id": "did:finternet:account:0xabc123def456"
+#     }
+#   }],
+#   "selectiveDisclosure": {
+#     "predicateProofs": [{
+#       "claimPath": "credentialSubject.creditScore",
+#       "predicateType": "greaterThan",
+#       "threshold": 750
+#     }]
+#   },
+#   "proof": {
+#     "type": "ZeroKnowledgeProof",
+#     "cryptosuite": "longfellow-zk-2026",
+#     "verificationMethod": "did:finternet:account:0xabc123def456#key-1",
+#     "proofPurpose": "authentication",
+#     "challenge": "units-transfer-challenge-xyz789",
+#     "proofValue": "z8KjRwP...",
+#     "zkProofData": {
+#       "scheme": "longfellow-zk",
+#       "publicInputs": ["creditScore > 750"],
+#       "proofArtifact": "base64url_encoded_proof..."
+#     }
+#   }
+# }
