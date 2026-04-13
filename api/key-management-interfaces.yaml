@@ -46,6 +46,21 @@ info:
     - `solana`: Ed25519 keys for Solana
     - `base`: ECDSA secp256k1 keys for Base chain
 
+    ### RBAC Scopes
+
+    | Endpoint | Required scope |
+    |----------|----------------|
+    | `POST /v1/keys/generate` | `keys:manage` |
+    | `POST /v1/keys/sign` | `keys:sign` |
+    | `POST /v1/keys/public` | `keys:view` |
+
+    Calls failing the scope check return `403 PERMISSION_DENIED`.
+
+    ### Rate limiting
+
+    Endpoints are protected by a scope-tier sliding-window rate limiter; on breach
+    the response is `429 Too Many Requests` with a `Retry-After` header.
+
   version: "1.0.0"
 servers:
   - url: "https://foundry.finternetlab.io"

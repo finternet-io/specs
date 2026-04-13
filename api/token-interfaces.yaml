@@ -48,6 +48,38 @@ info:
         * `signature` (top-level): The end-user's JWS for critical, cryptographically-signed operations.
 
     *Note for HTTP Clients:* As a convenience, the `developerToken` may be provided in the standard `Authorization: Bearer <token>` HTTP header, and the `developerSignature` in an `X-Finternet-Signature` header.
+
+    ### RBAC Scopes
+
+    Every endpoint requires the caller's developer token to carry at least one of the
+    listed scopes. A `*` (wildcard) scope satisfies any check. Calls that fail the scope
+    check return `403 PERMISSION_DENIED`.
+
+    | Endpoint | Required scope |
+    |----------|----------------|
+    | `POST /v1/registry/tokenclasses/register` | `tokenclasses:create` |
+    | `POST /v1/registry/tokenclasses/update` | `tokenclasses:manage` |
+    | `POST /v1/registry/tokenclasses/get` | `tokenclasses:view` |
+    | `POST /v1/registry/tokenclasses/search` | `tokenclasses:view` |
+    | `POST /v1/token/get` | `tokens:view` |
+    | `POST /v1/token/mint` | `tokens:create` |
+    | `POST /v1/token/search` | `tokens:view` |
+    | `POST /v1/token/transact` | `tokens:transact` |
+    | `POST /v1/token/transactions` | `transactions:view` |
+    | `POST /v1/token/add` | `tokens:create` |
+    | `POST /v1/transaction/status` | `transactions:view` |
+    | `POST /v1/transaction/get` | `transactions:view` |
+    | `POST /v1/transaction/search` | `transactions:view` |
+    | `POST /v1/transaction/proof` | `transactions:view` |
+    | `POST /v1/transaction/proof/leaf` | `transactions:view` |
+    | `POST /v1/transaction/proof/verify` | `transactions:view` |
+
+    ### Rate limiting
+
+    All endpoints are protected by a scope-tier sliding-window rate limiter. When the
+    limit is exceeded the service responds with `429 Too Many Requests` and a
+    `Retry-After` header indicating when the caller may retry. The shared
+    `RateLimitedError` response component documents the body shape.
   version: "1.0.0"
 servers:
   - url: "https://foundry.finternetlab.io"
@@ -578,7 +610,7 @@ paths:
                 pagination:
                   limit: 50
                   offset: 0
-                sort:
+                sortBy:
                   field: "createdAt"
                   order: "desc"
       responses:
@@ -981,7 +1013,7 @@ paths:
                     pagination:
                       limit: 50
                       offset: 0
-                    sort:
+                    sortBy:
                       field: "createdAt"
                       order: "desc"
               display_search:
@@ -1549,7 +1581,7 @@ paths:
                 pagination:
                   limit: 50
                   offset: 0
-                sort:
+                sortBy:
                   field: "createdAt"
                   order: "desc"
       responses:
@@ -1595,7 +1627,7 @@ paths:
                 pagination:
                   limit: 100
                   offset: 0
-                sort:
+                sortBy:
                   field: "timestamp"
                   order: "desc"
       responses:
@@ -2299,7 +2331,7 @@ components:
 
     SearchTokenClassRequest:
       type: object
-      description: "Search request with filters, pagination, and sort at payload level"
+      description: "Search request with filters, pagination, and sortBy at payload level"
       properties:
         filters:
           type: object
@@ -2317,8 +2349,16 @@ components:
           additionalProperties: true
         pagination:
           $ref: '#/components/schemas/PaginationRequest'
-        sort:
+        sortBy:
           $ref: '#/components/schemas/SortRequest'
+        groupBy:
+          type: string
+          description: |
+            Optional aggregation key. When supplied, results are grouped by the named
+            field rather than returned as a flat list. Supported values include
+            `tokenStandard`, `status`, and any top-level property of `TokenClass`.
+            JSONB paths (e.g. `metadata.category`) are also supported.
+          nullable: true
 
     TokenClassList:
       type: object
@@ -2405,6 +2445,8 @@ components:
           properties:
             totalSupply: { type: string, description: "Total supply. Format depends on context.valueFormat." }
             circulatingSupply: { type: string, description: "Circulating supply. Format depends on context.valueFormat." }
+            availableSupply: { type: string, description: "Supply still available to mint (maxSupply - circulatingSupply). Null when maxSupply is unlimited." }
+            maxSupply: { type: string, description: "Maximum supply cap. Null when unlimited." }
         lockState:
           type: object
           properties:
@@ -2509,7 +2551,7 @@ components:
 
     SearchTokensRequest:
       type: object
-      description: "Search request with filters, pagination, and sort at payload level"
+      description: "Search request with filters, pagination, and sortBy at payload level"
       properties:
         filters:
           type: object
@@ -2538,8 +2580,15 @@ components:
           additionalProperties: true
         pagination:
           $ref: '#/components/schemas/PaginationRequest'
-        sort:
+        sortBy:
           $ref: '#/components/schemas/SortRequest'
+        groupBy:
+          type: string
+          description: |
+            Optional aggregation key. When supplied, results are grouped by the named
+            field — typical values: `tokenClass`, `chainId`, `tokenStandard`. Useful
+            for portfolio/holdings rollups by chain or class.
+          nullable: true
 
     TransactRequest:
       type: object
@@ -3041,7 +3090,7 @@ components:
           additionalProperties: true
         pagination:
           $ref: '#/components/schemas/PaginationRequest'
-        sort:
+        sortBy:
           allOf:
             - $ref: '#/components/schemas/SortRequest'
             - properties:
@@ -3085,7 +3134,7 @@ components:
             - properties:
                 limit:
                   default: 100
-        sort:
+        sortBy:
           allOf:
             - $ref: '#/components/schemas/SortRequest'
             - properties:
@@ -3580,6 +3629,19 @@ components:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
             context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "RESOURCE_CONFLICT", message: "Operation conflicts with current token state." } }
+            response: {}
+    RateLimitedError:
+      description: |
+        Request exceeded the scope-tier sliding-window rate limit. The `Retry-After`
+        response header indicates how long the caller should wait before retrying.
+      headers:
+        Retry-After:
+          schema: { type: integer, description: "Seconds to wait before retrying." }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "RATE_LIMITED", message: "Too many requests. Retry after 30s." } }
             response: {}
 
   # -------------------- Security --------------------

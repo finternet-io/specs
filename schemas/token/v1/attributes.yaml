@@ -155,6 +155,15 @@ components:
             Use "native" for native assets (ETH, POL, etc.).
             NULL for native tokens.
           x-jsonld: { "@id": "finternet:contractId" }
+        walletAddress:
+          type: string
+          description: |
+            On-chain wallet address that holds this asset (proxy tokens only).
+            Required for proxy tokens — the adapter needs the "from" address
+            to build transactions. Same seed phrase produces the same address
+            regardless of wallet software (MetaMask, Coinbase Wallet, etc.).
+            NULL for native tokens.
+          x-jsonld: { "@id": "finternet:walletAddress" }
         syncStatus:
           type: string
           description: Balance synchronization status (proxy tokens only)

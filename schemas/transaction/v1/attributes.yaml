@@ -209,11 +209,60 @@ components:
 
     TransactionMetadata:
       type: object
-      description: Additional metadata for the transaction
+      description: |
+        Additional metadata for the transaction. The standardised fields below are
+        populated by UNITS across mint, transact, import, and add flows so callers
+        can discover which tokens were created or affected without joining to the
+        transaction log directly.
       x-jsonld:
         "@context": https://finternet-io.github.io/specs/schemas/transaction/v1/context.jsonld
         "@type": finternet:TransactionMetadata
       properties:
+        operation:
+          type: string
+          description: |
+            Canonical operation name (e.g., `mint`, `burn`, `transfer`, `freeze`,
+            `lock`, `update`, `import`, `add`). Mirrors `TokenTransactionReference.operation`
+            but lifted onto the metadata so transaction-level consumers don't need to
+            walk the `transactions[]` array.
+          x-jsonld: { "@id": "finternet:operation" }
+        tokenClass:
+          type: string
+          description: Token class identifier associated with this transaction (e.g., "USDC", "USDT", a UUID).
+          x-jsonld: { "@id": "finternet:tokenClass" }
+        tokenId:
+          type: string
+          format: uri-reference
+          description: Primary token identifier the transaction targets. For multi-token operations see `affectedTokenIds`.
+          x-jsonld: { "@id": "finternet:tokenId", "@type": "@id" }
+        affectedTokenIds:
+          type: array
+          items:
+            type: string
+            format: uri-reference
+          description: |
+            Tokens created or affected by this transaction. Use `/transaction/status`
+            or `/transaction/get` to discover new tokens minted by the operation.
+          x-jsonld: { "@id": "finternet:affectedTokenIds", "@container": "@set" }
+        chainId:
+          type: string
+          description: CAIP-2 chain identifier. Populated for proxy token imports (e.g., `eip155:1`).
+          x-jsonld: { "@id": "finternet:chainId" }
+        contractAddress:
+          type: string
+          description: On-chain contract address. Populated for proxy token imports.
+          x-jsonld: { "@id": "finternet:contractAddress" }
+        walletAddress:
+          type: string
+          description: On-chain wallet address. Populated for proxy token imports — the wallet that holds the asset.
+          x-jsonld: { "@id": "finternet:walletAddress" }
+        amount:
+          type: string
+          description: |
+            Amount involved in the operation. Opaque string — format depends on
+            `context.valueFormat` (raw: smallest-unit integer; display: decimal string).
+            Populated for proxy token imports.
+          x-jsonld: { "@id": "finternet:amount" }
         description:
           type: string
           description: Human-readable description

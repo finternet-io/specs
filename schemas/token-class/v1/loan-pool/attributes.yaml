@@ -1,0 +1,255 @@
+openapi: 3.1.0
+info:
+  title: Finternet Loan Pool Token Class Schema v1
+  version: 1.0.0
+  description: |
+    LoanPoolTokenClass — a non-fungible token class representing a securitised loan
+    pool. Each token instance corresponds to one loan pool with its own underlying
+    receivables, performance metrics, and lifecycle.
+
+    Loan pools extend NonFungibleTokenClass with pool-specific attributes:
+    risk parameters (FLDG, IRR), book metrics (DPD buckets, principal), and
+    rating/closure state.
+
+    ## Operations
+
+    | Operation | Purpose |
+    |-----------|---------|
+    | `mint` | Create a new loan pool token with initial pool composition |
+    | `dpd_bucket_updated` | Refresh days-past-due bucket counts (e.g. 0/1-30/31-60/...) |
+    | `principal_update` | Update outstanding principal as repayments/charge-offs land |
+    | `payout` | Record a payout/distribution event to pool holders |
+    | `irr_update` | Update internal rate of return (realised and projected) |
+    | `fldg_update` | Update first-loss default guarantee state |
+    | `pool_rating_updated` | Update credit rating issued by an external agency |
+    | `pool_closed` | Mark pool as wound down/redeemed; no further events accepted |
+
+components:
+  schemas:
+
+    DpdBucket:
+      type: object
+      description: One days-past-due bucket and the count/value of loans within it
+      required: [bucket, count]
+      properties:
+        bucket:
+          type: string
+          description: Human-readable DPD range
+          examples: ["0", "1-30", "31-60", "61-90", "90+"]
+        count:
+          type: integer
+          minimum: 0
+          description: Number of loans in this bucket
+        outstandingPrincipal:
+          type: string
+          description: Aggregate outstanding principal in this bucket (string for big numbers)
+
+    PoolRating:
+      type: object
+      description: Credit rating assigned by a rating agency
+      required: [agency, rating]
+      properties:
+        agency:
+          type: string
+          description: Rating agency identifier (e.g. CRISIL, ICRA, Moody's)
+        rating:
+          type: string
+          description: Rating symbol (e.g. AAA, A1+, B2)
+        outlook:
+          type: string
+          enum: [positive, stable, negative, developing]
+          nullable: true
+        ratedAt:
+          type: string
+          format: date-time
+
+    Fldg:
+      type: object
+      description: First-Loss Default Guarantee state for the pool
+      properties:
+        guarantor:
+          type: string
+          description: Identity (DID/URI/address) of the guaranteeing entity
+        coverageAmount:
+          type: string
+          description: Maximum amount the guarantor will cover (string for big numbers)
+        consumedAmount:
+          type: string
+          description: Amount of FLDG already consumed against defaults
+        currency:
+          type: string
+          description: Currency code (ISO 4217)
+
+    PoolEconomics:
+      type: object
+      description: Aggregate economic state of the pool
+      properties:
+        currency:
+          type: string
+          description: Reporting currency (ISO 4217)
+        originalPrincipal:
+          type: string
+          description: Principal at pool origination
+        outstandingPrincipal:
+          type: string
+          description: Current outstanding principal
+        cumulativePayouts:
+          type: string
+          description: Cumulative payouts/distributions to holders
+        irrRealised:
+          type: number
+          description: Realised internal rate of return (annualised, decimal — 0.12 = 12%)
+        irrProjected:
+          type: number
+          description: Projected internal rate of return at current performance
+
+    LoanPoolTokenClass:
+      type: object
+      description: |
+        Token class describing a securitised loan pool. Built on top of
+        NonFungibleTokenClass — each Token instance is a single pool.
+      allOf:
+        - $ref: '../base/attributes.yaml#/components/schemas/TokenClass'
+        - type: object
+          x-jsonld:
+            "@context": https://finternet-io.github.io/specs/schemas/token-class/v1/context.jsonld
+            "@type": finternet:LoanPoolTokenClass
+          required:
+            - poolType
+          properties:
+            tokenStandard:
+              type: array
+              description: Must include `UNITS-LOAN-POOL` as the primary standard
+              items: { type: string }
+              examples:
+                - ["UNITS-LOAN-POOL"]
+                - ["UNITS-LOAN-POOL", "UNITS-NFT"]
+            fungibility:
+              type: string
+              const: nonFungible
+            decimals:
+              type: integer
+              const: 0
+            poolType:
+              type: string
+              description: Underlying asset class
+              enum:
+                - personal
+                - mortgage
+                - sme
+                - microfinance
+                - vehicle
+                - education
+                - mixed
+            originator:
+              type: string
+              description: Identity (DID/URI/address) of the loan originator/servicer
+            economics:
+              $ref: '#/components/schemas/PoolEconomics'
+            dpdBuckets:
+              type: array
+              items: { $ref: '#/components/schemas/DpdBucket' }
+              description: Snapshot of loans bucketed by days-past-due
+            rating:
+              $ref: '#/components/schemas/PoolRating'
+              description: Most recent credit rating
+            fldg:
+              $ref: '#/components/schemas/Fldg'
+              description: First-Loss Default Guarantee state
+            closedAt:
+              type: string
+              format: date-time
+              description: Timestamp at which the pool was wound down (set by `pool_closed`)
+              nullable: true
+
+    # ---------------- Operation payloads ----------------
+
+    LoanPoolMintPayload:
+      type: object
+      description: Payload for `mint` — open a new pool
+      required: [poolType, economics]
+      properties:
+        poolType: { type: string }
+        originator: { type: string }
+        economics: { $ref: '#/components/schemas/PoolEconomics' }
+        dpdBuckets:
+          type: array
+          items: { $ref: '#/components/schemas/DpdBucket' }
+        rating: { $ref: '#/components/schemas/PoolRating' }
+        fldg: { $ref: '#/components/schemas/Fldg' }
+
+    DpdBucketUpdatedPayload:
+      type: object
+      required: [tokenId, dpdBuckets, asOf]
+      properties:
+        tokenId: { type: string, format: uri-reference }
+        dpdBuckets:
+          type: array
+          items: { $ref: '#/components/schemas/DpdBucket' }
+        asOf: { type: string, format: date-time }
+
+    PrincipalUpdatePayload:
+      type: object
+      required: [tokenId, outstandingPrincipal, asOf]
+      properties:
+        tokenId: { type: string, format: uri-reference }
+        outstandingPrincipal:
+          type: string
+          description: New outstanding principal after collections / charge-offs
+        delta:
+          type: string
+          description: Change relative to prior value (signed string; negative = reduction)
+        asOf: { type: string, format: date-time }
+        reason:
+          type: string
+          description: Free-form note (e.g. `monthly_collection`, `chargeoff`)
+
+    PayoutPayload:
+      type: object
+      required: [tokenId, amount, currency, paidAt]
+      properties:
+        tokenId: { type: string, format: uri-reference }
+        amount: { type: string, description: "Distribution amount (string for big numbers)" }
+        currency: { type: string, description: "Currency code (ISO 4217)" }
+        paidAt: { type: string, format: date-time }
+        beneficiaries:
+          type: array
+          items:
+            type: object
+            properties:
+              identity: { type: string, description: "DID/URI/address of beneficiary" }
+              share: { type: string, description: "Beneficiary's share of the payout (string)" }
+
+    IrrUpdatePayload:
+      type: object
+      required: [tokenId, asOf]
+      properties:
+        tokenId: { type: string, format: uri-reference }
+        irrRealised: { type: number, nullable: true }
+        irrProjected: { type: number, nullable: true }
+        asOf: { type: string, format: date-time }
+
+    FldgUpdatePayload:
+      type: object
+      required: [tokenId, fldg, asOf]
+      properties:
+        tokenId: { type: string, format: uri-reference }
+        fldg: { $ref: '#/components/schemas/Fldg' }
+        asOf: { type: string, format: date-time }
+
+    PoolRatingUpdatedPayload:
+      type: object
+      required: [tokenId, rating]
+      properties:
+        tokenId: { type: string, format: uri-reference }
+        rating: { $ref: '#/components/schemas/PoolRating' }
+
+    PoolClosedPayload:
+      type: object
+      required: [tokenId, closedAt]
+      properties:
+        tokenId: { type: string, format: uri-reference }
+        closedAt: { type: string, format: date-time }
+        reason:
+          type: string
+          description: Reason for closure (e.g. `wound_down`, `redeemed`, `cancelled`)

@@ -45,6 +45,29 @@ info:
         * `signature` (top-level): The end-user's JWS for critical, cryptographically-signed operations.
 
     *Note for HTTP Clients:* As a convenience, the `developerToken` may be provided in the standard `Authorization: Bearer <token>` HTTP header, and the `developerSignature` in an `X-Finternet-Signature` header. The server will check the headers first, then fall back to the `context` object.
+
+    ### RBAC Scopes
+
+    | Endpoint | Required scope |
+    |----------|----------------|
+    | `POST /v1/account/create` | `accounts:create` |
+    | `POST /v1/account/update` | `accounts:manage` |
+    | `POST /v1/account/get` | `accounts:view` |
+    | `POST /v1/account/login` | *(public — OTP/SSO bootstrap)* |
+    | `POST /v1/account/logout` | *(public)* |
+    | `POST /v1/address/checkAvailability` | *(public)* |
+    | `POST /v1/address/resolve` | `addresses:view` |
+    | `POST /v1/account/keys/register` | `keys:manage` |
+    | `POST /v1/account/keys/remove` | `keys:manage` |
+    | `POST /v1/account/keys/get` | `keys:view` |
+    | `POST /v1/account/keys/search` | `keys:view` |
+
+    Calls failing the scope check return `403 PERMISSION_DENIED`.
+
+    ### Rate limiting
+
+    All endpoints are protected by a scope-tier sliding-window rate limiter; on
+    breach the response is `429 Too Many Requests` with a `Retry-After` header.
   version: "1.0.0"
 servers:
   - url: "https://foundry.finternetlab.io"
@@ -56,6 +79,8 @@ tags:
     description: "Endpoints for user registration, authentication, and account management."
   - name: "Address"
     description: "Endpoints for managing human-readable identifiers (Addresses)."
+  - name: "AccountKeys"
+    description: "Endpoints for managing additional public keys bound to a Finternet account (multi-device, hardware key rotation, agent keys)."
 
 # ===============================================================
 #   PATHS
@@ -264,8 +289,14 @@ paths:
     post:
       tags:
         - "Account"
-      summary: "User login (OTP-based)"
-      description: "Two-step authentication: 1) Send OTP to user's registered contact, 2) Verify OTP to get JWT session token. Requires Developer auth."
+      summary: "User login (OTP or SSO)"
+      description: |
+        Login with one of two flows (see `LoginRequest` for details):
+
+        - **OTP** (default): step 1 sends OTP, step 2 verifies and returns JWT.
+        - **SSO** (`ssoLogin: true`): bypasses OTP; caller's app backend owns final JWT signing.
+
+        Password-based login was removed in release 2026.04.07. Requires developer auth.
       security:
         - developerToken: []
         - developerSignature: []
@@ -310,6 +341,18 @@ paths:
                   payload:
                     username: "alice@example.com"
                     otp: "1234"
+              SSOLogin:
+                summary: "SSO: bypass OTP — app backend owns final JWT"
+                value:
+                  context:
+                    id: "api.account.login"
+                    version: "1.0"
+                    ts: "2025-09-09T09:00:00Z"
+                    msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef23"
+                    developerToken: "dev_pk_..."
+                  payload:
+                    username: "alice@example.com"
+                    ssoLogin: true
       responses:
         '200':
           description: |
@@ -364,6 +407,11 @@ paths:
 
         '401':
           $ref: '#/components/responses/UnauthorizedError' # Catches both dev auth and user auth failures
+        '404':
+          description: |
+            SSO flow only — the external identity is not yet registered in UNITS. The
+            application backend is expected to drive account registration and then
+            re-issue its own JWT. Not returned for the OTP flow.
 
   /v1/account/logout:
     post:
@@ -506,6 +554,140 @@ paths:
           $ref: '#/components/responses/NotFoundError'
 
 
+  # -------------------- Account Keys --------------------
+
+  /v1/account/keys/register:
+    post:
+      tags: [AccountKeys]
+      summary: "Register an additional public key for the calling account"
+      description: |
+        Bind an additional public key to the authenticated account. Used for adding a
+        new device, a hardware-backed key, or an agent key with a constrained purpose.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      x-scopes: [keys:manage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApiRequest_RegisterKeyRequest' }
+            example:
+              context:
+                id: "api.account.keys.register"
+                version: "1.0"
+                ts: "2026-04-07T10:00:00Z"
+                msgId: "11111111-2222-3333-4444-555555555555"
+                developerToken: "dev_pk_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                publicKeyMultibase: "z6Mk..."
+                keyType: "Ed25519VerificationKey2020"
+                purpose: ["assertion", "authentication"]
+                label: "iPhone 15"
+      responses:
+        '200':
+          description: "Key registered."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse_AccountKeyInfo' }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+  /v1/account/keys/remove:
+    post:
+      tags: [AccountKeys]
+      summary: "Remove a public key from the calling account"
+      description: |
+        Revoke an account-bound public key. The primary key (the one initially provisioned
+        at registration) cannot be removed via this endpoint.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      x-scopes: [keys:manage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApiRequest_RemoveKeyRequest' }
+      responses:
+        '200':
+          description: "Key removed."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse_Success' }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+  /v1/account/keys/get:
+    post:
+      tags: [AccountKeys]
+      summary: "Get a single public key for the calling account"
+      security:
+        - developerToken: []
+        - developerSignature: []
+      x-scopes: [keys:view]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApiRequest_GetKeyRequest' }
+      responses:
+        '200':
+          description: "Key info."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse_AccountKeyInfo' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+  /v1/account/keys/search:
+    post:
+      tags: [AccountKeys]
+      summary: "List/search public keys for an account"
+      description: |
+        Returns the keys bound to the calling account (or to the account specified by
+        `address` when called with admin scope), filtered by purpose/status.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      x-scopes: [keys:view]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApiRequest_SearchKeysRequest' }
+            example:
+              context:
+                id: "api.account.keys.search"
+                version: "1.0"
+                ts: "2026-04-07T10:00:00Z"
+                msgId: "22222222-3333-4444-5555-666666666666"
+                developerToken: "dev_pk_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                filters:
+                  purpose: "assertion"
+                  status: "active"
+                pagination: { page: 1, pageSize: 20 }
+      responses:
+        '200':
+          description: "Key list."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse_AccountKeyList' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
 
 # ===============================================================
 #   COMPONENTS
@@ -596,6 +778,90 @@ components:
 
     ApiResponse_Success: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { type: object, properties: { message: { type: string, example: "Signout successful" } } } } } ] }
 
+    # --- Account Keys ---
+    AccountKeyPurpose:
+      type: string
+      enum: [authentication, assertion, keyAgreement, capabilityInvocation, capabilityDelegation]
+    AccountKeyStatus:
+      type: string
+      enum: [active, revoked]
+    AccountKeyInfo:
+      type: object
+      required: [keyId, publicKeyMultibase, keyType, status, createdAt]
+      properties:
+        keyId: { type: string, format: uuid }
+        publicKeyMultibase: { type: string, example: "z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH" }
+        keyType: { type: string, example: "Ed25519VerificationKey2020" }
+        purpose:
+          type: array
+          items: { $ref: '#/components/schemas/AccountKeyPurpose' }
+        label: { type: string, nullable: true, description: "Human-readable label (e.g. device name)." }
+        status: { $ref: '#/components/schemas/AccountKeyStatus' }
+        isPrimary: { type: boolean, default: false, description: "Primary key — provisioned at registration; cannot be removed via /remove." }
+        createdAt: { type: string, format: date-time }
+        revokedAt: { type: string, format: date-time, nullable: true }
+    RegisterKeyRequest:
+      type: object
+      required: [publicKeyMultibase, keyType, purpose]
+      properties:
+        publicKeyMultibase: { type: string }
+        keyType: { type: string, example: "Ed25519VerificationKey2020" }
+        purpose:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/AccountKeyPurpose' }
+        label: { type: string, nullable: true }
+    RemoveKeyRequest:
+      type: object
+      required: [keyId]
+      properties:
+        keyId: { type: string, format: uuid }
+    GetKeyRequest:
+      type: object
+      required: [keyId]
+      properties:
+        keyId: { type: string, format: uuid }
+    SearchKeysRequest:
+      type: object
+      properties:
+        address:
+          type: string
+          nullable: true
+          description: "Account address to search keys for. Defaults to the caller. Specifying another address requires admin scope."
+        filters:
+          type: object
+          properties:
+            purpose: { $ref: '#/components/schemas/AccountKeyPurpose' }
+            status: { $ref: '#/components/schemas/AccountKeyStatus' }
+          additionalProperties: true
+        pagination:
+          type: object
+          properties:
+            page: { type: integer, minimum: 1, default: 1 }
+            pageSize: { type: integer, minimum: 1, maximum: 200, default: 20 }
+    AccountKeyList:
+      type: object
+      required: [keys]
+      properties:
+        keys:
+          type: array
+          items: { $ref: '#/components/schemas/AccountKeyInfo' }
+        pagination:
+          type: object
+          properties:
+            page: { type: integer }
+            pageSize: { type: integer }
+            totalItems: { type: integer }
+            totalPages: { type: integer }
+
+    ApiRequest_RegisterKeyRequest: { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/RegisterKeyRequest' } } } ] }
+    ApiRequest_RemoveKeyRequest:   { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/RemoveKeyRequest' } } } ] }
+    ApiRequest_GetKeyRequest:      { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/GetKeyRequest' } } } ] }
+    ApiRequest_SearchKeysRequest:  { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/SearchKeysRequest' } } } ] }
+
+    ApiResponse_AccountKeyInfo: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/AccountKeyInfo' } } } ] }
+    ApiResponse_AccountKeyList: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/AccountKeyList' } } } ] }
+
     # --- Core Data Schemas (Payloads) ---
     RegistrationRequest:
       type: object
@@ -630,9 +896,25 @@ components:
     LoginRequest:
       type: object
       required: [username]
+      description: |
+        Login payload. Two supported flows:
+
+        1. **OTP login** — omit `ssoLogin` (or set false). Send request without `otp` to
+           receive an OTP on the registered email/mobile. Send again with `otp` populated
+           to receive a JWT access token.
+
+        2. **SSO login** — set `ssoLogin: true`. UNITS does not call the OTP service. The
+           caller is expected to obtain a Keycloak token via its own identity provider
+           (Google, Microsoft, etc.) and the **application backend** signs and returns
+           the final JWT to the end user. On the first SSO call for a brand-new user,
+           UNITS returns HTTP 404 — the app backend is responsible for driving the
+           registration flow before issuing a JWT.
+
+        Password-based login has been removed as of release 2026.04.07.
       properties:
-        username: { type: string, example: "alice" }
-        otp: { type: string, example: "1234", nullable: true, description: "One-time password for verification" }
+        username: { type: string, example: "alice", description: "Finternet address, email, or mobile number" }
+        otp: { type: string, example: "1234", nullable: true, description: "One-time password for verification. Only used for OTP flow." }
+        ssoLogin: { type: boolean, default: false, description: "Set true to select the SSO (external IdP) flow and bypass OTP." }
     AvailabilityResponse:
       type: object
       properties:
@@ -720,6 +1002,19 @@ components:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
             context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "RESOURCE_CONFLICT", message: "An account with this identifier already exists." } }
+            response: {}
+    RateLimitedError:
+      description: |
+        Request exceeded the scope-tier sliding-window rate limit. The `Retry-After`
+        response header indicates how long the caller should wait before retrying.
+      headers:
+        Retry-After:
+          schema: { type: integer, description: "Seconds to wait before retrying." }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "RATE_LIMITED", message: "Too many requests. Retry after 30s." } }
             response: {}
 
   # -------------------- Security --------------------

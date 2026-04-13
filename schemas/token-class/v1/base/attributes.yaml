@@ -141,6 +141,12 @@ components:
           type: string
           description: Current circulating supply (totalSupply - burned)
           x-jsonld: { "@id": "finternet:circulatingSupply" }
+        availableSupply:
+          type: string
+          description: |
+            Supply still available to mint (maxSupply - circulatingSupply). Null when
+            `maxSupply` is unlimited. Format follows `context.valueFormat`.
+          x-jsonld: { "@id": "finternet:availableSupply" }
 
     # -------------------- State Provider (for Proxy Tokens) --------------------
 

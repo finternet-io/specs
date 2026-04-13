@@ -1,0 +1,396 @@
+openapi: 3.0.4
+info:
+  title: "Finternet API - Delegations"
+  description: |
+    API specification for **delegated authorisation** in UNITS.
+
+    A **delegation** records that one principal (the *delegator*) has granted another
+    principal (the *delegatee*) the right to act on their behalf for a specific set of
+    token operations, optionally constrained by token class, expiry, and per-operation
+    quotas.
+
+    Delegations let an API client (e.g. a custodial wallet, an automated payment agent,
+    or a third-party application) execute privileged token operations against an end
+    user's account without ever holding that user's primary credentials.
+
+    All endpoints follow the standard envelope (`context`/`payload` → `context`/`response`)
+    and are subject to scope-tier rate limiting.
+
+  version: "1.0.0"
+
+servers:
+  - url: "https://foundry.finternetlab.io"
+    description: "Development Environment"
+  - url: "http://localhost:3000"
+    description: "Local Server"
+
+tags:
+  - name: "Delegations"
+    description: "List and check delegated permissions issued to or by a principal."
+
+paths:
+
+  /v1/delegations/list:
+    post:
+      tags: [Delegations]
+      summary: "List delegations issued to or by a principal"
+      description: |
+        Returns the set of delegations matching the supplied filters. Either
+        `delegatorId` or `delegateeId` (or both) must be supplied — at least one
+        side of the relationship must be pinned.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      x-scopes: [delegations:view]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApiRequest_ListDelegations' }
+            example:
+              context:
+                id: "api.delegations.list"
+                version: "1.0"
+                ts: "2026-04-07T10:00:00Z"
+                msgId: "11111111-2222-3333-4444-555555555555"
+                developerToken: "dev_pk_..."
+              payload:
+                filters:
+                  delegatorId: "alice"
+                  status: "active"
+                pagination: { page: 1, pageSize: 20 }
+                sortBy: { field: "createdAt", order: "desc" }
+      responses:
+        '200':
+          description: "Delegation list."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse_DelegationList' }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+  /v1/delegations/check:
+    post:
+      tags: [Delegations]
+      summary: "Check whether a delegation grants a specific operation"
+      description: |
+        Resolve the *effective* permission of a `(delegatee, delegator, tokenClass,
+        operation)` tuple at request time. Returns whether the operation is permitted
+        and, if so, the surviving constraints (remaining quota, expiry).
+
+        This is the same primitive used by the platform's authorisation layer when an
+        API client attempts a token operation on behalf of another principal.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      x-scopes: [delegations:view]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApiRequest_CheckDelegation' }
+            example:
+              context:
+                id: "api.delegations.check"
+                version: "1.0"
+                ts: "2026-04-07T10:00:00Z"
+                msgId: "22222222-3333-4444-5555-666666666666"
+                developerToken: "dev_pk_..."
+              payload:
+                delegatorId: "alice"
+                delegateeId: "acme-wallet"
+                tokenClass: "USDC"
+                operation: "transfer"
+                amount: "100.00"
+      responses:
+        '200':
+          description: "Permission decision."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse_DelegationCheck' }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+components:
+  schemas:
+
+    # -------------------- Common envelope (Context/RequestContext/ApiResponse/ApiError) --------------------
+
+    Context:
+      type: object
+      required: [id, version, ts, msgId]
+      properties:
+        id: { type: string, description: "Stable API identifier (e.g. `api.delegations.list`)." }
+        version: { type: string, description: "API version." }
+        ts: { type: string, format: date-time }
+        msgId: { type: string, format: uuid }
+
+    RequestContext:
+      type: object
+      required: [context, payload]
+      properties:
+        context:
+          allOf:
+            - $ref: '#/components/schemas/Context'
+            - properties:
+                developerToken: { type: string, description: "Optional inline developer token; usually carried via the `Authorization` header." }
+
+    ResponseContext:
+      type: object
+      required: [context]
+      properties:
+        context:
+          allOf:
+            - $ref: '#/components/schemas/Context'
+            - properties:
+                status: { type: string, enum: [success, failed] }
+
+    ApiResponse:
+      allOf:
+        - $ref: '#/components/schemas/ResponseContext'
+        - type: object
+          required: [response]
+          properties:
+            response: { type: object }
+
+    ApiError:
+      allOf:
+        - $ref: '#/components/schemas/ResponseContext'
+        - type: object
+          properties:
+            context:
+              type: object
+              properties:
+                error:
+                  type: object
+                  required: [code, message]
+                  properties:
+                    code: { type: string }
+                    message: { type: string }
+            response: { type: object }
+
+    PaginationRequest:
+      type: object
+      properties:
+        page: { type: integer, minimum: 1, default: 1 }
+        pageSize: { type: integer, minimum: 1, maximum: 200, default: 20 }
+
+    PaginationResponse:
+      type: object
+      properties:
+        page: { type: integer }
+        pageSize: { type: integer }
+        totalItems: { type: integer }
+        totalPages: { type: integer }
+
+    SortRequest:
+      type: object
+      properties:
+        field: { type: string }
+        order: { type: string, enum: [asc, desc], default: desc }
+
+    # -------------------- Delegation domain --------------------
+
+    DelegationStatus:
+      type: string
+      description: |
+        Lifecycle state of a delegation.
+        - `active` — currently in force.
+        - `expired` — past its `expiresAt`.
+        - `revoked` — explicitly revoked by the delegator.
+        - `exhausted` — quota fully consumed.
+      enum: [active, expired, revoked, exhausted]
+
+    OperationConstraint:
+      type: object
+      description: "Per-operation cap (e.g. transfer up to 1000 USDC)."
+      required: [operation]
+      properties:
+        operation:
+          type: string
+          description: "Token operation name (e.g. `transfer`, `mint`, `burn`)."
+        maxAmount:
+          type: string
+          description: "Maximum cumulative amount permitted across all uses (string for big numbers). Null = uncapped."
+          nullable: true
+        maxCount:
+          type: integer
+          description: "Maximum number of invocations permitted. Null = uncapped."
+          nullable: true
+        usedAmount:
+          type: string
+          description: "Cumulative amount already consumed."
+          nullable: true
+        usedCount:
+          type: integer
+          description: "Number of invocations already consumed."
+          nullable: true
+
+    Delegation:
+      type: object
+      required: [id, delegatorId, delegateeId, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        delegatorId:
+          type: string
+          description: "Principal granting the delegation (Finternet username, account ID, or DID)."
+        delegateeId:
+          type: string
+          description: "Principal receiving the delegation."
+        tokenClasses:
+          type: array
+          description: "Token classes covered by this delegation. Empty/omitted means *any* token class."
+          items: { type: string }
+        constraints:
+          type: array
+          description: "Per-operation quotas. Empty means delegated operations are uncapped."
+          items: { $ref: '#/components/schemas/OperationConstraint' }
+        scopes:
+          type: array
+          description: "RBAC scopes effectively granted to the delegatee for this delegator."
+          items: { type: string }
+        status: { $ref: '#/components/schemas/DelegationStatus' }
+        expiresAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+        revokedAt: { type: string, format: date-time, nullable: true }
+        revocationReason: { type: string, nullable: true }
+
+    DelegationList:
+      type: object
+      required: [delegations, pagination]
+      properties:
+        delegations:
+          type: array
+          items: { $ref: '#/components/schemas/Delegation' }
+        pagination: { $ref: '#/components/schemas/PaginationResponse' }
+
+    ListDelegationsRequest:
+      type: object
+      description: |
+        At least one of `filters.delegatorId` or `filters.delegateeId` must be supplied.
+      properties:
+        filters:
+          type: object
+          properties:
+            delegatorId: { type: string }
+            delegateeId: { type: string }
+            tokenClass: { type: string }
+            status: { $ref: '#/components/schemas/DelegationStatus' }
+          additionalProperties: true
+        pagination: { $ref: '#/components/schemas/PaginationRequest' }
+        sortBy: { $ref: '#/components/schemas/SortRequest' }
+
+    CheckDelegationRequest:
+      type: object
+      required: [delegatorId, delegateeId, operation]
+      properties:
+        delegatorId: { type: string }
+        delegateeId: { type: string }
+        tokenClass: { type: string, nullable: true }
+        operation: { type: string }
+        amount:
+          type: string
+          description: "Amount the delegatee intends to consume for this operation, used for quota checks."
+          nullable: true
+
+    DelegationDecision:
+      type: object
+      required: [permitted]
+      properties:
+        permitted: { type: boolean }
+        reason:
+          type: string
+          description: "Human-readable explanation when `permitted=false` (e.g. `EXPIRED`, `QUOTA_EXCEEDED`, `OPERATION_NOT_DELEGATED`)."
+          nullable: true
+        delegationId:
+          type: string
+          format: uuid
+          description: "ID of the delegation matched (when one applies)."
+          nullable: true
+        remaining:
+          type: object
+          description: "Surviving constraints after the proposed operation, when permitted."
+          nullable: true
+          properties:
+            amount: { type: string, nullable: true }
+            count: { type: integer, nullable: true }
+            expiresAt: { type: string, format: date-time, nullable: true }
+
+    # -------------------- Envelopes --------------------
+
+    ApiRequest_ListDelegations:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties: { payload: { $ref: '#/components/schemas/ListDelegationsRequest' } }
+    ApiRequest_CheckDelegation:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties: { payload: { $ref: '#/components/schemas/CheckDelegationRequest' } }
+
+    ApiResponse_DelegationList:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties: { response: { $ref: '#/components/schemas/DelegationList' } }
+    ApiResponse_DelegationCheck:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties: { response: { $ref: '#/components/schemas/DelegationDecision' } }
+
+  # -------------------- Responses --------------------
+
+  responses:
+    UnauthorizedError:
+      description: "Authentication failed."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "AUTHENTICATION_FAILED", message: "Token invalid or expired." } }
+            response: {}
+    ForbiddenError:
+      description: "Scope check failed — the caller's developer token does not carry a scope required by this endpoint."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "PERMISSION_DENIED", message: "Missing required scope: delegations:view" } }
+            response: {}
+    BadRequestError:
+      description: "Invalid request (e.g. neither delegator nor delegatee specified for `list`)."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "INVALID_REQUEST", message: "At least one of delegatorId or delegateeId must be supplied." } }
+            response: {}
+    RateLimitedError:
+      description: |
+        Request exceeded the scope-tier sliding-window rate limit. The `Retry-After`
+        response header indicates how long the caller should wait before retrying.
+      headers:
+        Retry-After:
+          schema: { type: integer, description: "Seconds to wait before retrying." }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "RATE_LIMITED", message: "Too many requests. Retry after 30s." } }
+            response: {}
+
+  # -------------------- Security --------------------
+
+  securitySchemes:
+    developerToken:
+      type: http
+      scheme: bearer
+      bearerFormat: "JWT or Opaque"
+      description: "Developer API Key/Token in Authorization header."
+    developerSignature:
+      type: apiKey
+      in: header
+      name: Signature
+      description: "IETF HTTP Signature (RFC 9421) for message integrity."

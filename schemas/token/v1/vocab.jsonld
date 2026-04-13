@@ -127,6 +127,14 @@
             "rdfs:range": { "@id": "xsd:string" }
         },
         {
+            "@id": "finternet:walletAddress",
+            "@type": "rdf:Property",
+            "rdfs:label": "walletAddress",
+            "rdfs:comment": "On-chain wallet address that holds this asset. Present for proxy tokens, absent for native tokens. The adapter needs this as the 'from' address to build transactions.",
+            "rdfs:domain": { "@id": "finternet:TokenState" },
+            "rdfs:range": { "@id": "xsd:string" }
+        },
+        {
             "@id": "finternet:syncStatus",
             "@type": "rdf:Property",
             "rdfs:label": "syncStatus",

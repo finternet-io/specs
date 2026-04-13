@@ -1,0 +1,169 @@
+openapi: 3.1.0
+info:
+  title: Finternet NFH Voucher Token Class Schema v1
+  version: 1.0.0
+  description: |
+    NfhVoucherTokenClass — non-fungible token class for **National Financial Hub
+    (NFH) vouchers**: programmable, purpose-bound payment instruments backed 1:1
+    by a sponsoring entity (government scheme, employer benefit, donor program).
+
+    Each voucher token carries a face value, a beneficiary, a redemption window,
+    and a constrained set of merchants/categories where it may be spent.
+
+    ## Operations
+
+    | Operation | Purpose |
+    |-----------|---------|
+    | `mint` | Issue voucher capacity to the sponsor (pre-funding) |
+    | `issue` | Allocate a voucher to a specific beneficiary |
+    | `redeem` | Mark voucher (or part of it) as spent at a permitted merchant |
+    | `revoke` | Invalidate an outstanding voucher |
+
+components:
+  schemas:
+
+    VoucherConstraints:
+      type: object
+      description: Constraints on where and how a voucher can be redeemed
+      properties:
+        merchants:
+          type: array
+          items: { type: string }
+          description: Allow-list of merchant identifiers (DID/URI/address)
+        merchantCategories:
+          type: array
+          items: { type: string }
+          description: Allow-list of merchant category codes (ISO 18245 / MCC)
+        geographies:
+          type: array
+          items: { type: string }
+          description: ISO 3166 alpha-2 country / region codes where redemption is permitted
+        validFrom:
+          type: string
+          format: date-time
+          description: Earliest redemption time (defaults to issue time)
+        validUntil:
+          type: string
+          format: date-time
+          description: Latest redemption time
+        minRedeemAmount:
+          type: string
+          description: Minimum amount per redemption call (string for big numbers)
+        maxRedemptions:
+          type: integer
+          minimum: 1
+          description: Maximum number of redemption events permitted
+
+    VoucherFaceValue:
+      type: object
+      required: [amount, currency]
+      properties:
+        amount: { type: string, description: "Face value (string for big numbers)" }
+        currency: { type: string, description: "Currency code (ISO 4217)" }
+        remaining:
+          type: string
+          description: Unspent balance still redeemable (decremented by `redeem`)
+
+    NfhVoucherTokenClass:
+      type: object
+      description: |
+        Token class for NFH vouchers. Built on top of NonFungibleTokenClass — each
+        Token instance is one voucher allocation.
+      allOf:
+        - $ref: '../base/attributes.yaml#/components/schemas/TokenClass'
+        - type: object
+          x-jsonld:
+            "@context": https://finternet-io.github.io/specs/schemas/token-class/v1/context.jsonld
+            "@type": finternet:NfhVoucherTokenClass
+          required:
+            - sponsor
+            - faceValue
+          properties:
+            tokenStandard:
+              type: array
+              description: Must include `UNITS-NFH-VOUCHER` as the primary standard
+              items: { type: string }
+              examples:
+                - ["UNITS-NFH-VOUCHER"]
+                - ["UNITS-NFH-VOUCHER", "UNITS-NFT"]
+            fungibility:
+              type: string
+              const: nonFungible
+            decimals:
+              type: integer
+              const: 0
+            sponsor:
+              type: string
+              description: Identity (DID/URI/address) of the sponsoring entity
+            program:
+              type: string
+              description: Optional program identifier (e.g. scheme/campaign code)
+            faceValue:
+              $ref: '#/components/schemas/VoucherFaceValue'
+            constraints:
+              $ref: '#/components/schemas/VoucherConstraints'
+            flags:
+              type: object
+              description: NFH vouchers default to non-divisible, revocable, non-transferable
+              properties:
+                transferable: { type: boolean, default: false }
+                divisible:    { type: boolean, default: false }
+                revocable:    { type: boolean, default: true }
+                burnable:     { type: boolean, default: false }
+
+    # ---------------- Operation payloads ----------------
+
+    NfhVoucherMintPayload:
+      type: object
+      description: |
+        Pre-fund the sponsor's voucher pool. Establishes available capacity that
+        subsequent `issue` calls draw down from.
+      required: [sponsor, faceValue]
+      properties:
+        sponsor: { type: string }
+        program: { type: string, nullable: true }
+        faceValue: { $ref: '#/components/schemas/VoucherFaceValue' }
+        constraints: { $ref: '#/components/schemas/VoucherConstraints' }
+
+    NfhVoucherIssuePayload:
+      type: object
+      description: Allocate a voucher to a specific beneficiary
+      required: [beneficiary, faceValue]
+      properties:
+        beneficiary:
+          type: string
+          description: Identity (DID/URI/address) of the receiving beneficiary
+        faceValue: { $ref: '#/components/schemas/VoucherFaceValue' }
+        constraints: { $ref: '#/components/schemas/VoucherConstraints' }
+        externalRef:
+          type: string
+          description: Optional external reference (e.g. citizen ID, scheme ledger entry)
+
+    NfhVoucherRedeemPayload:
+      type: object
+      description: Spend a voucher (whole or partial) at a permitted merchant
+      required: [tokenId, merchant, amount, redeemedAt]
+      properties:
+        tokenId: { type: string, format: uri-reference }
+        merchant:
+          type: string
+          description: Identity of the redeeming merchant
+        merchantCategory:
+          type: string
+          description: MCC / category code, used for constraint validation
+        amount: { type: string, description: "Amount being redeemed (string for big numbers)" }
+        redeemedAt: { type: string, format: date-time }
+        receiptRef:
+          type: string
+          description: Merchant-side receipt or invoice reference
+
+    NfhVoucherRevokePayload:
+      type: object
+      description: Invalidate an outstanding voucher (sponsor or controller action)
+      required: [tokenId, revokedAt]
+      properties:
+        tokenId: { type: string, format: uri-reference }
+        revokedAt: { type: string, format: date-time }
+        reason:
+          type: string
+          description: Reason for revocation (e.g. `expired`, `fraud`, `program_closed`, `beneficiary_request`)

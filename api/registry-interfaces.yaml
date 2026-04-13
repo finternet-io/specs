@@ -45,6 +45,25 @@ info:
     2.  **Admin-Level Authorization:**
         * Write operations (register, update) require admin privileges.
         * Read operations (get, search) require developer authentication only.
+
+    ### RBAC Scopes
+
+    | Endpoint | Required scope |
+    |----------|----------------|
+    | `POST /v1/registry/chains/register` | `chains:manage` |
+    | `POST /v1/registry/chains/update` | `chains:manage` |
+    | `POST /v1/registry/chains/get` | `chains:view` |
+    | `POST /v1/registry/chains/search` | `chains:view` |
+    | `POST /v1/registry/wallets/register` | `wallets:manage` |
+    | `POST /v1/registry/wallets/update` | `wallets:manage` |
+    | `POST /v1/registry/wallets/get` | `wallets:view` |
+    | `POST /v1/registry/wallets/search` | `wallets:view` |
+
+    ### Rate limiting
+
+    Requests are subject to a scope-tier sliding-window rate limiter. When the limit
+    is exceeded the service responds with `429 Too Many Requests` and a `Retry-After`
+    header (see the `RateLimitedError` response component).
   version: "1.0.0"
 servers:
   - url: "https://foundry.finternetlab.io"
@@ -362,7 +381,7 @@ paths:
                     pagination:
                       limit: 50
                       offset: 0
-                    sort:
+                    sortBy:
                       field: "name"
                       order: "asc"
               evm_chains:
@@ -1138,6 +1157,19 @@ components:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
             context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "INVALID_REQUEST", message: "Invalid request parameters." } }
+            response: {}
+    RateLimitedError:
+      description: |
+        Request exceeded the scope-tier sliding-window rate limit. The `Retry-After`
+        response header indicates how long the caller should wait before retrying.
+      headers:
+        Retry-After:
+          schema: { type: integer, description: "Seconds to wait before retrying." }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "RATE_LIMITED", message: "Too many requests. Retry after 30s." } }
             response: {}
 
   # -------------------- Security --------------------

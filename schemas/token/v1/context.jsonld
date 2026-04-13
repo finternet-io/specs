@@ -24,6 +24,7 @@
         "stateCommitment": "finternet:stateCommitment",
         "chainId": "finternet:chainId",
         "contractId": "finternet:contractId",
+        "walletAddress": "finternet:walletAddress",
         "syncStatus": { "@id": "finternet:syncStatus", "@type": "@vocab" },
         "lastSyncedAt": { "@id": "finternet:lastSyncedAt", "@type": "xsd:dateTime" },
 
