@@ -71,9 +71,9 @@ servers:
   - url: "http://localhost:3000"
     description: "Local Server"
 tags:
-  - name: "ChainRegistry"
+  - name: "Chain Registry"
     description: "Endpoints for chain registry management. Routes chain IDs to adapter services."
-  - name: "WalletProviderRegistry"
+  - name: "Wallet Provider Registry"
     description: "Endpoints for wallet provider registry management. Policy allow-list for wallet apps."
 
 # ===============================================================
@@ -85,7 +85,7 @@ paths:
   /v1/registry/chains/register:
     post:
       tags:
-        - "ChainRegistry"
+        - "Chain Registry"
       summary: "Register a new chain"
       description: |
         Register a blockchain network in the chain registry. Includes adapter configuration
@@ -248,7 +248,7 @@ paths:
   /v1/registry/chains/update:
     post:
       tags:
-        - "ChainRegistry"
+        - "Chain Registry"
       summary: "Update chain registry entry"
       description: |
         Update a chain's configuration — adapters, status, or metadata.
@@ -318,7 +318,7 @@ paths:
   /v1/registry/chains/get:
     post:
       tags:
-        - "ChainRegistry"
+        - "Chain Registry"
       summary: "Get chain details"
       description: "Retrieve detailed information about a specific chain by its network ID."
       security:
@@ -353,7 +353,7 @@ paths:
   /v1/registry/chains/search:
     post:
       tags:
-        - "ChainRegistry"
+        - "Chain Registry"
       summary: "Search chains"
       description: "Search and list registered chains with filters."
       security:
@@ -458,7 +458,7 @@ paths:
   /v1/registry/wallets/register:
     post:
       tags:
-        - "WalletProviderRegistry"
+        - "Wallet Provider Registry"
       summary: "Register a wallet provider"
       description: |
         Register a wallet application in the provider registry. This is a policy allow-list
@@ -573,7 +573,7 @@ paths:
   /v1/registry/wallets/update:
     post:
       tags:
-        - "WalletProviderRegistry"
+        - "Wallet Provider Registry"
       summary: "Update wallet provider"
       description: "Update a wallet provider's status, supported chains, or metadata."
       security:
@@ -629,7 +629,7 @@ paths:
   /v1/registry/wallets/get:
     post:
       tags:
-        - "WalletProviderRegistry"
+        - "Wallet Provider Registry"
       summary: "Get wallet provider details"
       description: "Retrieve detailed information about a specific wallet provider by its rdns identifier."
       security:
@@ -664,7 +664,7 @@ paths:
   /v1/registry/wallets/search:
     post:
       tags:
-        - "WalletProviderRegistry"
+        - "Wallet Provider Registry"
       summary: "Search wallet providers"
       description: "Search and list registered wallet providers with filters."
       security:

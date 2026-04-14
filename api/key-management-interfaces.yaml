@@ -68,7 +68,7 @@ servers:
   - url: "http://localhost:3000"
     description: "Local Development"
 tags:
-  - name: "KeyManagement"
+  - name: "Key Management"
     description: "Endpoints for cryptographic key generation, signing, and retrieval."
 
 # ===============================================================
@@ -79,7 +79,7 @@ paths:
   /v1/keys/generate:
     post:
       tags:
-        - "KeyManagement"
+        - "Key Management"
       summary: "Generate a new signing key"
       description: "Generates a new cryptographic signing key for the authenticated user. The key is stored securely in Vault and associated with the user's account."
       security:
@@ -145,7 +145,7 @@ paths:
   /v1/keys/sign:
     post:
       tags:
-        - "KeyManagement"
+        - "Key Management"
       summary: "Sign a message hash"
       description: "Signs a pre-hashed message using the user's specified key. The signing operation is performed securely in Vault using the user's authenticated session."
       security:
@@ -200,7 +200,7 @@ paths:
   /v1/keys/public:
     post:
       tags:
-        - "KeyManagement"
+        - "Key Management"
       summary: "Get public key"
       description: "Retrieves the public key for a given key reference. This is a read-only operation."
       security:

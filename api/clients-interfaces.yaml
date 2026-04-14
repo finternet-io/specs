@@ -33,7 +33,7 @@ servers:
     description: "Local Server"
 
 tags:
-  - name: "Clients"
+  - name: "API Clients"
     description: "Register, list, update, and deactivate API clients."
   - name: "Client Keys"
     description: "Create, list, and revoke developer tokens (API keys) for a client."
@@ -44,7 +44,7 @@ paths:
 
   /v1/clients/register:
     post:
-      tags: [Clients]
+      tags: [API Clients]
       summary: "Register a new API client"
       description: |
         Create a new API client. Returns the client profile (without a key —
@@ -85,7 +85,7 @@ paths:
 
   /v1/clients/get:
     post:
-      tags: [Clients]
+      tags: [API Clients]
       summary: "Get a single API client by ID"
       security:
         - developerToken: []
@@ -109,7 +109,7 @@ paths:
 
   /v1/clients/list:
     post:
-      tags: [Clients]
+      tags: [API Clients]
       summary: "List API clients with filters, pagination, and sortBy"
       security:
         - developerToken: []
@@ -132,7 +132,7 @@ paths:
 
   /v1/clients/update:
     post:
-      tags: [Clients]
+      tags: [API Clients]
       summary: "Update an API client (name, description, scopes, allowed operations)"
       description: |
         Covers the previous `update-scopes` operation — any subset of fields may be
@@ -160,7 +160,7 @@ paths:
 
   /v1/clients/deactivate:
     post:
-      tags: [Clients]
+      tags: [API Clients]
       summary: "Deactivate an API client"
       description: |
         Deactivating a client immediately invalidates every key it owns. Part of the

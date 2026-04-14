@@ -79,7 +79,7 @@ tags:
     description: "Endpoints for user registration, authentication, and account management."
   - name: "Address"
     description: "Endpoints for managing human-readable identifiers (Addresses)."
-  - name: "AccountKeys"
+  - name: "Account Keys"
     description: "Endpoints for managing additional public keys bound to a Finternet account (multi-device, hardware key rotation, agent keys)."
 
 # ===============================================================
@@ -558,7 +558,7 @@ paths:
 
   /v1/account/keys/register:
     post:
-      tags: [AccountKeys]
+      tags: [Account Keys]
       summary: "Register an additional public key for the calling account"
       description: |
         Bind an additional public key to the authenticated account. Used for adding a
@@ -599,7 +599,7 @@ paths:
 
   /v1/account/keys/remove:
     post:
-      tags: [AccountKeys]
+      tags: [Account Keys]
       summary: "Remove a public key from the calling account"
       description: |
         Revoke an account-bound public key. The primary key (the one initially provisioned
@@ -627,7 +627,7 @@ paths:
 
   /v1/account/keys/get:
     post:
-      tags: [AccountKeys]
+      tags: [Account Keys]
       summary: "Get a single public key for the calling account"
       security:
         - developerToken: []
@@ -651,7 +651,7 @@ paths:
 
   /v1/account/keys/search:
     post:
-      tags: [AccountKeys]
+      tags: [Account Keys]
       summary: "List/search public keys for an account"
       description: |
         Returns the keys bound to the calling account (or to the account specified by
