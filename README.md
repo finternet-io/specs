@@ -1,67 +1,58 @@
-# Finternet API Specs
+# Finternet Specifications
 
-Welcome to the Finternet API specs Documentation repository.
+Open specifications for the Finternet protocol — API contracts and JSON-LD schemas that define how applications interact with the Finternet developer platform.
 
-If you wish to learn more about the concept in detail, it is recommended to read the below BIS working paper and the companion technology architecture paper:
+To learn more about the Finternet concept:
 
-- [The Vision for the Future Financial System](http://bit.ly/finternet-vision)
+- [The Vision for the Future Financial System](http://bit.ly/finternet-vision) (BIS Working Paper)
 - [Technology Vision and Architecture](http://bit.ly/finternet-tech)
 
-Or check out this Fireside Chat at the BIS Innovation Hub: [Fireside Chat](https://www.youtube.com/watch?v=2-ukiKchQsI)
+## Repository Structure
 
+```
+specs/
+├── api/                        # OpenAPI 3.x API specifications
+│   ├── registry-interfaces.yaml      # Chain & Wallet Provider Registry
+│   ├── accounts-interfaces.yaml      # Account management & identity
+│   ├── clients-interfaces.yaml       # API client registration
+│   ├── delegations-interfaces.yaml   # Delegation & authorization
+│   ├── key-management-interfaces.yaml # Cryptographic key management
+│   ├── token-interfaces.yaml         # Token lifecycle & transactions
+│   └── adapter-interface.yaml        # Chain adapter interface
+│
+└── schemas/                    # JSON-LD schema definitions
+    ├── core/v1/                # Core primitives (Entity, Identifier)
+    ├── account/v1/             # Account domain
+    ├── token/v1/               # Token instances (UNITS)
+    ├── token-class/v1/         # Token class templates (FT, NFT, Credential)
+    ├── credential/v1/          # W3C Verifiable Credentials
+    └── transaction/v1/         # Transaction & audit records
+```
 
-# Use Cases
+## API Specifications
 
-The Finternet Sandbox is being modeled for the use cases and status as below:
+The `api/` directory contains OpenAPI specs for the Finternet Developer Platform, organized into four domains:
 
-| Use Case                               | Sandbox Status |
-| -------------------------------------- | -------------- |
-| Domestic money transfer                | In progress    |
-| Pledge land and obtain commercial loan | Yet to start   |
-| Cross Border                           | Yet to start   |
-| More use cases will be updated here    | Yet to start   |
+| Domain | Spec | Description |
+|--------|------|-------------|
+| **Registry** | `registry-interfaces.yaml` | Chain and wallet provider registry lookups |
+| **Access & Identity** | `accounts-interfaces.yaml` | Account creation, retrieval, and identity management |
+| | `clients-interfaces.yaml` | API client registration and credential management |
+| | `delegations-interfaces.yaml` | Delegation policies and authorization |
+| | `key-management-interfaces.yaml` | Cryptographic key lifecycle |
+| **Tokens** | `token-interfaces.yaml` | Token operations (mint, burn, transfer, freeze, lock), transaction tracking |
+| **Chains** | `adapter-interface.yaml` | Chain adapter interface for multi-ledger support |
 
-# Approach
+## Schemas
 
-![Finternet API Specs](/static/finternetApiSpec.png)
+The `schemas/` directory contains JSON-LD schema definitions following a **core-extension pattern**. Schemas define the semantic data model for all Finternet entities — accounts, tokens, token classes, credentials, and transactions.
 
-The specifications are being defined from the perspective of an “Application” which enables users with various use cases by connecting the following parties or entities:
+See [`schemas/README.md`](schemas/README.md) for the full architecture and usage guide.
 
-1. Application
-2. Higher order workflow layer
-3. Unified asset management platform
-4. Token/Asset manager
+## Contributing
 
-### Application
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute.
 
-The application layer provides the user interface to the finternet. It enables users with various workflows that can be performed across asset classes
+## License
 
-### Higher order workflow layer
-
-This layer facilitates the composability of Finternet ‘verbs’ by enabling new workflows that are made up of foundational asset management verbs. For example, a ‘trade’ operation could be composed of two ‘transfer’ operations.
-
-### Unified Asset Management Platform
-
-The platform comprises the ledger layer and the programmability layer. This facilitates bookkeeping and workflow management of tokenized assets.
-
-### Token/Asset manager
-
-An institution that is responsible for the issuance (tokenisation, detokenisation), management and synchronisation of a token with their private ledger
-
-## Ledger Interactions
-
-There are many interactions a user can have with the ledger.
-Some of the capabilities include:
-1. Identity management
-2. Asset tokenization
-3. Anchoring and querying proofs
-
-### Identity management
-
-####  Create identity
-
-The ledger provides identity management by creating a decentralized identity (DID) and anchoring it on the ledger.
-
-For example, this is how a token manager can create identity:
-
-![create_identity.png](/static/create_identity.png)
+This work is licensed under [CC BY-NC-SA 4.0](LICENSE.md).

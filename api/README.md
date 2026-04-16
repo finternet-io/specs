@@ -1,37 +1,20 @@
-# Finternet APIs
+# Finternet API Specifications
 
-This folder contains the API definitions for different layers involved in Finternet implementation.
+OpenAPI specifications for the Finternet Developer Platform.
 
-## Available APIs
+## Specs
 
-### Token Service API (`token-interfaces.yaml`)
+| Spec | Description |
+|------|-------------|
+| `registry-interfaces.yaml` | Chain Registry and Wallet Provider Registry |
+| `accounts-interfaces.yaml` | Account management, identity, and account keys |
+| `clients-interfaces.yaml` | API client registration and credentials |
+| `delegations-interfaces.yaml` | Delegation policies and authorization |
+| `key-management-interfaces.yaml` | Cryptographic key lifecycle management |
+| `token-interfaces.yaml` | Token lifecycle, transactions, and token classes |
+| `adapter-interface.yaml` | Chain adapter interface |
 
-Complete API specification for managing universal tokens (UNITS specification) with support for all lifecycle operations.
-
-**Key Endpoints:**
-
-#### Token Management
-- **POST `/v1/token/get`** - Retrieve detailed token information
-- **POST `/v1/token/search`** - Search tokens with filtering and pagination (owner inferred from JWT/ACL)
-- **POST `/v1/token/transact`** - Execute token operations (async)
-
-**Supported Operations:**
-- `mint` - Create new token instances
-- `burn` - Destroy tokens
-- `transfer` - Transfer ownership
-- `freeze`/`unfreeze` - Compliance holds
-- `lock`/`unlock` - Escrow/collateral
-- `redeem` - Redeem tokens
-- `update` - Update token data or metadata
-- `addClaim`/`revokeClaim` - Manage verifiable credentials
-
-#### Transaction Tracking
-- **POST `/v1/transaction/status`** - Poll async transaction status
-- **POST `/v1/transaction/get`** - Get complete transaction details
-- **POST `/v1/transaction/search`** - Search transactions with filters (initiator inferred from JWT/ACL)
-- **POST `/v1/token/transactions`** - Get token transaction history
-
-**API Design:**
+## API Design
 
 All APIs follow a consistent **envelope pattern** for protocol-agnostic communication:
 
@@ -46,11 +29,7 @@ All APIs follow a consistent **envelope pattern** for protocol-agnostic communic
     "developerToken": "dev_pk_...",
     "authorization": "Bearer user_jwt..."
   },
-  "payload": {
-    "operation": "mint",
-    "metadata": { /* token metadata */ },
-    "data": { /* token data */ }
-  },
+  "payload": { },
   "signature": {
     "type": "JsonWebSignature2020",
     "jws": "..."
@@ -58,84 +37,34 @@ All APIs follow a consistent **envelope pattern** for protocol-agnostic communic
 }
 ```
 
-**Response Envelope (Async - 202 Accepted):**
-```json
-{
-  "context": {
-    "id": "api.token.transact",
-    "status": "accepted",
-    "transactionId": "urn:uuid:tx-..."
-  },
-  "response": {
-    "txId": "urn:uuid:tx-...",
-    "status": "submitted",
-    "message": "Transaction submitted for processing"
-  }
-}
-```
-
-**Response Envelope (Success - 200 OK):**
+**Response Envelope:**
 ```json
 {
   "context": {
     "status": "successful"
   },
-  "response": {
-    /* operation results */
-  }
+  "response": { }
 }
 ```
 
-**Response Envelope (Error):**
-```json
-{
-  "context": {
-    "status": "failed",
-    "error": {
-      "code": "INSUFFICIENT_BALANCE",
-      "message": "Insufficient token balance for transfer"
-    }
-  },
-  "response": {}
-}
-```
-
-### Authentication & Authorization
+## Authentication
 
 Two-level security model:
 
 1. **Platform-Level (Developer Authentication)**
-   - `context.developerToken` - B2B Developer API Key/Token
-   - `context.developerSignature` - B2B Developer Signature (RFC 9421)
-   - Can be passed via HTTP headers: `Authorization: Bearer <token>` and `Signature: ...`
+   - `context.developerToken` — B2B Developer API Key/Token
+   - `context.developerSignature` — B2B Developer Signature (RFC 9421)
 
 2. **User-Level (End-User Authorization)**
-   - `context.authorization` - End-user JWT session token
-   - `signature` (top-level) - End-user JWS for critical operations
+   - `context.authorization` — End-user JWT session token
+   - `signature` (top-level) — End-user JWS for critical operations
 
-### Async Transaction Pattern
+## Async Transaction Pattern
 
-Token operations are asynchronous to support proof generation and ledger anchoring:
+Token operations are asynchronous:
 
-1. **Submit** - Call `/v1/token/transact` → Returns `202 Accepted` with `txId`
-2. **Poll** - Call `/v1/transaction/status` with `txId` → Check status progression
-3. **Complete** - When status is `completed`, call `/v1/transaction/get` for full details
+1. **Submit** — `POST /v1/token/transact` → `202 Accepted` with `txId`
+2. **Poll** — `POST /v1/transaction/status` → check status
+3. **Complete** — `POST /v1/transaction/get` for full details
 
-**Status Progression:**
-```
-submitted → pending → executing → completed/failed/rolled_back
-```
-
-## Account Service API (`accounts-interfaces.yaml`)
-
-API specification for account management, identity, and access control.
-
-*(Documentation to be expanded)*
-
-## Contributing
-
-Feel free to contribute by:
-- Reviewing the APIs and providing feedback
-- Suggesting improvements to the design
-- Adding use-case specific APIs
-- Reporting issues or inconsistencies
+Status progression: `submitted → pending → executing → completed/failed/rolled_back`
