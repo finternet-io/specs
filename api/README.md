@@ -12,6 +12,7 @@ OpenAPI specifications for the Finternet Developer Platform.
 | `delegations-interfaces.yaml` | Delegation policies and authorization |
 | `key-management-interfaces.yaml` | Cryptographic key lifecycle management |
 | `token-interfaces.yaml` | Token lifecycle, transactions, and token classes |
+| `token-class-config-interfaces.yaml` | Mapping between a token class and its token program (hooks, overrides) |
 | `adapter-interface.yaml` | Chain adapter interface |
 
 ## API Design
