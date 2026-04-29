@@ -1,0 +1,687 @@
+openapi: 3.0.4
+info:
+  title: "Finternet API - Token Class Configuration"
+  description: |
+    API specification for managing **Token Class Configurations** — the mapping
+    between a registered Token Class and the Token Program (and hooks) that
+    process its operations.
+
+    A Token Class describes *what* the token is (its metadata, identity model,
+    token standard). A Token Program describes *how* operations on it are
+    executed (mint, burn, transfer, freeze, etc.). The Token Class Config glues
+    the two together for a specific class — and additionally configures pre/post
+    hooks, per-operation overrides, and class-specific commitment settings.
+
+    A Token Class **must** have a corresponding Token Class Config before any
+    operation (mint, transfer, burn …) can be executed on tokens in that class.
+
+    ### Protocol-Agnostic Envelope
+    All API interactions use a standard JSON envelope.
+
+    **Request Envelope:**
+    ```json
+    {
+      "context": { ... },
+      "payload": { ... },
+      "signature": { ... } // Optional
+    }
+    ```
+
+    **Response Envelope (Success):**
+    ```json
+    {
+      "context": { ..., "status": "successful" },
+      "response": { ... }
+    }
+    ```
+
+    **Response Envelope (Error):**
+    ```json
+    {
+      "context": { ..., "status": "failed", "error": {"code": "...", "message": "..." }},
+      "response": {} // Empty on error
+    }
+    ```
+
+    ### Authentication and Authorization
+    This API uses the same two-level authorization model as other UNITS services:
+
+    1.  **Platform-Level (Developer) Authentication:**
+        * `context.developerToken`: The B2B Developer's API Key/Token.
+        * `context.developerSignature`: The B2B Developer's signature.
+
+    2.  **User-Level (End-User) Authorization:**
+        * `context.authorization`: The end-user's JWT session token.
+
+    ### RBAC Scopes
+
+    | Endpoint | Required scope |
+    |----------|----------------|
+    | `POST /v1/tokenclassconfig/register` | `tokenClassConfigs:manage` |
+    | `POST /v1/tokenclassconfig/update` | `tokenClassConfigs:manage` |
+    | `POST /v1/tokenclassconfig/get` | `tokenClassConfigs:view` |
+    | `POST /v1/tokenclassconfig/search` | `tokenClassConfigs:view` |
+
+    ### Rate limiting
+
+    Requests are subject to a scope-tier sliding-window rate limiter. When the
+    limit is exceeded the service responds with `429 Too Many Requests` and a
+    `Retry-After` header (see the `RateLimitedError` response component).
+  version: "1.0.0"
+servers:
+  - url: "https://foundry.finternetlab.io"
+    description: "Development Environment"
+  - url: "http://localhost:3000"
+    description: "Local Server"
+tags:
+  - name: "Token Class Configs"
+    description: "Endpoints for managing the mapping between a Token Class and a Token Program — including pre/post hooks, per-operation overrides, and commitment settings."
+
+# ===============================================================
+#   PATHS
+# ===============================================================
+
+paths:
+  /v1/tokenclassconfig/register:
+    post:
+      tags:
+        - "Token Class Configs"
+      summary: "Register a token class config"
+      description: |
+        Register a new configuration that maps a Token Class to a Token Program.
+        Optionally defines pre-hooks, post-hooks, per-operation overrides, and
+        class-specific settings (e.g., the state-commitment fields and algorithm).
+
+        **Required before any operation** (mint, burn, transfer, etc.) can be
+        executed on tokens of this class.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_RegisterTokenClassConfigRequest'
+            examples:
+              fungible_token:
+                summary: "Wire USDC to the reference fungible-token program"
+                value:
+                  context:
+                    id: "api.tokenclassconfig.register"
+                    version: "1.0"
+                    ts: "2026-03-05T10:00:00Z"
+                    msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer ..."
+                  payload:
+                    tokenClass: "USDC"
+                    tokenClassId: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
+                    programId: "reference-ft"
+                    preHooks:
+                      - hookId: "min-balance"
+                        priority: 1
+                        enabled: true
+                        operations: ["transfer", "burn"]
+                        config:
+                          minAmount: "1"
+                    postHooks:
+                      - hookId: "audit-log"
+                        priority: 1
+                        enabled: true
+                    operationOverrides:
+                      transfer:
+                        maxUnits: "1000000"
+                    config:
+                      stateCommitmentFields: ["owner", "state", "identities"]
+                      stateCommitmentAlgorithm: "sha256"
+              non_fungible_token:
+                summary: "Wire a credential token class to the reference NFT program"
+                value:
+                  context:
+                    id: "api.tokenclassconfig.register"
+                    version: "1.0"
+                    ts: "2026-03-05T10:05:00Z"
+                    msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer ..."
+                  payload:
+                    tokenClass: "FINT-KYC-CRED"
+                    tokenClassId: "c3d4e5f6-a7b8-9012-3456-7890abcdef12"
+                    programId: "reference-nft"
+                    preHooks:
+                      - hookId: "issuer-check"
+                        priority: 1
+                        enabled: true
+                        operations: ["mint"]
+                    config:
+                      stateCommitmentAlgorithm: "blake3"
+      responses:
+        '201':
+          description: "Token class config registered successfully"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TokenClassConfigDetails'
+              example:
+                context:
+                  id: "api.tokenclassconfig.register"
+                  version: "1.0"
+                  ts: "2026-03-05T10:00:00Z"
+                  msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                  status: "successful"
+                response:
+                  id: "550e8400-e29b-41d4-a716-446655440000"
+                  tokenClass: "USDC"
+                  tokenClassId: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
+                  programId: "reference-ft"
+                  preHooks:
+                    - hookId: "min-balance"
+                      priority: 1
+                      enabled: true
+                      operations: ["transfer", "burn"]
+                      config:
+                        minAmount: "1"
+                  postHooks:
+                    - hookId: "audit-log"
+                      priority: 1
+                      enabled: true
+                  operationOverrides:
+                    transfer:
+                      maxUnits: "1000000"
+                  config:
+                    stateCommitmentFields: ["owner", "state", "identities"]
+                    stateCommitmentAlgorithm: "sha256"
+                  status: "active"
+                  createdAt: "2026-03-05T10:00:00Z"
+                  updatedAt: "2026-03-05T10:00:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '409':
+          description: "A config already exists for this tokenClass"
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
+
+  /v1/tokenclassconfig/update:
+    post:
+      tags:
+        - "Token Class Configs"
+      summary: "Update a token class config"
+      description: |
+        Update an existing token class configuration. Supports partial update —
+        only fields present in the payload are modified. Use to add or rotate
+        hooks, change the program binding, or toggle status.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_UpdateTokenClassConfigRequest'
+            examples:
+              add_rate_limit_hook:
+                summary: "Add a rate-limiter hook"
+                value:
+                  context:
+                    id: "api.tokenclassconfig.update"
+                    version: "1.0"
+                    ts: "2026-03-05T11:00:00Z"
+                    msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef012"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer ..."
+                  payload:
+                    tokenClass: "USDC"
+                    preHooks:
+                      - hookId: "min-balance"
+                        priority: 1
+                        enabled: true
+                        operations: ["transfer", "burn"]
+                      - hookId: "rate-limiter"
+                        priority: 2
+                        enabled: true
+              suspend_class:
+                summary: "Suspend a token class"
+                value:
+                  context:
+                    id: "api.tokenclassconfig.update"
+                    version: "1.0"
+                    ts: "2026-03-05T11:30:00Z"
+                    msgId: "e5f6a7b8-c9d0-1234-5678-90abcdef0123"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer ..."
+                  payload:
+                    tokenClass: "USDC"
+                    status: "suspended"
+      responses:
+        '200':
+          description: "Token class config updated successfully"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TokenClassConfigDetails'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
+
+  /v1/tokenclassconfig/get:
+    post:
+      tags:
+        - "Token Class Configs"
+      summary: "Get a token class config"
+      description: "Retrieve the configuration registered for a specific token class."
+      security:
+        - developerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_GetTokenClassConfigRequest'
+            example:
+              context:
+                id: "api.tokenclassconfig.get"
+                version: "1.0"
+                ts: "2026-03-05T10:00:00Z"
+                msgId: "f6a7b8c9-d0e1-2345-6789-0abcdef01234"
+                developerToken: "dev_pk_..."
+                authorization: "Bearer ..."
+              payload:
+                tokenClass: "USDC"
+      responses:
+        '200':
+          description: "Token class config retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TokenClassConfigDetails'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
+
+  /v1/tokenclassconfig/search:
+    post:
+      tags:
+        - "Token Class Configs"
+      summary: "Search token class configs"
+      description: "Search and list token class configurations with filters and pagination."
+      security:
+        - developerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_SearchTokenClassConfigRequest'
+            example:
+              context:
+                id: "api.tokenclassconfig.search"
+                version: "1.0"
+                ts: "2026-03-05T10:00:00Z"
+                msgId: "a7b8c9d0-e1f2-3456-7890-abcdef012345"
+                developerToken: "dev_pk_..."
+                authorization: "Bearer ..."
+              payload:
+                filters:
+                  programId: "reference-ft"
+                  status: "active"
+                pagination:
+                  limit: 50
+                  offset: 0
+                sort:
+                  field: "createdAt"
+                  order: "desc"
+      responses:
+        '200':
+          description: "Token class configs retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TokenClassConfigList'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
+
+# ===============================================================
+#   COMPONENTS
+# ===============================================================
+
+components:
+  schemas:
+    # --- Shared Envelope Schemas ---
+    Context:
+      type: object
+      required: [id, version, ts, msgId]
+      properties:
+        id: { type: string, example: "api.tokenclassconfig.get" }
+        version: { type: string, example: "1.0" }
+        ts: { type: string, format: date-time }
+        msgId: { type: string, format: uuid }
+        developerToken: { type: string, nullable: true, description: "B2B Developer API Key/Token" }
+        developerSignature: { type: string, nullable: true, description: "B2B Developer Signature" }
+        authorization: { type: string, nullable: true, description: "End-user JWT session token" }
+    ResponseContext:
+      type: object
+      required: [id, version, ts, msgId, status]
+      properties:
+        id: { type: string }
+        version: { type: string }
+        ts: { type: string, format: date-time }
+        msgId: { type: string, format: uuid }
+        status: { type: string, enum: [successful, failed] }
+        error: { $ref: '#/components/schemas/ErrorPayload' }
+    ErrorPayload:
+      type: object
+      required: [code, message]
+      nullable: true
+      properties:
+        code: { type: string }
+        message: { type: string }
+    RequestContext:
+      type: object
+      required: [context, payload]
+      properties:
+        context: { $ref: '#/components/schemas/Context' }
+        payload: { type: object }
+    ApiResponse:
+      type: object
+      required: [context, response]
+      properties:
+        context: { $ref: '#/components/schemas/ResponseContext' }
+        response: { type: object }
+    ApiError:
+      type: object
+      required: [context, response]
+      properties:
+        context: { $ref: '#/components/schemas/ResponseContext' }
+        response: { type: object, example: {} }
+
+    PaginationRequest:
+      type: object
+      properties:
+        limit: { type: integer, default: 50, minimum: 1, maximum: 100 }
+        offset: { type: integer, default: 0, minimum: 0 }
+    PaginationResponse:
+      type: object
+      properties:
+        total: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }
+    SortRequest:
+      type: object
+      properties:
+        field: { type: string, enum: [createdAt, updatedAt, tokenClass], default: createdAt }
+        order: { type: string, enum: [asc, desc], default: desc }
+
+    # --- Hook Configuration ---
+    HookConfig:
+      type: object
+      required: [hookId, priority, enabled]
+      description: |
+        A pre- or post-hook bound to operations on this token class. Hooks run
+        in priority order (lower numbers first). Pre-hook failures abort the
+        operation; post-hook failures are logged but do not roll back state.
+      properties:
+        hookId:
+          type: string
+          description: "Identifier of the hook implementation registered with the runtime."
+          example: "min-balance"
+        priority:
+          type: integer
+          minimum: 0
+          description: "Execution order. Lower runs first."
+          example: 1
+        enabled:
+          type: boolean
+          description: "Whether this hook is currently active."
+          example: true
+        operations:
+          type: array
+          items: { type: string }
+          nullable: true
+          description: |
+            Limit this hook to specific operations (mint, burn, transfer, freeze,
+            unfreeze, lock, unlock, redeem, update, addClaim, revokeClaim).
+            If omitted, the hook applies to all operations.
+          example: ["transfer", "burn"]
+        config:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: "Hook-specific configuration. Schema is defined by the hook implementation."
+
+    # --- Token Class Config ---
+    TokenClassConfig:
+      type: object
+      required: [id, tokenClass, tokenClassId, programId, status]
+      description: "Configuration mapping a Token Class to a Token Program with hooks and per-operation overrides."
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: "Internal config record ID."
+        tokenClass:
+          type: string
+          description: "Token class identifier (e.g., the symbol or stable name)."
+          example: "USDC"
+        tokenClassId:
+          type: string
+          format: uuid
+          description: "UUID of the registered token class this config binds to."
+        programId:
+          type: string
+          description: "Token program identifier this class is bound to."
+          example: "reference-ft"
+        preHooks:
+          type: array
+          nullable: true
+          items: { $ref: '#/components/schemas/HookConfig' }
+          description: "Hooks executed before the operation. A failure aborts the operation."
+        postHooks:
+          type: array
+          nullable: true
+          items: { $ref: '#/components/schemas/HookConfig' }
+          description: "Hooks executed after the operation completes. Failures are logged but do not roll back state."
+        operationOverrides:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: |
+            Per-operation override settings keyed by operation name
+            (e.g., `mint`, `transfer`, `burn`). Schema is operation-specific.
+        config:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: |
+            Class-specific configuration. Recognised keys:
+              * `stateCommitmentFields` (string[]) — fields included in the per-token state-commitment chain.
+              * `stateCommitmentAlgorithm` (string) — hash algorithm. One of `sha256`, `blake3`.
+        status:
+          type: string
+          enum: [active, inactive, suspended]
+          description: "Current status of the config. Operations are only routed when status is `active`."
+          example: "active"
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    RegisterTokenClassConfigRequest:
+      type: object
+      required: [tokenClass, tokenClassId, programId]
+      properties:
+        tokenClass: { type: string, example: "USDC" }
+        tokenClassId: { type: string, format: uuid }
+        programId: { type: string, example: "reference-ft" }
+        preHooks:
+          type: array
+          items: { $ref: '#/components/schemas/HookConfig' }
+        postHooks:
+          type: array
+          items: { $ref: '#/components/schemas/HookConfig' }
+        operationOverrides:
+          type: object
+          additionalProperties: true
+        config:
+          type: object
+          additionalProperties: true
+
+    UpdateTokenClassConfigRequest:
+      type: object
+      required: [tokenClass]
+      properties:
+        tokenClass: { type: string, example: "USDC" }
+        programId: { type: string }
+        preHooks:
+          type: array
+          items: { $ref: '#/components/schemas/HookConfig' }
+        postHooks:
+          type: array
+          items: { $ref: '#/components/schemas/HookConfig' }
+        operationOverrides:
+          type: object
+          additionalProperties: true
+        config:
+          type: object
+          additionalProperties: true
+        status:
+          type: string
+          enum: [active, inactive, suspended]
+
+    GetTokenClassConfigRequest:
+      type: object
+      required: [tokenClass]
+      properties:
+        tokenClass: { type: string, example: "USDC" }
+
+    SearchTokenClassConfigRequest:
+      type: object
+      properties:
+        filters:
+          type: object
+          description: |
+            Search filters for token class configs.
+            Known fields: tokenClass, programId, status.
+          properties:
+            tokenClass: { type: string }
+            programId: { type: string }
+            status: { type: string }
+          additionalProperties: true
+        pagination: { $ref: '#/components/schemas/PaginationRequest' }
+        sort: { $ref: '#/components/schemas/SortRequest' }
+
+    TokenClassConfigList:
+      type: object
+      properties:
+        tokenClassConfigs:
+          type: array
+          items: { $ref: '#/components/schemas/TokenClassConfig' }
+        pagination: { $ref: '#/components/schemas/PaginationResponse' }
+
+    # --- Request/Response Envelopes ---
+    ApiRequest_RegisterTokenClassConfigRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/RegisterTokenClassConfigRequest' }
+    ApiRequest_UpdateTokenClassConfigRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/UpdateTokenClassConfigRequest' }
+    ApiRequest_GetTokenClassConfigRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/GetTokenClassConfigRequest' }
+    ApiRequest_SearchTokenClassConfigRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/SearchTokenClassConfigRequest' }
+    ApiResponse_TokenClassConfigDetails:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/TokenClassConfig' }
+    ApiResponse_TokenClassConfigList:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/TokenClassConfigList' }
+
+  # -------------------- Responses --------------------
+  responses:
+    UnauthorizedError:
+      description: "Authentication failed."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "AUTHENTICATION_FAILED", message: "Token invalid or expired." } }
+            response: {}
+    ForbiddenError:
+      description: "Forbidden. Insufficient permissions."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "PERMISSION_DENIED", message: "Insufficient permissions." } }
+            response: {}
+    NotFoundError:
+      description: "Resource not found."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "The requested resource was not found." } }
+            response: {}
+    BadRequestError:
+      description: "Invalid request."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "INVALID_REQUEST", message: "Invalid request parameters." } }
+            response: {}
+    RateLimitedError:
+      description: |
+        Request exceeded the scope-tier sliding-window rate limit. The `Retry-After`
+        response header indicates how long the caller should wait before retrying.
+      headers:
+        Retry-After:
+          schema: { type: integer, description: "Seconds to wait before retrying." }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "RATE_LIMITED", message: "Too many requests. Retry after 30s." } }
+            response: {}
+
+  # -------------------- Security --------------------
+  securitySchemes:
+    developerToken:
+      type: http
+      scheme: bearer
+      bearerFormat: "JWT or Opaque"
+      description: "B2B Developer API Key/Token in Authorization header."
+    developerSignature:
+      type: apiKey
+      in: header
+      name: Signature
+      description: "IETF HTTP Signature (RFC 9421) for message integrity."

@@ -18,6 +18,7 @@ specs/
 │   ├── delegations-interfaces.yaml   # Delegation & authorization
 │   ├── key-management-interfaces.yaml # Cryptographic key management
 │   ├── token-interfaces.yaml         # Token lifecycle & transactions
+│   ├── token-class-config-interfaces.yaml # Token class → program binding
 │   └── adapter-interface.yaml        # Chain adapter interface
 │
 └── schemas/                    # JSON-LD schema definitions
@@ -41,6 +42,7 @@ The `api/` directory contains OpenAPI specs for the Finternet Developer Platform
 | | `delegations-interfaces.yaml` | Delegation policies and authorization |
 | | `key-management-interfaces.yaml` | Cryptographic key lifecycle |
 | **Tokens** | `token-interfaces.yaml` | Token operations (mint, burn, transfer, freeze, lock), transaction tracking |
+| | `token-class-config-interfaces.yaml` | Token class → token program binding (hooks, per-operation overrides) |
 | **Chains** | `adapter-interface.yaml` | Chain adapter interface for multi-ledger support |
 
 ## Schemas
