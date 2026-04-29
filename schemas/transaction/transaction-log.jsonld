@@ -1,0 +1,52 @@
+{
+  "@context": "https://finternet-io.github.io/specs/schemas/transaction/v1/context.jsonld",
+  "@type": "TransactionLog",
+  "txId": "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd",
+  "correlationId": "payment-ref-2025-001",
+  "initiator": "did:web:alice.example",
+  "identities": [
+    {
+      "id": "did:web:alice.example",
+      "type": "owner"
+    },
+    {
+      "id": "did:web:bob.example",
+      "type": "owner"
+    }
+  ],
+  "tokenTransactions": [
+    {
+      "tokenTxId": "urn:uuid:tokentx-c8d4e5f6-a7b8-9012-3456-7890abcdef01",
+      "tokenId": "urn:uuid:usdc-a1b2c3d4",
+      "operation": "transfer"
+    }
+  ],
+  "workflowInstanceId": "urn:uuid:workflow-instance-123",
+  "status": "completed",
+  "timestamps": {
+    "submitted": "2025-01-04T14:30:00Z",
+    "started": "2025-01-04T14:30:01Z",
+    "completed": "2025-01-04T14:30:03Z",
+    "finalized": "2025-01-04T14:30:05Z"
+  },
+  "proofId": "urn:uuid:proof-a1b2c3d4-e5f6-7890",
+  "proofProfile": "zk-snark",
+  "batchId": "batch-2025-01-04-001",
+  "ledgerAnchors": [
+    {
+      "chain": "ethereum",
+      "network": "sepolia",
+      "txHash": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+      "blockId": "12345678",
+      "timestamp": "2025-01-04T14:30:10Z"
+    }
+  ],
+  "metadata": {
+    "description": "Transfer 100 USDC from Alice to Bob",
+    "tags": ["payment", "settlement"],
+    "custom": {
+      "paymentType": "instant",
+      "priority": "high"
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+    "@context": {
+        "@import": "https://finternet-io.github.io/specs/schemas/core/v1/context.jsonld",
+        "finternet": "https://finternet-io.github.io/specs/schemas/token/v1#",
+        "schema": "https://schema.org/",
+        "xsd": "http://www.w3.org/2001/XMLSchema#",
+
+        "Token": "finternet:Token",
+
+        "tokenId": { "@id": "@id", "@type": "@id" },
+        "tokenClassId": { "@id": "finternet:tokenClassId", "@type": "@id" },
+        "owner": "finternet:owner",
+
+        "identities": { "@id": "finternet:identities", "@container": "@set" },
+        "Identity": "finternet:Identity",
+        "identityType": { "@id": "finternet:identityType", "@type": "@vocab" },
+
+        "state": "finternet:state",
+        "TokenState": "finternet:TokenState",
+        "status": { "@id": "finternet:status", "@type": "@vocab" },
+        "balance": "finternet:balance",
+        "effectiveFrom": { "@id": "finternet:effectiveFrom", "@type": "xsd:dateTime" },
+        "effectiveUntil": { "@id": "finternet:effectiveUntil", "@type": "xsd:dateTime" },
+        "stateCommitment": "finternet:stateCommitment",
+        "chainId": "finternet:chainId",
+        "contractId": "finternet:contractId",
+        "walletAddress": "finternet:walletAddress",
+        "syncStatus": { "@id": "finternet:syncStatus", "@type": "@vocab" },
+        "lastSyncedAt": { "@id": "finternet:lastSyncedAt", "@type": "xsd:dateTime" },
+
+        "lockState": "finternet:lockState",
+        "LockState": "finternet:LockState",
+        "locked": { "@id": "finternet:locked", "@type": "xsd:boolean" },
+        "lockReason": "finternet:lockReason",
+        "lockedBy": { "@id": "finternet:lockedBy", "@type": "@id" },
+        "lockedAt": { "@id": "finternet:lockedAt", "@type": "xsd:dateTime" },
+
+        "relationships": { "@id": "finternet:relationships", "@container": "@set" },
+        "Relationship": "finternet:Relationship",
+        "dependsOn": { "@id": "finternet:dependsOn", "@type": "@id" },
+        "hasDependents": { "@id": "finternet:hasDependents", "@container": "@set", "@type": "@id" },
+        "relationshipType": { "@id": "finternet:relationshipType", "@type": "@vocab" },
+
+        "data": { "@id": "finternet:data", "@type": "@json" },
+        "createdAt": { "@id": "schema:dateCreated", "@type": "xsd:dateTime" },
+        "updatedAt": { "@id": "schema:dateModified", "@type": "xsd:dateTime" }
+    }
+}

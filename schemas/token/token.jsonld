@@ -1,0 +1,19 @@
+{
+  "@context": "https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld",
+  "@type": "Token",
+  "tokenId": "urn:finternet:token:alice-usdc-001",
+  "tokenClassId": "urn:finternet:token-class:usdc",
+  "owner": "alice",
+  "identities": [
+    {
+      "id": "alice",
+      "type": "owner"
+    }
+  ],
+  "state": {
+    "status": "active",
+    "balance": "100500000"
+  },
+  "createdAt": "2025-01-28T00:00:00Z",
+  "updatedAt": "2025-01-28T00:00:00Z"
+}

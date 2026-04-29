@@ -1,0 +1,61 @@
+{
+    "@context": {
+        "@import": "https://finternet-io.github.io/specs/schemas/core/v1/context.jsonld",
+        "finternet": "https://finternet-io.github.io/specs/schemas/token-class/v1#",
+        "schema": "https://schema.org/",
+        "xsd": "http://www.w3.org/2001/XMLSchema#",
+
+        "TokenClass": "finternet:TokenClass",
+        "FungibleTokenClass": "finternet:FungibleTokenClass",
+        "NonFungibleTokenClass": "finternet:NonFungibleTokenClass",
+        "CredentialTokenClass": "finternet:CredentialTokenClass",
+
+        "tokenClassId": { "@id": "@id", "@type": "@id" },
+        "tokenStandard": { "@id": "finternet:tokenStandard", "@container": "@list" },
+        "symbol": "finternet:symbol",
+        "decimals": { "@id": "finternet:decimals", "@type": "xsd:integer" },
+        "fungibility": { "@id": "finternet:fungibility", "@type": "@vocab" },
+
+        "flags": "finternet:flags",
+        "transactable": { "@id": "finternet:transactable", "@type": "xsd:boolean" },
+        "transferable": { "@id": "finternet:transferable", "@type": "xsd:boolean" },
+        "divisible": { "@id": "finternet:divisible", "@type": "xsd:boolean" },
+        "locked": { "@id": "finternet:locked", "@type": "xsd:boolean" },
+        "revocable": { "@id": "finternet:revocable", "@type": "xsd:boolean" },
+        "burnable": { "@id": "finternet:burnable", "@type": "xsd:boolean" },
+        "soulbound": { "@id": "finternet:soulbound", "@type": "xsd:boolean" },
+
+        "identities": { "@id": "finternet:identities", "@container": "@set" },
+        "Identity": "finternet:Identity",
+        "identityType": { "@id": "finternet:identityType", "@type": "@vocab" },
+        "roles": { "@id": "finternet:roles", "@container": "@set" },
+
+        "supply": "finternet:supply",
+        "Supply": "finternet:Supply",
+        "totalSupply": "finternet:totalSupply",
+        "maxSupply": "finternet:maxSupply",
+        "circulatingSupply": "finternet:circulatingSupply",
+
+        "stateModel": { "@id": "finternet:stateModel", "@type": "@vocab" },
+        "stateProvider": "finternet:stateProvider",
+        "StateProvider": "finternet:StateProvider",
+
+        "valuationType": { "@id": "finternet:valuationType", "@type": "@vocab" },
+        "valuationModel": "finternet:valuationModel",
+        "ValuationModel": "finternet:ValuationModel",
+
+        "chainDeployments": { "@id": "finternet:chainDeployments", "@container": "@set" },
+        "ChainDeployment": "finternet:ChainDeployment",
+        "chainId": "finternet:chainId",
+        "contractAddress": "finternet:contractAddress",
+        "assetType": { "@id": "finternet:assetType", "@type": "@vocab" },
+        "deploymentDecimals": { "@id": "finternet:deploymentDecimals", "@type": "xsd:integer" },
+
+        "programId": "finternet:programId",
+        "tags": { "@id": "schema:keywords", "@container": "@set" },
+        "externalUrls": { "@id": "schema:url", "@container": "@set", "@type": "@id" },
+        "metadata": { "@id": "finternet:metadata", "@type": "@json" },
+        "createdAt": { "@id": "schema:dateCreated", "@type": "xsd:dateTime" },
+        "updatedAt": { "@id": "schema:dateModified", "@type": "xsd:dateTime" }
+    }
+}

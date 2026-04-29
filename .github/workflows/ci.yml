@@ -1,0 +1,87 @@
+name: CI
+
+# Minimal PR CI for the specs repo. Phase 1 of the SOC 2 change-management
+# remediation (issue #19). Fires only on PRs targeting `main` so commits to
+# `alpha` and feature branches don't burn Actions minutes.
+#
+# Phase 1 verifies every spec parses cleanly and that OpenAPI files have the
+# required structural shape. Spectral / yamllint style enforcement is deferred
+# until the existing baseline is triaged in a follow-up.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "schemas/**"
+      - "api/**"
+      - ".github/workflows/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  specs:
+    name: Specs validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: JSON / JSON-LD syntax
+        shell: bash
+        run: |
+          set -e
+          fail=0
+          while IFS= read -r -d '' f; do
+            if ! jq empty "$f" 2>/dev/null; then
+              echo "::error file=$f::invalid JSON"
+              fail=1
+            fi
+          done < <(find schemas -type f \( -name '*.json' -o -name '*.jsonld' \) -print0)
+          exit "$fail"
+
+      - name: YAML syntax
+        shell: bash
+        run: |
+          set -e
+          fail=0
+          while IFS= read -r -d '' f; do
+            if ! yq eval '.' "$f" >/dev/null 2>&1; then
+              echo "::error file=$f::invalid YAML"
+              fail=1
+            fi
+          done < <(find api schemas -type f \( -name '*.yaml' -o -name '*.yml' \) -print0)
+          exit "$fail"
+
+      - name: OpenAPI structural shape
+        shell: bash
+        run: |
+          set -e
+          fail=0
+          for f in api/*.yaml; do
+            openapi=$(yq eval '.openapi // ""' "$f")
+            title=$(yq eval '.info.title // ""' "$f")
+            paths_kind=$(yq eval '.paths | type' "$f" 2>/dev/null || echo "")
+            if [ -z "$openapi" ]; then
+              echo "::error file=$f::missing top-level 'openapi' field"
+              fail=1
+              continue
+            fi
+            if [ -z "$title" ]; then
+              echo "::error file=$f::missing info.title"
+              fail=1
+              continue
+            fi
+            if [ "$paths_kind" != "!!map" ]; then
+              echo "::error file=$f::paths is missing or not a map (got: $paths_kind)"
+              fail=1
+              continue
+            fi
+            paths_count=$(yq eval '.paths | length' "$f")
+            echo "$f: ok (openapi $openapi, $paths_count paths)"
+          done
+          exit "$fail"

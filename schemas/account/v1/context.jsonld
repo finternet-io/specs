@@ -1,0 +1,92 @@
+{
+    "@context": [
+        "https://finternet-io.github.io/specs/schemas/core/v1/context.jsonld",
+        {
+            "finternet": "https://finternet-io.github.io/specs/schemas/account/v1#",
+            "schema": "https://schema.org/",
+            "didCore": "https://www.w3.org/ns/did/v1#",
+            "sec": "https://w3id.org/security#",
+            "EntityType": "finternet:EntityType",
+            "PERSONAL": "finternet:PERSONAL",
+            "BUSINESS": "finternet:BUSINESS",
+            "ContactMethodType": "finternet:ContactMethodType",
+            "EMAIL": "finternet:EMAIL",
+            "MOBILE": "finternet:MOBILE",
+            "ContactMethod": "finternet:ContactMethod",
+            "contactMethodType": "finternet:contactMethodType",
+            "contactValue": "finternet:contactValue",
+            "verified": {
+                "@id": "finternet:verified",
+                "@type": "xsd:boolean"
+            },
+            "verifiedAt": {
+                "@id": "finternet:verifiedAt",
+                "@type": "xsd:dateTime"
+            },
+            "primary": {
+                "@id": "finternet:primary",
+                "@type": "xsd:boolean"
+            },
+            "Flags": "finternet:Flags",
+            "notificationPreferences": {
+                "@id": "finternet:notificationPreferences",
+                "@type": "@json"
+            },
+            "Preferences": "finternet:Preferences",
+            "userDefinedTheme": "finternet:userDefinedTheme",
+            "language": "finternet:language",
+            "timezone": "finternet:timezone",
+            "Account": "finternet:Account",
+            "did": {
+                "@id": "didCore:id",
+                "@type": "@id"
+            },
+            "primaryAddress": "finternet:primaryAddress",
+            "publicKey": {
+                "@id": "finternet:publicKey",
+                "@type": "sec:Key"
+            },
+            "entityType": {
+                "@id": "finternet:entityType",
+                "@type": "@vocab"
+            },
+            "status": {
+                "@id": "finternet:accountStatus",
+                "@type": "@vocab"
+            },
+            "flags": {
+                "@id": "finternet:flags",
+                "@type": "@id"
+            },
+            "preferences": {
+                "@id": "finternet:preferences",
+                "@type": "@id"
+            },
+            "controllers": {
+                "@id": "sec:controller",
+                "@type": "@id",
+                "@container": "@set"
+            },
+            "contactMethods": {
+                "@id": "finternet:contactMethods",
+                "@type": "@id",
+                "@container": "@set"
+            },
+            "aliases": {
+                "@id": "finternet:aliases",
+                "@container": "@set"
+            },
+            "email": {
+                "@id": "schema:email",
+                "@type": "xsd:string"
+            },
+            "mobile": {
+                "@id": "schema:telephone",
+                "@type": "xsd:string"
+            },
+            "AccountStatus": "finternet:AccountStatus",
+            "ACTIVE": "finternet:ACTIVE",
+            "SUSPENDED": "finternet:SUSPENDED"
+        }
+    ]
+}

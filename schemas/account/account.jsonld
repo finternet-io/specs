@@ -1,0 +1,42 @@
+{
+    "@context": "https://finternet-io.github.io/specs/schemas/account/v1/context.jsonld",
+    "@type": "Account",
+    "@id": "urn:uuid:018b41f8-37c8-7c83-9429-7a670d8a598a",
+    "did": "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBa82SsoPfnH4Ujp",
+    "address": {
+        "identifierValue": "alice",
+        "identifierDomain": "finternet"
+    },
+    "name": "Alice Smith",
+    "mobile": "+919876543210",
+    "email": "alice.smith@example.com",
+    "entityType": "PERSONAL",
+    "status": "ACTIVE",
+    "flags": {
+        "notificationPreferences": {
+            "email": true,
+            "push": true,
+            "sms": false
+        }
+    },
+    "preferences": {
+        "userDefinedTheme": "dark",
+        "language": "en",
+        "timezone": "Asia/Kolkata"
+    },
+    "contactMethods": [
+        {
+            "type": "EMAIL",
+            "value": "alice.recovery@gmail.com",
+            "verified": true,
+            "primary": false,
+            "verifiedAt": "2025-11-10T10:30:00Z"
+        }
+    ],
+    "aliases": [
+        {
+            "identifierValue": "alice_temp",
+            "identifierDomain": "fin.act"
+        }
+    ]
+}

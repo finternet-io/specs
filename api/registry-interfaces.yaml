@@ -1,0 +1,1186 @@
+openapi: 3.0.4
+info:
+  title: "Finternet API - Registry Service"
+  description: |
+    API specification for the Finternet Registry service — chain and wallet provider registries.
+
+    These registries are centrally managed by UNITS and consumed by App Backends.
+    Token class registry endpoints are defined in `token-interfaces.yaml` under `/v1/registry/tokenclasses/*`.
+
+    ### Protocol-Agnostic Envelope
+    All API interactions use a standard JSON envelope.
+
+    **Request Envelope:**
+    ```json
+    {
+      "context": { ... },
+      "payload": { ... },
+      "signature": { ... } // Optional
+    }
+    ```
+
+    **Response Envelope (Success):**
+    ```json
+    {
+      "context": { ..., "status": "successful" },
+      "response": { ... }
+    }
+    ```
+
+    **Response Envelope (Error):**
+    ```json
+    {
+      "context": { ..., "status": "failed", "error": {"code": "...", "message": "..." }},
+      "response": {} // Empty on error
+    }
+    ```
+
+    ### Authentication and Authorization
+    This API uses the same two-level authorization model as the other UNITS services:
+
+    1.  **Platform-Level (Developer) Authentication:**
+        * `context.developerToken`: The B2B Developer's API Key/Token.
+        * `context.developerSignature`: The B2B Developer's signature.
+
+    2.  **Admin-Level Authorization:**
+        * Write operations (register, update) require admin privileges.
+        * Read operations (get, search) require developer authentication only.
+
+    ### RBAC Scopes
+
+    | Endpoint | Required scope |
+    |----------|----------------|
+    | `POST /v1/registry/chains/register` | `chains:manage` |
+    | `POST /v1/registry/chains/update` | `chains:manage` |
+    | `POST /v1/registry/chains/get` | `chains:view` |
+    | `POST /v1/registry/chains/search` | `chains:view` |
+    | `POST /v1/registry/wallets/register` | `wallets:manage` |
+    | `POST /v1/registry/wallets/update` | `wallets:manage` |
+    | `POST /v1/registry/wallets/get` | `wallets:view` |
+    | `POST /v1/registry/wallets/search` | `wallets:view` |
+
+    ### Rate limiting
+
+    Requests are subject to a scope-tier sliding-window rate limiter. When the limit
+    is exceeded the service responds with `429 Too Many Requests` and a `Retry-After`
+    header (see the `RateLimitedError` response component).
+  version: "1.0.0"
+servers:
+  - url: "https://foundry.finternetlab.io"
+    description: "Development Environment"
+  - url: "http://localhost:3000"
+    description: "Local Server"
+tags:
+  - name: "Chain Registry"
+    description: "Endpoints for chain registry management. Routes chain IDs to adapter services."
+  - name: "Wallet Provider Registry"
+    description: "Endpoints for wallet provider registry management. Policy allow-list for wallet apps."
+
+# ===============================================================
+#   PATHS
+# ===============================================================
+
+paths:
+  # -------------------- Chain Registry --------------------
+  /v1/registry/chains/register:
+    post:
+      tags:
+        - "Chain Registry"
+      summary: "Register a new chain"
+      description: |
+        Register a blockchain network in the chain registry. Includes adapter configuration
+        for routing balance queries and transaction operations to the appropriate adapter service(s).
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_RegisterChainRequest'
+            examples:
+              ethereum_mainnet:
+                summary: "Register Ethereum Mainnet"
+                value:
+                  context:
+                    id: "api.registry.chains.register"
+                    version: "1.0"
+                    ts: "2026-02-17T10:00:00Z"
+                    msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    developerToken: "dev_pk_..."
+                  payload:
+                    networkId: "eip155:1"
+                    name: "Ethereum Mainnet"
+                    chainFamily: "evm"
+                    isTestnet: false
+                    adapters:
+                      - url: "https://adapter-alchemy.finternet.io"
+                        type: "alchemy"
+                        priority: 1
+                        status: "active"
+                      - url: "https://adapter-kwala.finternet.io"
+                        type: "kwala"
+                        priority: 2
+                        status: "active"
+                    metadata:
+                      iconUrl: "https://assets.finternet.io/chains/ethereum.svg"
+                      explorers:
+                        - name: "Etherscan"
+                          url: "https://etherscan.io"
+                          type: "primary"
+                      nativeCurrency:
+                        name: "Ether"
+                        symbol: "ETH"
+                        decimals: 18
+                      blockTime: 12
+              polygon_mainnet:
+                summary: "Register Polygon Mainnet"
+                value:
+                  context:
+                    id: "api.registry.chains.register"
+                    version: "1.0"
+                    ts: "2026-02-17T10:00:00Z"
+                    msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef0"
+                    developerToken: "dev_pk_..."
+                  payload:
+                    networkId: "eip155:137"
+                    name: "Polygon Mainnet"
+                    chainFamily: "evm"
+                    isTestnet: false
+                    adapters:
+                      - url: "https://adapter-alchemy.finternet.io"
+                        type: "alchemy"
+                        priority: 1
+                        status: "active"
+                    metadata:
+                      iconUrl: "https://assets.finternet.io/chains/polygon.svg"
+                      explorers:
+                        - name: "Polygonscan"
+                          url: "https://polygonscan.com"
+                          type: "primary"
+                      nativeCurrency:
+                        name: "POL"
+                        symbol: "POL"
+                        decimals: 18
+                      blockTime: 2
+              sepolia_testnet:
+                summary: "Register Sepolia Testnet"
+                value:
+                  context:
+                    id: "api.registry.chains.register"
+                    version: "1.0"
+                    ts: "2026-02-17T10:00:00Z"
+                    msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef01"
+                    developerToken: "dev_pk_..."
+                  payload:
+                    networkId: "eip155:11155111"
+                    name: "Sepolia Testnet"
+                    chainFamily: "evm"
+                    isTestnet: true
+                    adapters:
+                      - url: "https://adapter-alchemy-testnet.finternet.io"
+                        type: "alchemy"
+                        priority: 1
+                        status: "active"
+                    metadata:
+                      iconUrl: "https://assets.finternet.io/chains/ethereum.svg"
+                      explorers:
+                        - name: "Sepolia Etherscan"
+                          url: "https://sepolia.etherscan.io"
+                          type: "primary"
+                      nativeCurrency:
+                        name: "Sepolia Ether"
+                        symbol: "ETH"
+                        decimals: 18
+      responses:
+        '201':
+          description: "Chain registered successfully"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_ChainDetails'
+              example:
+                context:
+                  id: "api.registry.chains.register"
+                  version: "1.0"
+                  ts: "2026-02-17T10:00:00Z"
+                  msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                  status: "successful"
+                response:
+                  id: "550e8400-e29b-41d4-a716-446655440000"
+                  networkId: "eip155:1"
+                  name: "Ethereum Mainnet"
+                  chainFamily: "evm"
+                  isTestnet: false
+                  status: "ACTIVE"
+                  adapters:
+                    - url: "https://adapter-alchemy.finternet.io"
+                      type: "alchemy"
+                      priority: 1
+                      status: "active"
+                    - url: "https://adapter-kwala.finternet.io"
+                      type: "kwala"
+                      priority: 2
+                      status: "active"
+                  metadata:
+                    iconUrl: "https://assets.finternet.io/chains/ethereum.svg"
+                    explorers:
+                      - name: "Etherscan"
+                        url: "https://etherscan.io"
+                        type: "primary"
+                    nativeCurrency:
+                      name: "Ether"
+                      symbol: "ETH"
+                      decimals: 18
+                    blockTime: 12
+                  createdAt: "2026-02-17T10:00:00Z"
+                  updatedAt: "2026-02-17T10:00:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '409':
+          description: "Chain with this networkId already exists"
+
+  /v1/registry/chains/update:
+    post:
+      tags:
+        - "Chain Registry"
+      summary: "Update chain registry entry"
+      description: |
+        Update a chain's configuration — adapters, status, or metadata.
+        Use this to add/remove adapters, change priorities, or deactivate a chain.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_UpdateChainRequest'
+            examples:
+              add_adapter:
+                summary: "Add a new adapter to Ethereum"
+                value:
+                  context:
+                    id: "api.registry.chains.update"
+                    version: "1.0"
+                    ts: "2026-02-17T11:00:00Z"
+                    msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef012"
+                    developerToken: "dev_pk_..."
+                  payload:
+                    networkId: "eip155:1"
+                    adapters:
+                      - url: "https://adapter-alchemy.finternet.io"
+                        type: "alchemy"
+                        priority: 1
+                        status: "active"
+                      - url: "https://adapter-kwala.finternet.io"
+                        type: "kwala"
+                        priority: 2
+                        status: "active"
+                      - url: "https://adapter-community.example.io"
+                        type: "community"
+                        priority: 3
+                        status: "active"
+              deactivate_chain:
+                summary: "Deactivate a chain"
+                value:
+                  context:
+                    id: "api.registry.chains.update"
+                    version: "1.0"
+                    ts: "2026-02-17T11:00:00Z"
+                    msgId: "e5f6a7b8-c9d0-1234-5678-90abcdef0123"
+                    developerToken: "dev_pk_..."
+                  payload:
+                    networkId: "eip155:11155111"
+                    status: "INACTIVE"
+      responses:
+        '200':
+          description: "Chain updated successfully"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_ChainDetails'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /v1/registry/chains/get:
+    post:
+      tags:
+        - "Chain Registry"
+      summary: "Get chain details"
+      description: "Retrieve detailed information about a specific chain by its network ID."
+      security:
+        - developerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_GetChainRequest'
+            example:
+              context:
+                id: "api.registry.chains.get"
+                version: "1.0"
+                ts: "2026-02-17T10:00:00Z"
+                msgId: "f6a7b8c9-d0e1-2345-6789-0abcdef01234"
+                developerToken: "dev_pk_..."
+              payload:
+                networkId: "eip155:1"
+      responses:
+        '200':
+          description: "Chain details retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_ChainDetails'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /v1/registry/chains/search:
+    post:
+      tags:
+        - "Chain Registry"
+      summary: "Search chains"
+      description: "Search and list registered chains with filters."
+      security:
+        - developerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_SearchChainsRequest'
+            examples:
+              active_mainnets:
+                summary: "List all active mainnets"
+                value:
+                  context:
+                    id: "api.registry.chains.search"
+                    version: "1.0"
+                    ts: "2026-02-17T10:00:00Z"
+                    msgId: "a7b8c9d0-e1f2-3456-7890-abcdef012345"
+                    developerToken: "dev_pk_..."
+                  payload:
+                    filters:
+                      status: "ACTIVE"
+                      isTestnet: false
+                    pagination:
+                      limit: 50
+                      offset: 0
+                    sortBy:
+                      field: "name"
+                      order: "asc"
+              evm_chains:
+                summary: "List all EVM chains"
+                value:
+                  context:
+                    id: "api.registry.chains.search"
+                    version: "1.0"
+                    ts: "2026-02-17T10:00:00Z"
+                    msgId: "b8c9d0e1-f2a3-4567-8901-bcdef0123456"
+                    developerToken: "dev_pk_..."
+                  payload:
+                    filters:
+                      chainFamily: "evm"
+                    pagination:
+                      limit: 50
+                      offset: 0
+      responses:
+        '200':
+          description: "Chain list retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_ChainList'
+              example:
+                context:
+                  id: "api.registry.chains.search"
+                  version: "1.0"
+                  ts: "2026-02-17T10:00:00Z"
+                  msgId: "a7b8c9d0-e1f2-3456-7890-abcdef012345"
+                  status: "successful"
+                response:
+                  chains:
+                    - id: "550e8400-e29b-41d4-a716-446655440000"
+                      networkId: "eip155:1"
+                      name: "Ethereum Mainnet"
+                      chainFamily: "evm"
+                      isTestnet: false
+                      status: "ACTIVE"
+                      adapters:
+                        - url: "https://adapter-alchemy.finternet.io"
+                          type: "alchemy"
+                          priority: 1
+                          status: "active"
+                      metadata:
+                        iconUrl: "https://assets.finternet.io/chains/ethereum.svg"
+                        nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }
+                      createdAt: "2026-02-17T10:00:00Z"
+                      updatedAt: "2026-02-17T10:00:00Z"
+                    - id: "660e8400-e29b-41d4-a716-446655440001"
+                      networkId: "eip155:137"
+                      name: "Polygon Mainnet"
+                      chainFamily: "evm"
+                      isTestnet: false
+                      status: "ACTIVE"
+                      adapters:
+                        - url: "https://adapter-alchemy.finternet.io"
+                          type: "alchemy"
+                          priority: 1
+                          status: "active"
+                      metadata:
+                        iconUrl: "https://assets.finternet.io/chains/polygon.svg"
+                        nativeCurrency: { name: "POL", symbol: "POL", decimals: 18 }
+                      createdAt: "2026-02-17T10:00:00Z"
+                      updatedAt: "2026-02-17T10:00:00Z"
+                  pagination:
+                    total: 2
+                    limit: 50
+                    offset: 0
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  # -------------------- Wallet Provider Registry --------------------
+  /v1/registry/wallets/register:
+    post:
+      tags:
+        - "Wallet Provider Registry"
+      summary: "Register a wallet provider"
+      description: |
+        Register a wallet application in the provider registry. This is a policy allow-list
+        consumed by App Backends — not enforced by UNITS directly.
+        Uses `rdns` (EIP-6963 standard) as the universal, library-agnostic identifier.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_RegisterWalletProviderRequest'
+            examples:
+              metamask:
+                summary: "Register MetaMask"
+                value:
+                  context:
+                    id: "api.registry.wallets.register"
+                    version: "1.0"
+                    ts: "2026-02-17T10:00:00Z"
+                    msgId: "c9d0e1f2-a3b4-5678-9012-cdef01234567"
+                    developerToken: "dev_pk_..."
+                  payload:
+                    name: "MetaMask"
+                    rdns: "io.metamask"
+                    supportedChains: ["eip155:1", "eip155:137", "eip155:8453", "eip155:42161", "eip155:56", "eip155:10"]
+                    metadata:
+                      iconUrl: "https://assets.finternet.io/wallets/metamask.svg"
+                      website: "https://metamask.io"
+                      description: "A crypto wallet & gateway to blockchain apps"
+                      platforms: ["browser", "mobile"]
+                      deepLink: "metamask://"
+                      universalLink: "https://metamask.app.link/"
+              coinbase:
+                summary: "Register Coinbase Wallet"
+                value:
+                  context:
+                    id: "api.registry.wallets.register"
+                    version: "1.0"
+                    ts: "2026-02-17T10:00:00Z"
+                    msgId: "d0e1f2a3-b4c5-6789-0123-def012345678"
+                    developerToken: "dev_pk_..."
+                  payload:
+                    name: "Coinbase Wallet"
+                    rdns: "com.coinbase.wallet"
+                    supportedChains: ["eip155:1", "eip155:137", "eip155:8453", "eip155:42161", "eip155:10"]
+                    metadata:
+                      iconUrl: "https://assets.finternet.io/wallets/coinbase.svg"
+                      website: "https://www.coinbase.com/wallet"
+                      description: "Your key to the world of crypto"
+                      platforms: ["browser", "mobile"]
+                      deepLink: "cbwallet://"
+              trust_wallet:
+                summary: "Register Trust Wallet"
+                value:
+                  context:
+                    id: "api.registry.wallets.register"
+                    version: "1.0"
+                    ts: "2026-02-17T10:00:00Z"
+                    msgId: "e1f2a3b4-c5d6-7890-1234-ef0123456789"
+                    developerToken: "dev_pk_..."
+                  payload:
+                    name: "Trust Wallet"
+                    rdns: "com.trustwallet.app"
+                    supportedChains: ["eip155:1", "eip155:137", "eip155:56", "eip155:42161"]
+                    metadata:
+                      iconUrl: "https://assets.finternet.io/wallets/trust.svg"
+                      website: "https://trustwallet.com"
+                      description: "The most trusted & secure crypto wallet"
+                      platforms: ["mobile"]
+                      deepLink: "trust://"
+      responses:
+        '201':
+          description: "Wallet provider registered successfully"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_WalletProviderDetails'
+              example:
+                context:
+                  id: "api.registry.wallets.register"
+                  version: "1.0"
+                  ts: "2026-02-17T10:00:00Z"
+                  msgId: "c9d0e1f2-a3b4-5678-9012-cdef01234567"
+                  status: "successful"
+                response:
+                  id: "770e8400-e29b-41d4-a716-446655440002"
+                  name: "MetaMask"
+                  rdns: "io.metamask"
+                  status: "ACTIVE"
+                  supportedChains: ["eip155:1", "eip155:137", "eip155:8453", "eip155:42161", "eip155:56", "eip155:10"]
+                  metadata:
+                    iconUrl: "https://assets.finternet.io/wallets/metamask.svg"
+                    website: "https://metamask.io"
+                    description: "A crypto wallet & gateway to blockchain apps"
+                    platforms: ["browser", "mobile"]
+                    deepLink: "metamask://"
+                    universalLink: "https://metamask.app.link/"
+                  createdAt: "2026-02-17T10:00:00Z"
+                  updatedAt: "2026-02-17T10:00:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '409':
+          description: "Wallet provider with this rdns already exists"
+
+  /v1/registry/wallets/update:
+    post:
+      tags:
+        - "Wallet Provider Registry"
+      summary: "Update wallet provider"
+      description: "Update a wallet provider's status, supported chains, or metadata."
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_UpdateWalletProviderRequest'
+            examples:
+              update_chains:
+                summary: "Update supported chains for MetaMask"
+                value:
+                  context:
+                    id: "api.registry.wallets.update"
+                    version: "1.0"
+                    ts: "2026-02-17T11:00:00Z"
+                    msgId: "f2a3b4c5-d6e7-8901-2345-f01234567890"
+                    developerToken: "dev_pk_..."
+                  payload:
+                    rdns: "io.metamask"
+                    supportedChains: ["eip155:1", "eip155:137", "eip155:8453", "eip155:42161", "eip155:56", "eip155:10", "eip155:59144"]
+              deactivate_wallet:
+                summary: "Deactivate a wallet provider"
+                value:
+                  context:
+                    id: "api.registry.wallets.update"
+                    version: "1.0"
+                    ts: "2026-02-17T11:00:00Z"
+                    msgId: "a3b4c5d6-e7f8-9012-3456-012345678901"
+                    developerToken: "dev_pk_..."
+                  payload:
+                    rdns: "com.suspicious.wallet"
+                    status: "BLOCKED"
+      responses:
+        '200':
+          description: "Wallet provider updated successfully"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_WalletProviderDetails'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /v1/registry/wallets/get:
+    post:
+      tags:
+        - "Wallet Provider Registry"
+      summary: "Get wallet provider details"
+      description: "Retrieve detailed information about a specific wallet provider by its rdns identifier."
+      security:
+        - developerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_GetWalletProviderRequest'
+            example:
+              context:
+                id: "api.registry.wallets.get"
+                version: "1.0"
+                ts: "2026-02-17T10:00:00Z"
+                msgId: "b4c5d6e7-f8a9-0123-4567-123456789012"
+                developerToken: "dev_pk_..."
+              payload:
+                rdns: "io.metamask"
+      responses:
+        '200':
+          description: "Wallet provider details retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_WalletProviderDetails'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /v1/registry/wallets/search:
+    post:
+      tags:
+        - "Wallet Provider Registry"
+      summary: "Search wallet providers"
+      description: "Search and list registered wallet providers with filters."
+      security:
+        - developerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_SearchWalletProvidersRequest'
+            examples:
+              all_active:
+                summary: "List all active wallet providers"
+                value:
+                  context:
+                    id: "api.registry.wallets.search"
+                    version: "1.0"
+                    ts: "2026-02-17T10:00:00Z"
+                    msgId: "c5d6e7f8-a9b0-1234-5678-234567890123"
+                    developerToken: "dev_pk_..."
+                  payload:
+                    filters:
+                      status: "ACTIVE"
+                    pagination:
+                      limit: 50
+                      offset: 0
+              by_chain:
+                summary: "Find wallets supporting Ethereum mainnet"
+                value:
+                  context:
+                    id: "api.registry.wallets.search"
+                    version: "1.0"
+                    ts: "2026-02-17T10:00:00Z"
+                    msgId: "d6e7f8a9-b0c1-2345-6789-345678901234"
+                    developerToken: "dev_pk_..."
+                  payload:
+                    filters:
+                      "supportedChains": "eip155:1"
+                    pagination:
+                      limit: 50
+                      offset: 0
+      responses:
+        '200':
+          description: "Wallet provider list retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_WalletProviderList'
+              example:
+                context:
+                  id: "api.registry.wallets.search"
+                  version: "1.0"
+                  ts: "2026-02-17T10:00:00Z"
+                  msgId: "c5d6e7f8-a9b0-1234-5678-234567890123"
+                  status: "successful"
+                response:
+                  walletProviders:
+                    - id: "770e8400-e29b-41d4-a716-446655440002"
+                      name: "MetaMask"
+                      rdns: "io.metamask"
+                      status: "ACTIVE"
+                      supportedChains: ["eip155:1", "eip155:137", "eip155:8453"]
+                      metadata:
+                        iconUrl: "https://assets.finternet.io/wallets/metamask.svg"
+                        website: "https://metamask.io"
+                        platforms: ["browser", "mobile"]
+                      createdAt: "2026-02-17T10:00:00Z"
+                      updatedAt: "2026-02-17T10:00:00Z"
+                    - id: "880e8400-e29b-41d4-a716-446655440003"
+                      name: "Coinbase Wallet"
+                      rdns: "com.coinbase.wallet"
+                      status: "ACTIVE"
+                      supportedChains: ["eip155:1", "eip155:137", "eip155:8453"]
+                      metadata:
+                        iconUrl: "https://assets.finternet.io/wallets/coinbase.svg"
+                        website: "https://www.coinbase.com/wallet"
+                        platforms: ["browser", "mobile"]
+                      createdAt: "2026-02-17T10:00:00Z"
+                      updatedAt: "2026-02-17T10:00:00Z"
+                  pagination:
+                    total: 2
+                    limit: 50
+                    offset: 0
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+# ===============================================================
+#   COMPONENTS
+# ===============================================================
+
+components:
+  schemas:
+    # --- Shared Envelope Schemas ---
+    Context:
+      type: object
+      required: [id, version, ts, msgId]
+      properties:
+        id: { type: string, example: "api.registry.chains.get" }
+        version: { type: string, example: "1.0" }
+        ts: { type: string, format: date-time }
+        msgId: { type: string, format: uuid }
+        developerToken: { type: string, nullable: true, description: "B2B Developer API Key/Token" }
+        developerSignature: { type: string, nullable: true, description: "B2B Developer Signature" }
+    ResponseContext:
+      type: object
+      required: [id, version, ts, msgId, status]
+      properties:
+        id: { type: string }
+        version: { type: string }
+        ts: { type: string, format: date-time }
+        msgId: { type: string, format: uuid }
+        status: { type: string, enum: [successful, failed] }
+        error: { $ref: '#/components/schemas/ErrorPayload' }
+    ErrorPayload:
+      type: object
+      required: [code, message]
+      nullable: true
+      properties:
+        code: { type: string }
+        message: { type: string }
+    RequestContext:
+      type: object
+      required: [context, payload]
+      properties:
+        context: { $ref: '#/components/schemas/Context' }
+        payload: { type: object }
+    ApiResponse:
+      type: object
+      required: [context, response]
+      properties:
+        context: { $ref: '#/components/schemas/ResponseContext' }
+        response: { type: object }
+    ApiError:
+      type: object
+      required: [context, response]
+      properties:
+        context: { $ref: '#/components/schemas/ResponseContext' }
+        response: { type: object, example: {} }
+
+    PaginationRequest:
+      type: object
+      properties:
+        limit: { type: integer, default: 50, minimum: 1, maximum: 100 }
+        offset: { type: integer, default: 0, minimum: 0 }
+    PaginationResponse:
+      type: object
+      properties:
+        total: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }
+    SortRequest:
+      type: object
+      properties:
+        field: { type: string, enum: [createdAt, updatedAt, name], default: createdAt }
+        order: { type: string, enum: [asc, desc], default: desc }
+
+    # --- Chain Registry Schemas ---
+
+    AdapterConfig:
+      type: object
+      required: [url, type, priority, status]
+      description: "Configuration for a chain adapter service"
+      properties:
+        url:
+          type: string
+          format: uri
+          description: "Base URL of the adapter service"
+          example: "https://adapter-alchemy.finternet.io"
+        type:
+          type: string
+          description: "Adapter type identifier (e.g., alchemy, kwala, community)"
+          example: "alchemy"
+        priority:
+          type: integer
+          minimum: 1
+          description: "Selection priority (1 = highest). Used for failover ordering."
+          example: 1
+        status:
+          type: string
+          enum: [active, inactive, deprecated]
+          description: "Adapter operational status"
+          example: "active"
+
+    Chain:
+      type: object
+      required: [id, networkId, name, chainFamily, isTestnet, status, adapters]
+      description: "Blockchain network registry entry"
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: "Internal registry ID"
+        networkId:
+          type: string
+          description: "CAIP-2 chain identifier"
+          example: "eip155:1"
+        name:
+          type: string
+          description: "Human-readable chain name"
+          example: "Ethereum Mainnet"
+        chainFamily:
+          type: string
+          enum: [evm, solana, cosmos, substrate]
+          description: "Chain protocol family"
+          example: "evm"
+        isTestnet:
+          type: boolean
+          description: "Whether this is a test network"
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE, DEPRECATED]
+          description: "Registry status"
+          example: "ACTIVE"
+        adapters:
+          type: array
+          items: { $ref: '#/components/schemas/AdapterConfig' }
+          description: "Adapter service configurations, ordered by priority"
+        metadata:
+          type: object
+          description: "Extensible chain metadata (icons, explorers, native currency, etc.)"
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    RegisterChainRequest:
+      type: object
+      required: [networkId, name, chainFamily]
+      properties:
+        networkId: { type: string, example: "eip155:1" }
+        name: { type: string, example: "Ethereum Mainnet" }
+        chainFamily: { type: string, enum: [evm, solana, cosmos, substrate] }
+        isTestnet: { type: boolean, default: false }
+        adapters:
+          type: array
+          items: { $ref: '#/components/schemas/AdapterConfig' }
+        metadata:
+          type: object
+          additionalProperties: true
+
+    UpdateChainRequest:
+      type: object
+      required: [networkId]
+      properties:
+        networkId: { type: string, example: "eip155:1" }
+        name: { type: string }
+        status: { type: string, enum: [ACTIVE, INACTIVE, DEPRECATED] }
+        adapters:
+          type: array
+          items: { $ref: '#/components/schemas/AdapterConfig' }
+          description: "Full replacement of adapters list"
+        metadata:
+          type: object
+          additionalProperties: true
+
+    GetChainRequest:
+      type: object
+      required: [networkId]
+      properties:
+        networkId: { type: string, example: "eip155:1" }
+
+    SearchChainsRequest:
+      type: object
+      properties:
+        filters:
+          type: object
+          description: |
+            Search filters for chains.
+            Known fields: status, chainFamily, isTestnet, name.
+          properties:
+            status: { type: string, description: "Filter by registry status" }
+            chainFamily: { type: string, description: "Filter by chain family (evm, solana, etc.)" }
+            isTestnet: { type: boolean, description: "Filter by testnet flag" }
+          additionalProperties: true
+        pagination: { $ref: '#/components/schemas/PaginationRequest' }
+        sort: { $ref: '#/components/schemas/SortRequest' }
+
+    ChainList:
+      type: object
+      properties:
+        chains:
+          type: array
+          items: { $ref: '#/components/schemas/Chain' }
+        pagination: { $ref: '#/components/schemas/PaginationResponse' }
+
+    # --- Wallet Provider Registry Schemas ---
+
+    WalletProvider:
+      type: object
+      required: [id, name, rdns, status]
+      description: "Wallet application provider registry entry"
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: "Internal registry ID"
+        name:
+          type: string
+          description: "Wallet provider display name"
+          example: "MetaMask"
+        rdns:
+          type: string
+          description: "EIP-6963 reverse domain identifier (library-agnostic)"
+          example: "io.metamask"
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE, BLOCKED]
+          description: "Registry status. BLOCKED means regulatory action."
+          example: "ACTIVE"
+        supportedChains:
+          type: array
+          items: { type: string }
+          description: "CAIP-2 chain IDs this wallet supports"
+          example: ["eip155:1", "eip155:137"]
+        metadata:
+          type: object
+          description: "Extensible wallet metadata (icon, website, platforms, deep links, etc.)"
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    RegisterWalletProviderRequest:
+      type: object
+      required: [name, rdns]
+      properties:
+        name: { type: string, example: "MetaMask" }
+        rdns: { type: string, example: "io.metamask" }
+        supportedChains:
+          type: array
+          items: { type: string }
+          example: ["eip155:1", "eip155:137"]
+        metadata:
+          type: object
+          additionalProperties: true
+
+    UpdateWalletProviderRequest:
+      type: object
+      required: [rdns]
+      properties:
+        rdns: { type: string, example: "io.metamask" }
+        name: { type: string }
+        status: { type: string, enum: [ACTIVE, INACTIVE, BLOCKED] }
+        supportedChains:
+          type: array
+          items: { type: string }
+        metadata:
+          type: object
+          additionalProperties: true
+
+    GetWalletProviderRequest:
+      type: object
+      required: [rdns]
+      properties:
+        rdns: { type: string, example: "io.metamask" }
+
+    SearchWalletProvidersRequest:
+      type: object
+      properties:
+        filters:
+          type: object
+          description: |
+            Search filters for wallet providers.
+            Known fields: status, name, rdns, supportedChains.
+          properties:
+            status: { type: string }
+            supportedChains: { type: string, description: "Filter by a chain ID the wallet supports" }
+          additionalProperties: true
+        pagination: { $ref: '#/components/schemas/PaginationRequest' }
+        sort: { $ref: '#/components/schemas/SortRequest' }
+
+    WalletProviderList:
+      type: object
+      properties:
+        walletProviders:
+          type: array
+          items: { $ref: '#/components/schemas/WalletProvider' }
+        pagination: { $ref: '#/components/schemas/PaginationResponse' }
+
+    # --- Request Envelopes ---
+
+    ApiRequest_RegisterChainRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/RegisterChainRequest' }
+
+    ApiRequest_UpdateChainRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/UpdateChainRequest' }
+
+    ApiRequest_GetChainRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/GetChainRequest' }
+
+    ApiRequest_SearchChainsRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/SearchChainsRequest' }
+
+    ApiResponse_ChainDetails:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/Chain' }
+
+    ApiResponse_ChainList:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/ChainList' }
+
+    ApiRequest_RegisterWalletProviderRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/RegisterWalletProviderRequest' }
+
+    ApiRequest_UpdateWalletProviderRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/UpdateWalletProviderRequest' }
+
+    ApiRequest_GetWalletProviderRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/GetWalletProviderRequest' }
+
+    ApiRequest_SearchWalletProvidersRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/SearchWalletProvidersRequest' }
+
+    ApiResponse_WalletProviderDetails:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/WalletProvider' }
+
+    ApiResponse_WalletProviderList:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/WalletProviderList' }
+
+  # -------------------- Responses --------------------
+  responses:
+    UnauthorizedError:
+      description: "Authentication failed."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "AUTHENTICATION_FAILED", message: "Token invalid or expired." } }
+            response: {}
+    ForbiddenError:
+      description: "Forbidden. Insufficient permissions."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "PERMISSION_DENIED", message: "Insufficient permissions." } }
+            response: {}
+    NotFoundError:
+      description: "Resource not found."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "The requested resource was not found." } }
+            response: {}
+    BadRequestError:
+      description: "Invalid request."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "INVALID_REQUEST", message: "Invalid request parameters." } }
+            response: {}
+    RateLimitedError:
+      description: |
+        Request exceeded the scope-tier sliding-window rate limit. The `Retry-After`
+        response header indicates how long the caller should wait before retrying.
+      headers:
+        Retry-After:
+          schema: { type: integer, description: "Seconds to wait before retrying." }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "RATE_LIMITED", message: "Too many requests. Retry after 30s." } }
+            response: {}
+
+  # -------------------- Security --------------------
+  securitySchemes:
+    developerToken:
+      type: http
+      scheme: bearer
+      bearerFormat: "JWT or Opaque"
+      description: "B2B Developer API Key/Token in Authorization header."
+    developerSignature:
+      type: apiKey
+      in: header
+      name: Signature
+      description: "IETF HTTP Signature (RFC 9421) for message integrity."

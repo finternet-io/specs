@@ -1,0 +1,697 @@
+openapi: 3.0.4
+info:
+  title: "Finternet API - API Clients and Developer Tokens"
+  description: |
+    API specification for API client and developer-token management in UNITS.
+
+    An **API client** represents a developer or application that integrates with the
+    Finternet platform. Each client:
+
+    - Owns one or more **API keys** (developer tokens). Keys are hashed with SHA-256
+      before storage; the plaintext is returned **once** at creation time and must be
+      captured by the caller.
+    - Is granted a set of **scopes** (see the RBAC vocabulary under
+      `#/components/schemas/Scope`). Scopes are enforced on every endpoint; calls with
+      an insufficient scope return `403 PERMISSION_DENIED`.
+    - May have `allowedOperations` restricting which token operations the client can
+      perform for each token class.
+
+    All endpoints follow the standard envelope (`context`/`payload` → `context`/`response`).
+
+    ### Rate limiting
+
+    Every request is passed through a scope-tier sliding-window rate limiter. When the
+    limit is exceeded the service responds with `429 Too Many Requests` and a
+    `Retry-After` header indicating when the caller may retry.
+
+  version: "1.0.0"
+
+servers:
+  - url: "https://foundry.finternetlab.io"
+    description: "Development Environment"
+  - url: "http://localhost:3000"
+    description: "Local Server"
+
+tags:
+  - name: "API Clients"
+    description: "Register, list, update, and deactivate API clients."
+  - name: "Client Keys"
+    description: "Create, list, and revoke developer tokens (API keys) for a client."
+
+paths:
+
+  # -------------------- Client Lifecycle --------------------
+
+  /v1/clients/register:
+    post:
+      tags: [API Clients]
+      summary: "Register a new API client"
+      description: |
+        Create a new API client. Returns the client profile (without a key —
+        call `/v1/clients/keys/create` to mint one).
+      security:
+        - developerToken: []
+        - developerSignature: []
+      x-scopes: [clients:create]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApiRequest_RegisterClient' }
+            example:
+              context:
+                id: "api.clients.register"
+                version: "1.0"
+                ts: "2026-04-07T10:00:00Z"
+                msgId: "11111111-2222-3333-4444-555555555555"
+                developerToken: "dev_pk_..."
+              payload:
+                name: "Acme Wallet"
+                description: "Production wallet integration for Acme Corp"
+                scopes: ["tokens:view", "tokens:create", "tokens:transact", "accounts:view"]
+                allowedOperations:
+                  USDC: ["mint", "transfer", "burn"]
+                  USDT: ["transfer"]
+      responses:
+        '200':
+          description: "Client registered."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse_ClientProfile' }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+  /v1/clients/get:
+    post:
+      tags: [API Clients]
+      summary: "Get a single API client by ID"
+      security:
+        - developerToken: []
+        - developerSignature: []
+      x-scopes: [clients:view]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApiRequest_GetClient' }
+      responses:
+        '200':
+          description: "Client profile."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse_ClientProfile' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+  /v1/clients/list:
+    post:
+      tags: [API Clients]
+      summary: "List API clients with filters, pagination, and sortBy"
+      security:
+        - developerToken: []
+        - developerSignature: []
+      x-scopes: [clients:view]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApiRequest_ListClients' }
+      responses:
+        '200':
+          description: "Client list."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse_ClientList' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+  /v1/clients/update:
+    post:
+      tags: [API Clients]
+      summary: "Update an API client (name, description, scopes, allowed operations)"
+      description: |
+        Covers the previous `update-scopes` operation — any subset of fields may be
+        supplied in `payload`. Absent fields are left unchanged.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      x-scopes: [clients:manage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApiRequest_UpdateClient' }
+      responses:
+        '200':
+          description: "Updated client profile."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse_ClientProfile' }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+  /v1/clients/deactivate:
+    post:
+      tags: [API Clients]
+      summary: "Deactivate an API client"
+      description: |
+        Deactivating a client immediately invalidates every key it owns. Part of the
+        client lifecycle; requires the same scope as `register` by design.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      x-scopes: [clients:create]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApiRequest_DeactivateClient' }
+      responses:
+        '200':
+          description: "Client deactivated."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse_ClientProfile' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+  # -------------------- Key Lifecycle --------------------
+
+  /v1/clients/keys/create:
+    post:
+      tags: [Client Keys]
+      summary: "Create (mint) a new developer token for a client"
+      description: |
+        Returns the plaintext key **once**. The server stores only a SHA-256 hash —
+        lost keys cannot be recovered and must be rotated.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      x-scopes: [keys:create]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApiRequest_CreateKey' }
+            example:
+              context:
+                id: "api.clients.keys.create"
+                version: "1.0"
+                ts: "2026-04-07T10:00:00Z"
+                msgId: "22222222-3333-4444-5555-666666666666"
+                developerToken: "dev_pk_..."
+              payload:
+                clientId: "c1a0f00d-aaaa-bbbb-cccc-000000000001"
+                label: "Production — Acme Wallet, primary"
+                expiresAt: "2027-04-07T00:00:00Z"
+      responses:
+        '200':
+          description: "Key created. `key` is returned **only on this response**."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse_CreateKey' }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+  /v1/clients/keys/list:
+    post:
+      tags: [Client Keys]
+      summary: "List keys for a client"
+      security:
+        - developerToken: []
+        - developerSignature: []
+      x-scopes: [keys:view]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApiRequest_ListKeys' }
+      responses:
+        '200':
+          description: "Key list (metadata only — plaintext keys are never returned)."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse_KeyList' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+  /v1/clients/keys/revoke:
+    post:
+      tags: [Client Keys]
+      summary: "Revoke a developer token"
+      security:
+        - developerToken: []
+        - developerSignature: []
+      x-scopes: [keys:manage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApiRequest_RevokeKey' }
+      responses:
+        '200':
+          description: "Key revoked."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse_KeyInfo' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+# ===============================================================
+#   COMPONENTS
+# ===============================================================
+components:
+
+  # -------------------- Envelope --------------------
+  schemas:
+
+    Context:
+      type: object
+      required: [id, version, ts, msgId]
+      properties:
+        id: { type: string, example: "api.clients.register" }
+        version: { type: string, example: "1.0" }
+        ts: { type: string, format: date-time }
+        msgId: { type: string, format: uuid }
+        developerToken: { type: string, description: "Caller's developer token (API key)." }
+        developerSignature: { type: string, description: "Optional HTTP Signature." }
+
+    ResponseContext:
+      allOf:
+        - $ref: '#/components/schemas/Context'
+        - properties:
+            status: { type: string, enum: [successful, failed] }
+            error:
+              type: object
+              properties:
+                code: { type: string }
+                message: { type: string }
+
+    RequestContext:
+      type: object
+      required: [context, payload]
+      properties:
+        context: { $ref: '#/components/schemas/Context' }
+        payload: { type: object }
+
+    ApiResponse:
+      type: object
+      required: [context, response]
+      properties:
+        context: { $ref: '#/components/schemas/ResponseContext' }
+        response: { type: object }
+
+    ApiError:
+      type: object
+      required: [context, response]
+      properties:
+        context: { $ref: '#/components/schemas/ResponseContext' }
+        response: { type: object, example: {} }
+
+    PaginationRequest:
+      type: object
+      properties:
+        limit: { type: integer, default: 50, minimum: 1, maximum: 100 }
+        offset: { type: integer, default: 0, minimum: 0 }
+
+    PaginationResponse:
+      type: object
+      properties:
+        total: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }
+
+    SortRequest:
+      type: object
+      properties:
+        field: { type: string, enum: [createdAt, updatedAt, name], default: createdAt }
+        order: { type: string, enum: [asc, desc], default: desc }
+
+    # -------------------- Scope vocabulary --------------------
+
+    Scope:
+      type: string
+      description: |
+        RBAC scope. Each scope is `<resource>:<action>`; `*` is a wildcard that matches
+        any value. Examples: `tokens:view`, `tokens:*`, `*` (superuser).
+
+        The 13-resource × 3-action vocabulary ships in release 2026.04.07:
+
+        | Resource            | Actions                    |
+        |---------------------|----------------------------|
+        | accounts            | view / create / manage     |
+        | tokens              | view / create / transact / manage |
+        | tokenClasses        | view / create / manage     |
+        | delegations         | view                       |
+        | registry-chains     | view / create / manage     |
+        | registry-wallets    | view / create / manage     |
+        | registry-adapters   | view / create / manage     |
+        | registry-programs   | view / create / manage     |
+        | clients             | view / create / manage     |
+        | keys                | view / create / manage     |
+        | workflows           | view / create / manage     |
+        | internal            | view / create / manage     |
+
+        Wildcards: `tokens:*`, `accounts:*`, `*` — matched with priority
+        (exact > prefix wildcard > suffix wildcard > full wildcard).
+      enum:
+        - "accounts:view"
+        - "accounts:create"
+        - "accounts:manage"
+        - "tokens:view"
+        - "tokens:create"
+        - "tokens:transact"
+        - "tokens:manage"
+        - "tokens:*"
+        - "tokenClasses:view"
+        - "tokenClasses:create"
+        - "tokenClasses:manage"
+        - "delegations:view"
+        - "registry-chains:view"
+        - "registry-chains:create"
+        - "registry-chains:manage"
+        - "registry-wallets:view"
+        - "registry-wallets:create"
+        - "registry-wallets:manage"
+        - "registry-adapters:view"
+        - "registry-adapters:create"
+        - "registry-adapters:manage"
+        - "registry-programs:view"
+        - "registry-programs:create"
+        - "registry-programs:manage"
+        - "clients:view"
+        - "clients:create"
+        - "clients:manage"
+        - "keys:view"
+        - "keys:create"
+        - "keys:manage"
+        - "workflows:view"
+        - "workflows:create"
+        - "workflows:manage"
+        - "internal:view"
+        - "internal:create"
+        - "internal:manage"
+        - "*"
+
+    # -------------------- Client --------------------
+
+    ClientStatus:
+      type: string
+      enum: [active, inactive]
+
+    ClientProfile:
+      type: object
+      required: [id, name, scopes, status]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, example: "Acme Wallet" }
+        description: { type: string, nullable: true }
+        scopes:
+          type: array
+          items: { $ref: '#/components/schemas/Scope' }
+          description: "Scopes granted to this client."
+        allowedOperations:
+          type: object
+          description: |
+            Per-token-class operation allow-list. Keys are token class names (e.g.,
+            `USDC`) or IDs, values are operation names (`mint`, `transfer`, `burn`, ...).
+            Empty/omitted means no class-level restrictions beyond the caller's scopes.
+          additionalProperties:
+            type: array
+            items: { type: string }
+        status: { $ref: '#/components/schemas/ClientStatus' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    ClientList:
+      type: object
+      required: [clients, pagination]
+      properties:
+        clients:
+          type: array
+          items: { $ref: '#/components/schemas/ClientProfile' }
+        pagination: { $ref: '#/components/schemas/PaginationResponse' }
+
+    RegisterClientRequest:
+      type: object
+      required: [name, scopes]
+      properties:
+        name: { type: string }
+        description: { type: string, nullable: true }
+        scopes:
+          type: array
+          items: { $ref: '#/components/schemas/Scope' }
+        allowedOperations:
+          type: object
+          additionalProperties:
+            type: array
+            items: { type: string }
+
+    GetClientRequest:
+      type: object
+      required: [clientId]
+      properties:
+        clientId: { type: string, format: uuid }
+
+    ListClientsRequest:
+      type: object
+      properties:
+        filters:
+          type: object
+          description: "Optional filters — name, status."
+          properties:
+            name: { type: string }
+            status: { $ref: '#/components/schemas/ClientStatus' }
+          additionalProperties: true
+        pagination: { $ref: '#/components/schemas/PaginationRequest' }
+        sortBy: { $ref: '#/components/schemas/SortRequest' }
+
+    UpdateClientRequest:
+      type: object
+      required: [clientId]
+      description: |
+        Partial update. Supplying `scopes` replaces the full scope set; supplying
+        `allowedOperations` replaces the full allow-list for the listed classes.
+      properties:
+        clientId: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        scopes:
+          type: array
+          items: { $ref: '#/components/schemas/Scope' }
+        allowedOperations:
+          type: object
+          additionalProperties:
+            type: array
+            items: { type: string }
+
+    DeactivateClientRequest:
+      type: object
+      required: [clientId]
+      properties:
+        clientId: { type: string, format: uuid }
+
+    # -------------------- Keys --------------------
+
+    KeyStatus:
+      type: string
+      enum: [active, revoked, expired]
+
+    KeyInfo:
+      type: object
+      required: [id, clientId, status, createdAt]
+      description: "Key metadata. Plaintext is returned only at creation time."
+      properties:
+        id: { type: string, format: uuid }
+        clientId: { type: string, format: uuid }
+        label: { type: string, nullable: true, description: "Human-readable label for the key." }
+        prefix: { type: string, nullable: true, description: "Non-secret prefix of the key (e.g., `dev_pk_abc12`), for display only." }
+        status: { $ref: '#/components/schemas/KeyStatus' }
+        expiresAt: { type: string, format: date-time, nullable: true }
+        lastUsedAt: { type: string, format: date-time, nullable: true }
+        revokedAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    CreateKeyRequest:
+      type: object
+      required: [clientId]
+      properties:
+        clientId: { type: string, format: uuid }
+        label: { type: string, nullable: true }
+        expiresAt: { type: string, format: date-time, nullable: true }
+
+    CreateKeyResponse:
+      type: object
+      required: [key, keyInfo]
+      properties:
+        key:
+          type: string
+          description: |
+            Plaintext developer token. Returned **only on creation**. The server stores a
+            SHA-256 hash; the plaintext is unrecoverable.
+          example: "dev_pk_AbCdEf..."
+        keyInfo: { $ref: '#/components/schemas/KeyInfo' }
+
+    ListKeysRequest:
+      type: object
+      required: [clientId]
+      properties:
+        clientId: { type: string, format: uuid }
+        filters:
+          type: object
+          properties:
+            status: { $ref: '#/components/schemas/KeyStatus' }
+          additionalProperties: true
+        pagination: { $ref: '#/components/schemas/PaginationRequest' }
+        sortBy: { $ref: '#/components/schemas/SortRequest' }
+
+    KeyList:
+      type: object
+      required: [keys, pagination]
+      properties:
+        keys:
+          type: array
+          items: { $ref: '#/components/schemas/KeyInfo' }
+        pagination: { $ref: '#/components/schemas/PaginationResponse' }
+
+    RevokeKeyRequest:
+      type: object
+      required: [keyId]
+      properties:
+        keyId: { type: string, format: uuid }
+        reason: { type: string, nullable: true }
+
+    # -------------------- Envelopes --------------------
+
+    ApiRequest_RegisterClient:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties: { payload: { $ref: '#/components/schemas/RegisterClientRequest' } }
+    ApiRequest_GetClient:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties: { payload: { $ref: '#/components/schemas/GetClientRequest' } }
+    ApiRequest_ListClients:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties: { payload: { $ref: '#/components/schemas/ListClientsRequest' } }
+    ApiRequest_UpdateClient:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties: { payload: { $ref: '#/components/schemas/UpdateClientRequest' } }
+    ApiRequest_DeactivateClient:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties: { payload: { $ref: '#/components/schemas/DeactivateClientRequest' } }
+    ApiRequest_CreateKey:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties: { payload: { $ref: '#/components/schemas/CreateKeyRequest' } }
+    ApiRequest_ListKeys:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties: { payload: { $ref: '#/components/schemas/ListKeysRequest' } }
+    ApiRequest_RevokeKey:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties: { payload: { $ref: '#/components/schemas/RevokeKeyRequest' } }
+
+    ApiResponse_ClientProfile:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties: { response: { $ref: '#/components/schemas/ClientProfile' } }
+    ApiResponse_ClientList:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties: { response: { $ref: '#/components/schemas/ClientList' } }
+    ApiResponse_CreateKey:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties: { response: { $ref: '#/components/schemas/CreateKeyResponse' } }
+    ApiResponse_KeyInfo:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties: { response: { $ref: '#/components/schemas/KeyInfo' } }
+    ApiResponse_KeyList:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties: { response: { $ref: '#/components/schemas/KeyList' } }
+
+  # -------------------- Responses --------------------
+
+  responses:
+    UnauthorizedError:
+      description: "Authentication failed."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "AUTHENTICATION_FAILED", message: "Token invalid or expired." } }
+            response: {}
+    ForbiddenError:
+      description: "Scope check failed — the caller's developer token does not carry a scope required by this endpoint."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "PERMISSION_DENIED", message: "Missing required scope: clients:create" } }
+            response: {}
+    NotFoundError:
+      description: "Resource not found."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "Client not found." } }
+            response: {}
+    BadRequestError:
+      description: "Invalid request."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "INVALID_REQUEST", message: "Invalid request parameters." } }
+            response: {}
+    RateLimitedError:
+      description: |
+        Request exceeded the scope-tier sliding-window rate limit. The `Retry-After`
+        response header indicates how long the caller should wait before retrying.
+      headers:
+        Retry-After:
+          schema: { type: integer, description: "Seconds to wait before retrying." }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "RATE_LIMITED", message: "Too many requests. Retry after 30s." } }
+            response: {}
+
+  # -------------------- Security --------------------
+
+  securitySchemes:
+    developerToken:
+      type: http
+      scheme: bearer
+      bearerFormat: "JWT or Opaque"
+      description: "Developer API Key/Token in Authorization header."
+    developerSignature:
+      type: apiKey
+      in: header
+      name: Signature
+      description: "IETF HTTP Signature (RFC 9421) for message integrity."

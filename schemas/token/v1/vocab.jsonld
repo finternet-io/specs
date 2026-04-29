@@ -1,0 +1,167 @@
+{
+    "@context": {
+        "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+        "owl": "http://www.w3.org/2002/07/owl#",
+        "xsd": "http://www.w3.org/2001/XMLSchema#",
+        "finternet": "https://finternet-io.github.io/specs/schemas/token/v1#"
+    },
+    "@graph": [
+        {
+            "@id": "finternet:Token",
+            "@type": "rdfs:Class",
+            "rdfs:label": "Token",
+            "rdfs:comment": "Lightweight token instance. References a TokenClass and holds instance-specific state."
+        },
+        {
+            "@id": "finternet:tokenClassId",
+            "@type": "rdf:Property",
+            "rdfs:label": "tokenClassId",
+            "rdfs:comment": "Reference to the TokenClass this token is an instance of.",
+            "rdfs:domain": { "@id": "finternet:Token" },
+            "rdfs:range": { "@id": "xsd:anyURI" }
+        },
+        {
+            "@id": "finternet:owner",
+            "@type": "rdf:Property",
+            "rdfs:label": "owner",
+            "rdfs:comment": "Denormalized owner address for fast lookups.",
+            "rdfs:domain": { "@id": "finternet:Token" },
+            "rdfs:range": { "@id": "xsd:string" }
+        },
+        {
+            "@id": "finternet:TokenState",
+            "@type": "rdfs:Class",
+            "rdfs:label": "TokenState",
+            "rdfs:comment": "Runtime state of a token instance."
+        },
+        {
+            "@id": "finternet:status",
+            "@type": "rdf:Property",
+            "rdfs:label": "status",
+            "rdfs:comment": "Lifecycle status of the token.",
+            "rdfs:domain": { "@id": "finternet:TokenState" },
+            "rdfs:range": { "@id": "finternet:TokenStatusType" }
+        },
+        {
+            "@id": "finternet:TokenStatusType",
+            "@type": "rdfs:Class",
+            "owl:oneOf": {
+                "@list": [
+                    { "@id": "finternet:active" },
+                    { "@id": "finternet:frozen" },
+                    { "@id": "finternet:redeemed" },
+                    { "@id": "finternet:burned" },
+                    { "@id": "finternet:expired" }
+                ]
+            }
+        },
+        {
+            "@id": "finternet:balance",
+            "@type": "rdf:Property",
+            "rdfs:label": "balance",
+            "rdfs:comment": "Holder's current balance for this token instance.",
+            "rdfs:domain": { "@id": "finternet:TokenState" },
+            "rdfs:range": { "@id": "xsd:string" }
+        },
+        {
+            "@id": "finternet:Identity",
+            "@type": "rdfs:Class",
+            "rdfs:label": "Identity",
+            "rdfs:comment": "Instance-level identity relationship."
+        },
+        {
+            "@id": "finternet:InstanceIdentityType",
+            "@type": "rdfs:Class",
+            "owl:oneOf": {
+                "@list": [
+                    { "@id": "finternet:owner" },
+                    { "@id": "finternet:operator" },
+                    { "@id": "finternet:custodian" }
+                ]
+            },
+            "rdfs:comment": "Types of identity relationships at the Token instance level."
+        },
+        {
+            "@id": "finternet:Relationship",
+            "@type": "rdfs:Class",
+            "rdfs:label": "Relationship",
+            "rdfs:comment": "Token-to-token dependency relationship."
+        },
+        {
+            "@id": "finternet:dependsOn",
+            "@type": "rdf:Property",
+            "rdfs:label": "dependsOn",
+            "rdfs:comment": "Token(s) this token depends on.",
+            "rdfs:domain": { "@id": "finternet:Relationship" },
+            "rdfs:range": { "@id": "xsd:anyURI" }
+        },
+        {
+            "@id": "finternet:hasDependents",
+            "@type": "rdf:Property",
+            "rdfs:label": "hasDependents",
+            "rdfs:comment": "Token(s) that depend on this token (inverse of dependsOn).",
+            "rdfs:domain": { "@id": "finternet:Relationship" },
+            "rdfs:range": { "@id": "xsd:anyURI" }
+        },
+        {
+            "@id": "finternet:LockState",
+            "@type": "rdfs:Class",
+            "rdfs:label": "LockState",
+            "rdfs:comment": "Lock state information for a token."
+        },
+        {
+            "@id": "finternet:chainId",
+            "@type": "rdf:Property",
+            "rdfs:label": "chainId",
+            "rdfs:comment": "CAIP-2 chain identifier (e.g., eip155:1). Present for proxy tokens, absent for native tokens. Replaces isProxy boolean — chainId IS NOT NULL means proxy.",
+            "rdfs:domain": { "@id": "finternet:TokenState" },
+            "rdfs:range": { "@id": "xsd:string" }
+        },
+        {
+            "@id": "finternet:contractId",
+            "@type": "rdf:Property",
+            "rdfs:label": "contractId",
+            "rdfs:comment": "Contract address on the source chain. 'native' for native assets (ETH, POL, etc.). Present for proxy tokens, absent for native tokens.",
+            "rdfs:domain": { "@id": "finternet:TokenState" },
+            "rdfs:range": { "@id": "xsd:string" }
+        },
+        {
+            "@id": "finternet:walletAddress",
+            "@type": "rdf:Property",
+            "rdfs:label": "walletAddress",
+            "rdfs:comment": "On-chain wallet address that holds this asset. Present for proxy tokens, absent for native tokens. The adapter needs this as the 'from' address to build transactions.",
+            "rdfs:domain": { "@id": "finternet:TokenState" },
+            "rdfs:range": { "@id": "xsd:string" }
+        },
+        {
+            "@id": "finternet:syncStatus",
+            "@type": "rdf:Property",
+            "rdfs:label": "syncStatus",
+            "rdfs:comment": "Balance synchronization status for proxy tokens.",
+            "rdfs:domain": { "@id": "finternet:TokenState" },
+            "rdfs:range": { "@id": "finternet:SyncStatusType" }
+        },
+        {
+            "@id": "finternet:SyncStatusType",
+            "@type": "rdfs:Class",
+            "owl:oneOf": {
+                "@list": [
+                    { "@id": "finternet:SYNCED" },
+                    { "@id": "finternet:STALE" },
+                    { "@id": "finternet:SYNCING" },
+                    { "@id": "finternet:ERROR" }
+                ]
+            },
+            "rdfs:comment": "Sync status values for proxy token balance synchronization."
+        },
+        {
+            "@id": "finternet:lastSyncedAt",
+            "@type": "rdf:Property",
+            "rdfs:label": "lastSyncedAt",
+            "rdfs:comment": "Timestamp of the last successful balance sync.",
+            "rdfs:domain": { "@id": "finternet:TokenState" },
+            "rdfs:range": { "@id": "xsd:dateTime" }
+        }
+    ]
+}

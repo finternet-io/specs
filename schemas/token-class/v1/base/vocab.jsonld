@@ -1,0 +1,285 @@
+{
+    "@context": {
+        "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+        "owl": "http://www.w3.org/2002/07/owl#",
+        "xsd": "http://www.w3.org/2001/XMLSchema#",
+        "finternet": "https://finternet-io.github.io/specs/schemas/token-class/v1#"
+    },
+    "@graph": [
+        {
+            "@id": "finternet:TokenClass",
+            "@type": "rdfs:Class",
+            "rdfs:label": "TokenClass",
+            "rdfs:comment": "Base class definition/template for token types. Defines the static configuration and behavioral profile."
+        },
+        {
+            "@id": "finternet:FungibleTokenClass",
+            "@type": "rdfs:Class",
+            "rdfs:subClassOf": { "@id": "finternet:TokenClass" },
+            "rdfs:label": "FungibleTokenClass",
+            "rdfs:comment": "Token class for fungible tokens (interchangeable units)."
+        },
+        {
+            "@id": "finternet:NonFungibleTokenClass",
+            "@type": "rdfs:Class",
+            "rdfs:subClassOf": { "@id": "finternet:TokenClass" },
+            "rdfs:label": "NonFungibleTokenClass",
+            "rdfs:comment": "Token class for non-fungible tokens (unique items)."
+        },
+        {
+            "@id": "finternet:CredentialTokenClass",
+            "@type": "rdfs:Class",
+            "rdfs:subClassOf": { "@id": "finternet:NonFungibleTokenClass" },
+            "rdfs:label": "CredentialTokenClass",
+            "rdfs:comment": "Token class for soulbound credential tokens (non-transferable, W3C VC compliant)."
+        },
+        {
+            "@id": "finternet:tokenStandard",
+            "@type": "rdf:Property",
+            "rdfs:label": "tokenStandard",
+            "rdfs:comment": "Array of token standards this class complies with. First = primary standard.",
+            "rdfs:domain": { "@id": "finternet:TokenClass" },
+            "rdfs:range": { "@id": "rdf:List" }
+        },
+        {
+            "@id": "finternet:symbol",
+            "@type": "rdf:Property",
+            "rdfs:label": "symbol",
+            "rdfs:comment": "Short ticker symbol for the token.",
+            "rdfs:domain": { "@id": "finternet:TokenClass" },
+            "rdfs:range": { "@id": "xsd:string" }
+        },
+        {
+            "@id": "finternet:decimals",
+            "@type": "rdf:Property",
+            "rdfs:label": "decimals",
+            "rdfs:comment": "Number of decimal places (0 for NFTs, 0-18 for FTs).",
+            "rdfs:domain": { "@id": "finternet:TokenClass" },
+            "rdfs:range": { "@id": "xsd:integer" }
+        },
+        {
+            "@id": "finternet:fungibility",
+            "@type": "rdf:Property",
+            "rdfs:label": "fungibility",
+            "rdfs:comment": "Token fungibility type: fungible, nonFungible, or semiFungible.",
+            "rdfs:domain": { "@id": "finternet:TokenClass" },
+            "rdfs:range": { "@id": "finternet:FungibilityType" }
+        },
+        {
+            "@id": "finternet:FungibilityType",
+            "@type": "rdfs:Class",
+            "owl:oneOf": {
+                "@list": [
+                    { "@id": "finternet:fungible" },
+                    { "@id": "finternet:nonFungible" },
+                    { "@id": "finternet:semiFungible" }
+                ]
+            }
+        },
+        {
+            "@id": "finternet:flags",
+            "@type": "rdf:Property",
+            "rdfs:label": "flags",
+            "rdfs:comment": "Behavioral flags controlling what operations are permitted.",
+            "rdfs:domain": { "@id": "finternet:TokenClass" },
+            "rdfs:range": { "@id": "finternet:TokenFlags" }
+        },
+        {
+            "@id": "finternet:TokenFlags",
+            "@type": "rdfs:Class",
+            "rdfs:label": "TokenFlags",
+            "rdfs:comment": "Behavioral flags for token operations."
+        },
+        {
+            "@id": "finternet:transactable",
+            "@type": "rdf:Property",
+            "rdfs:label": "transactable",
+            "rdfs:comment": "Whether the token can participate in transactions.",
+            "rdfs:domain": { "@id": "finternet:TokenFlags" },
+            "rdfs:range": { "@id": "xsd:boolean" }
+        },
+        {
+            "@id": "finternet:transferable",
+            "@type": "rdf:Property",
+            "rdfs:label": "transferable",
+            "rdfs:comment": "Whether ownership can be transferred. False = soulbound.",
+            "rdfs:domain": { "@id": "finternet:TokenFlags" },
+            "rdfs:range": { "@id": "xsd:boolean" }
+        },
+        {
+            "@id": "finternet:divisible",
+            "@type": "rdf:Property",
+            "rdfs:label": "divisible",
+            "rdfs:comment": "Whether balance can be split. True for FTs, false for NFTs.",
+            "rdfs:domain": { "@id": "finternet:TokenFlags" },
+            "rdfs:range": { "@id": "xsd:boolean" }
+        },
+        {
+            "@id": "finternet:locked",
+            "@type": "rdf:Property",
+            "rdfs:label": "locked",
+            "rdfs:comment": "High-level lock flag preventing all operations when true.",
+            "rdfs:domain": { "@id": "finternet:TokenFlags" },
+            "rdfs:range": { "@id": "xsd:boolean" }
+        },
+        {
+            "@id": "finternet:revocable",
+            "@type": "rdf:Property",
+            "rdfs:label": "revocable",
+            "rdfs:comment": "Whether the issuer can revoke this token.",
+            "rdfs:domain": { "@id": "finternet:TokenFlags" },
+            "rdfs:range": { "@id": "xsd:boolean" }
+        },
+        {
+            "@id": "finternet:burnable",
+            "@type": "rdf:Property",
+            "rdfs:label": "burnable",
+            "rdfs:comment": "Whether the holder can burn (destroy) this token.",
+            "rdfs:domain": { "@id": "finternet:TokenFlags" },
+            "rdfs:range": { "@id": "xsd:boolean" }
+        },
+        {
+            "@id": "finternet:soulbound",
+            "@type": "rdf:Property",
+            "rdfs:label": "soulbound",
+            "rdfs:comment": "Whether this token is permanently bound to its owner (non-transferable, non-burnable). Implies transferable=false.",
+            "rdfs:domain": { "@id": "finternet:TokenFlags" },
+            "rdfs:range": { "@id": "xsd:boolean" }
+        },
+        {
+            "@id": "finternet:Identity",
+            "@type": "rdfs:Class",
+            "rdfs:label": "Identity",
+            "rdfs:comment": "Identity relationship to the token class."
+        },
+        {
+            "@id": "finternet:IdentityType",
+            "@type": "rdfs:Class",
+            "owl:oneOf": {
+                "@list": [
+                    { "@id": "finternet:issuer" },
+                    { "@id": "finternet:creator" },
+                    { "@id": "finternet:manager" },
+                    { "@id": "finternet:controller" }
+                ]
+            },
+            "rdfs:comment": "Types of identity relationships at the TokenClass level."
+        },
+        {
+            "@id": "finternet:Supply",
+            "@type": "rdfs:Class",
+            "rdfs:label": "Supply",
+            "rdfs:comment": "Class-level supply information."
+        },
+        {
+            "@id": "finternet:totalSupply",
+            "@type": "rdf:Property",
+            "rdfs:label": "totalSupply",
+            "rdfs:comment": "Total supply ever minted.",
+            "rdfs:domain": { "@id": "finternet:Supply" },
+            "rdfs:range": { "@id": "xsd:string" }
+        },
+        {
+            "@id": "finternet:maxSupply",
+            "@type": "rdf:Property",
+            "rdfs:label": "maxSupply",
+            "rdfs:comment": "Maximum supply cap (null if unlimited).",
+            "rdfs:domain": { "@id": "finternet:Supply" },
+            "rdfs:range": { "@id": "xsd:string" }
+        },
+        {
+            "@id": "finternet:circulatingSupply",
+            "@type": "rdf:Property",
+            "rdfs:label": "circulatingSupply",
+            "rdfs:comment": "Current circulating supply (totalSupply - burned).",
+            "rdfs:domain": { "@id": "finternet:Supply" },
+            "rdfs:range": { "@id": "xsd:string" }
+        },
+        {
+            "@id": "finternet:stateModel",
+            "@type": "rdf:Property",
+            "rdfs:label": "stateModel",
+            "rdfs:comment": "Whether token state is native or proxied.",
+            "rdfs:domain": { "@id": "finternet:TokenClass" },
+            "rdfs:range": { "@id": "finternet:StateModelType" }
+        },
+        {
+            "@id": "finternet:StateModelType",
+            "@type": "rdfs:Class",
+            "owl:oneOf": {
+                "@list": [
+                    { "@id": "finternet:native" },
+                    { "@id": "finternet:proxy" }
+                ]
+            }
+        },
+        {
+            "@id": "finternet:programId",
+            "@type": "rdf:Property",
+            "rdfs:label": "programId",
+            "rdfs:comment": "Reference to the token program that handles operations for this class.",
+            "rdfs:domain": { "@id": "finternet:TokenClass" },
+            "rdfs:range": { "@id": "xsd:string" }
+        },
+        {
+            "@id": "finternet:ChainDeployment",
+            "@type": "rdfs:Class",
+            "rdfs:label": "ChainDeployment",
+            "rdfs:comment": "On-chain contract deployment mapping for a token class. Maps a CAIP-2 chain ID to a contract address."
+        },
+        {
+            "@id": "finternet:chainDeployments",
+            "@type": "rdf:Property",
+            "rdfs:label": "chainDeployments",
+            "rdfs:comment": "On-chain contract deployments for this token class. Used for anti-spam filtering during proxy token import.",
+            "rdfs:domain": { "@id": "finternet:TokenClass" },
+            "rdfs:range": { "@id": "finternet:ChainDeployment" }
+        },
+        {
+            "@id": "finternet:chainId",
+            "@type": "rdf:Property",
+            "rdfs:label": "chainId",
+            "rdfs:comment": "CAIP-2 chain identifier (e.g., eip155:1).",
+            "rdfs:domain": { "@id": "finternet:ChainDeployment" },
+            "rdfs:range": { "@id": "xsd:string" }
+        },
+        {
+            "@id": "finternet:contractAddress",
+            "@type": "rdf:Property",
+            "rdfs:label": "contractAddress",
+            "rdfs:comment": "Contract address on chain, or 'native' for native assets.",
+            "rdfs:domain": { "@id": "finternet:ChainDeployment" },
+            "rdfs:range": { "@id": "xsd:string" }
+        },
+        {
+            "@id": "finternet:assetType",
+            "@type": "rdf:Property",
+            "rdfs:label": "assetType",
+            "rdfs:comment": "Asset standard on chain (erc20, erc721, erc1155, native, spl).",
+            "rdfs:domain": { "@id": "finternet:ChainDeployment" },
+            "rdfs:range": { "@id": "finternet:AssetType" }
+        },
+        {
+            "@id": "finternet:AssetType",
+            "@type": "rdfs:Class",
+            "owl:oneOf": {
+                "@list": [
+                    { "@id": "finternet:erc20" },
+                    { "@id": "finternet:erc721" },
+                    { "@id": "finternet:erc1155" },
+                    { "@id": "finternet:native" },
+                    { "@id": "finternet:spl" }
+                ]
+            }
+        },
+        {
+            "@id": "finternet:deploymentDecimals",
+            "@type": "rdf:Property",
+            "rdfs:label": "deploymentDecimals",
+            "rdfs:comment": "Decimal precision on this specific chain deployment (may differ from class-level decimals).",
+            "rdfs:domain": { "@id": "finternet:ChainDeployment" },
+            "rdfs:range": { "@id": "xsd:integer" }
+        }
+    ]
+}

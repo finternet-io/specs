@@ -1,0 +1,29 @@
+{
+    "@context": {
+        "finternet": "https://finternet-io.github.io/specs/schemas/core/v1#",
+        "schema": "https://schema.org/",
+        "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+        "xsd": "http://www.w3.org/2001/XMLSchema#",
+        "FinternetAddress": "finternet:FinternetAddress",
+        "Entity": "finternet:Entity",
+        "id": "@id",
+        "type": "@type",
+        "name": "schema:name",
+        "description": "schema:description",
+        "created": {
+            "@id": "schema:dateCreated",
+            "@type": "xsd:dateTime"
+        },
+        "modified": {
+            "@id": "schema:dateModified",
+            "@type": "xsd:dateTime"
+        },
+        "version": "schema:version",
+        "status": "finternet:status",
+        "labels": {
+            "@id": "schema:additionalProperty",
+            "@container": "@set"
+        }
+    }
+}

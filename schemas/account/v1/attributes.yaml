@@ -1,0 +1,204 @@
+openapi: 3.1.0
+info:
+  title: Finternet Account Schema v1
+  version: 1.0.0
+  description: |
+    Account schema for the Finternet protocol.
+    Extends core Entity schema with account-specific properties including
+    decentralized identity (DID), cryptographic keys, contact methods, and verification.
+
+components:
+  schemas:
+    ContactMethod:
+      type: object
+      description: A contact method for account recovery or notifications
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/account/v1/context.jsonld
+        "@type": finternet:ContactMethod
+      required:
+        - type
+        - value
+      properties:
+        type:
+          type: string
+          description: Type of contact method
+          enum:
+            - EMAIL
+            - MOBILE
+          x-enumDescriptions:
+            EMAIL: Email-based contact method
+            MOBILE: Mobile-based contact method (SMS, phone, WhatsApp)
+          x-jsonld: { "@id": "finternet:contactMethodType" }
+        value:
+          type: string
+          description: The contact value (email, phone, etc.)
+          minLength: 3
+        verified:
+          type: boolean
+          description: Whether this contact method has been verified
+          default: false
+        primary:
+          type: boolean
+          description: Whether this is the primary contact method
+          default: false
+        verifiedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the contact method was verified
+
+    Flags:
+      type: object
+      description: Account-specific feature flags and permissions
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/account/v1/context.jsonld
+        "@type": finternet:Flags
+      properties:
+        notificationPreferences:
+          type: object
+          description: Structured notification preferences
+          properties:
+            email:
+              type: boolean
+              default: true
+            push:
+              type: boolean
+              default: true
+            sms:
+              type: boolean
+              default: false
+          additionalProperties: false
+        piiEncryptionEnabled:
+          type: boolean
+          default: false
+          description: Whether PII data should be encrypted
+        piiMaskingEnabled:
+          type: boolean
+          default: true
+          description: Whether PII data should be masked in responses
+      additionalProperties: false
+
+    Preferences:
+      type: object
+      description: User preferences for UI and localization
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/account/v1/context.jsonld
+        "@type": finternet:Preferences
+      properties:
+        userDefinedTheme:
+          type: string
+          description: User's preferred UI theme
+          enum:
+            - light
+            - dark
+            - auto
+          default: auto
+        language:
+          type: string
+          description: Preferred language code (ISO 639-1)
+          pattern: "^[a-z]{2}$"
+          default: en
+          example:
+            - en
+            - es
+            - fr
+            - de
+        timezone:
+          type: string
+          description: Preferred timezone (IANA timezone identifier)
+          default: UTC
+          example:
+            - UTC
+            - America/New_York
+            - Europe/London
+            - Asia/Kolkata
+      additionalProperties: false
+
+    Account:
+      type: object
+      description: A Finternet Account representing a user or organization
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/account/v1/context.jsonld
+        "@type": finternet:Account
+      required:
+        - did
+        - address
+        - name
+        - email
+        - entityType
+      properties:
+        did:
+          type: string
+          pattern: "^did:"
+          description: Decentralized Identifier (DID) for the account
+          example: "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBa82SsoPfnH4Ujp"
+        address:
+          type: string
+          minLength: 1
+          description: The unique, human-readable identifier for the account (e.g., alice@example.com)
+          example: "alice@example.com"
+        name:
+          type: string
+          minLength: 1
+          description: The legal name of the individual or business
+          example: "Alice Smith"
+        mobile:
+          type: string
+          pattern: "^\\+[1-9]\\d{1,14}$"
+          description: The primary mobile phone number (E.164 format)
+          example: "+919876543210"
+        email:
+          type: string
+          format: email
+          description: The primary contact email for the account
+          example: "alice.smith@example.com"
+
+        entityType:
+          type: string
+          description: The type of entity (PERSONAL or BUSINESS)
+          enum:
+            - PERSONAL
+            - BUSINESS
+          x-enumDescriptions:
+            PERSONAL: Individual person account
+            BUSINESS: Business or organizational account
+          x-jsonld: { "@id": "finternet:entityType" }
+        status:
+          type: string
+          description: The current status of the account
+          enum:
+            - ACTIVE
+            - SUSPENDED
+          default: ACTIVE
+          x-jsonld: { "@id": "finternet:accountStatus" }
+        flags:
+          $ref: '#/components/schemas/Flags'
+          description: Structured feature flags and permissions for the account
+        preferences:
+          $ref: '#/components/schemas/Preferences'
+          description: User preferences for UI and localization
+        controllers:
+          type: array
+          items:
+            type: string
+            format: uri
+          description: Array of controller DIDs for multi-sig or delegated control
+          example:
+            - "did:key:z6Mkf5rGMoatrSj1f4CyvuHBeXJELe9RPdzo2PKGNCKVtZxP"
+        contactMethods:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContactMethod'
+          description: Secondary contact methods for recovery or notifications
+        aliases:
+          type: array
+          items:
+            $ref: '../core/v1/core.yaml#/components/schemas/Identifier'
+          description: Alternative addresses for the account
+        created:
+          type: string
+          format: date-time
+          description: Account creation timestamp
+        modified:
+          type: string
+          format: date-time
+          description: Last modification timestamp

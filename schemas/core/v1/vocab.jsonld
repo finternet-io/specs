@@ -1,0 +1,56 @@
+{
+    "@context": {
+        "finternet": "https://finternet-io.github.io/specs/schemas/core/v1#",
+        "schema": "https://schema.org/",
+        "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+        "xsd": "http://www.w3.org/2001/XMLSchema#",
+        "owl": "http://www.w3.org/2002/07/owl#"
+    },
+    "@graph": [
+        {
+            "@id": "finternet:Identifier",
+            "@type": "rdfs:Class",
+            "rdfs:label": "Identifier",
+            "rdfs:comment": "A structured identifier with value and domain components. Used for addressing entities in the Finternet system (e.g., alice@finternet)."
+        },
+        {
+            "@id": "finternet:identifierValue",
+            "@type": "rdf:Property",
+            "rdfs:label": "identifierValue",
+            "rdfs:comment": "The local part of the identifier (before the @ symbol).",
+            "rdfs:domain": "finternet:Identifier",
+            "rdfs:range": "xsd:string"
+        },
+        {
+            "@id": "finternet:identifierDomain",
+            "@type": "rdf:Property",
+            "rdfs:label": "identifierDomain",
+            "rdfs:comment": "The domain part of the identifier (after the @ symbol).",
+            "rdfs:domain": "finternet:Identifier",
+            "rdfs:range": "xsd:string"
+        },
+        {
+            "@id": "finternet:Entity",
+            "@type": "rdfs:Class",
+            "rdfs:label": "Entity",
+            "rdfs:comment": "Base class for all Finternet entities. Provides common properties like primaryAddress, timestamps, and status."
+        },
+        {
+            "@id": "finternet:status",
+            "@type": "rdf:Property",
+            "rdfs:label": "status",
+            "rdfs:comment": "The current status of the entity.",
+            "rdfs:domain": "finternet:Entity",
+            "rdfs:range": "xsd:string"
+        },
+        {
+            "@id": "finternet:primaryAddress",
+            "@type": "rdf:Property",
+            "rdfs:label": "primaryAddress",
+            "rdfs:comment": "The primary Finternet address for this entity.",
+            "rdfs:domain": "finternet:Entity",
+            "rdfs:range": "finternet:Identifier"
+        }
+    ]
+}

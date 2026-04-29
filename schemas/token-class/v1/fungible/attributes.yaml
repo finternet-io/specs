@@ -1,0 +1,83 @@
+openapi: 3.1.0
+info:
+  title: Finternet FungibleTokenClass Schema v1
+  version: 1.0.0
+  description: |
+    FungibleTokenClass (UNITS-FT) - Token class for fungible/interchangeable tokens.
+
+    ## Characteristics
+
+    - **decimals**: 0-18 (precision for fractional amounts)
+    - **divisible**: true (can split balance)
+    - **transferable**: true (can transfer to others)
+
+    ## Examples
+
+    USDC, USDT, governance tokens, reward points, stablecoins.
+
+components:
+  schemas:
+    FungibleTokenClass:
+      type: object
+      description: |
+        FungibleTokenClass (UNITS-FT) - Token class for interchangeable tokens.
+
+        Fungible tokens are interchangeable - one USDC is the same as another.
+        Each holder has their own balance that can be divided and transferred.
+      allOf:
+        - $ref: '../base/attributes.yaml#/components/schemas/TokenClass'
+        - type: object
+          x-jsonld:
+            "@context": https://finternet-io.github.io/specs/schemas/token-class/v1/context.jsonld
+            "@type": finternet:FungibleTokenClass
+          properties:
+            tokenStandard:
+              type: array
+              description: Must include "UNITS-FT" as primary standard
+              items:
+                type: string
+              minItems: 1
+              examples:
+                - ["UNITS-FT"]
+                - ["UNITS-FT", "ERC-20"]
+            fungibility:
+              type: string
+              const: fungible
+              description: Always "fungible" for FungibleTokenClass
+            decimals:
+              type: integer
+              minimum: 0
+              maximum: 18
+              description: |
+                Number of decimal places.
+                Examples:
+                - 6 for USDC (1 USDC = 1000000 units)
+                - 18 for ETH (1 ETH = 10^18 wei)
+                - 0 for whole-unit tokens
+            flags:
+              type: object
+              description: Default flags for fungible tokens
+              properties:
+                transactable:
+                  type: boolean
+                  default: true
+                transferable:
+                  type: boolean
+                  default: true
+                  description: FTs are transferable by default
+                divisible:
+                  type: boolean
+                  default: true
+                  description: FTs are always divisible
+                locked:
+                  type: boolean
+                  default: false
+                revocable:
+                  type: boolean
+                  default: false
+                burnable:
+                  type: boolean
+                  default: true
+            supply:
+              $ref: '../base/attributes.yaml#/components/schemas/Supply'
+              description: Supply tracking is typical for FTs

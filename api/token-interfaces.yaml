@@ -1,0 +1,3406 @@
+openapi: 3.0.4
+info:
+  title: "Finternet API - Token Service"
+  description: |
+    The official API specification for the Finternet Token (UNITS) service.
+
+    This API enables creation, management, and lifecycle operations for universal tokens
+    following the UNITS Token Specification.
+
+    ### Protocol-Agnostic Envelope
+    All API interactions use a standard JSON envelope.
+
+    **Request Envelope:**
+    ```json
+    {
+      "context": { ... },
+      "payload": { ... },
+      "signature": { ... } // Optional
+    }
+    ```
+
+    **Response Envelope (Success):**
+    ```json
+    {
+      "context": { ..., "status": "successful" },
+      "response": { ... }
+    }
+    ```
+
+    **Response Envelope (Error):**
+    ```json
+    {
+      "context": { ..., "status": "failed", "error": {"code": "...", "message": "..." }},
+      "response": {} // Empty on error
+    }
+    ```
+    (Error details are in the context.error object)
+
+    ### Authentication and Authorization
+    This API uses the same two-level authorization model as the Account service:
+
+    1.  **Platform-Level (Developer) Authentication:**
+        * `context.developerToken`: The B2B Developer's API Key/Token.
+        * `context.developerSignature`: The B2B Developer's signature (e.g., RFC 9421) of the payload.
+
+    2.  **User-Level (End-User) Authorization:**
+        * `context.authorization`: The end-user's JWT session token (for session-based calls).
+        * `signature` (top-level): The end-user's JWS for critical, cryptographically-signed operations.
+
+    *Note for HTTP Clients:* As a convenience, the `developerToken` may be provided in the standard `Authorization: Bearer <token>` HTTP header, and the `developerSignature` in an `X-Finternet-Signature` header.
+
+    ### RBAC Scopes
+
+    Every endpoint requires the caller's developer token to carry at least one of the
+    listed scopes. A `*` (wildcard) scope satisfies any check. Calls that fail the scope
+    check return `403 PERMISSION_DENIED`.
+
+    | Endpoint | Required scope |
+    |----------|----------------|
+    | `POST /v1/registry/tokenclasses/register` | `tokenclasses:create` |
+    | `POST /v1/registry/tokenclasses/update` | `tokenclasses:manage` |
+    | `POST /v1/registry/tokenclasses/get` | `tokenclasses:view` |
+    | `POST /v1/registry/tokenclasses/search` | `tokenclasses:view` |
+    | `POST /v1/token/get` | `tokens:view` |
+    | `POST /v1/token/mint` | `tokens:create` |
+    | `POST /v1/token/search` | `tokens:view` |
+    | `POST /v1/token/transact` | `tokens:transact` |
+    | `POST /v1/token/transactions` | `transactions:view` |
+    | `POST /v1/token/add` | `tokens:create` |
+    | `POST /v1/transaction/status` | `transactions:view` |
+    | `POST /v1/transaction/get` | `transactions:view` |
+    | `POST /v1/transaction/search` | `transactions:view` |
+
+    ### Rate limiting
+
+    All endpoints are protected by a scope-tier sliding-window rate limiter. When the
+    limit is exceeded the service responds with `429 Too Many Requests` and a
+    `Retry-After` header indicating when the caller may retry. The shared
+    `RateLimitedError` response component documents the body shape.
+  version: "1.0.0"
+servers:
+  - url: "https://foundry.finternetlab.io"
+    description: "Development Environment"
+  - url: "http://localhost:3000"
+    description: "Local Server"
+tags:
+  - name: "Token Classes"
+    description: "Endpoints for token class registration and management."
+  - name: "Token"
+    description: "Endpoints for token creation, querying, and lifecycle management."
+  - name: "Transaction"
+    description: "Endpoints for transaction management."
+
+# ===============================================================
+#   PATHS
+# ===============================================================
+
+paths:
+  # -------------------- TokenClass --------------------
+  /v1/registry/tokenclasses/register:
+    post:
+      tags:
+        - "Token Classes"
+      summary: "Register new token class"
+      description: |
+        Register a new token class with schema definition and metadata.
+        Only authorized administrators can register token classes.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_RegisterTokenClassRequest'
+            examples:
+              USDC:
+                summary: "Register USDC - Circle's USD stablecoin"
+                value:
+                  context:
+                    id: "api.registry.tokenclasses.register"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "USDC"
+                    tokenStandard: "UNITS-FT"
+                    name: "USD Coin"
+                    description: "Circle USD stablecoin pegged 1:1 to USD"
+                    status: "active"
+                    schema:
+                      type: "object"
+                      properties:
+                        supply:
+                          type: "object"
+                          properties:
+                            total: { type: "string", pattern: "^[0-9]+$" }
+                            circulating: { type: "string", pattern: "^[0-9]+$" }
+                      required: ["supply"]
+                    identities:
+                      - id: "circle"
+                        type: "issuer"
+                        roles: ["admin", "minter", "burner"]
+                    metadata:
+                      decimals: 6
+                      symbol: "USDC"
+                      currency: "USD"
+                      fungible: true
+                      category: "stablecoin"
+                    chainDeployments:
+                      - chainId: "eip155:1"
+                        contractAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+                        assetType: "erc20"
+                        decimals: 6
+                      - chainId: "eip155:137"
+                        contractAddress: "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"
+                        assetType: "erc20"
+                        decimals: 6
+                      - chainId: "eip155:8453"
+                        contractAddress: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+                        assetType: "erc20"
+                        decimals: 6
+              USDT:
+                summary: "Register USDT - Tether's USD stablecoin"
+                value:
+                  context:
+                    id: "api.registry.tokenclasses.register"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "USDT"
+                    tokenStandard: "UNITS-FT"
+                    name: "Tether USD"
+                    description: "Tether USD stablecoin"
+                    schema:
+                      type: "object"
+                      properties:
+                        supply:
+                          type: "object"
+                          properties:
+                            total: { type: "string", pattern: "^[0-9]+$" }
+                            circulating: { type: "string", pattern: "^[0-9]+$" }
+                      required: ["supply"]
+                    identities:
+                      - id: "tether"
+                        type: "issuer"
+                        roles: ["admin", "minter", "burner"]
+                    metadata:
+                      decimals: 6
+                      symbol: "USDT"
+                      currency: "USD"
+                      fungible: true
+                      category: "stablecoin"
+              EURC:
+                summary: "Register EURC - Circle's Euro stablecoin"
+                value:
+                  context:
+                    id: "api.registry.tokenclasses.register"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "EURC"
+                    tokenStandard: "UNITS-FT"
+                    name: "Euro Coin"
+                    description: "Circle Euro stablecoin pegged 1:1 to EUR"
+                    schema:
+                      type: "object"
+                      properties:
+                        supply:
+                          type: "object"
+                          properties:
+                            total: { type: "string", pattern: "^[0-9]+$" }
+                            circulating: { type: "string", pattern: "^[0-9]+$" }
+                      required: ["supply"]
+                    identities:
+                      - id: "circle-eu"
+                        type: "issuer"
+                        roles: ["admin", "minter", "burner"]
+                    metadata:
+                      decimals: 6
+                      symbol: "EURC"
+                      currency: "EUR"
+                      fungible: true
+                      category: "stablecoin"
+              GBPT:
+                summary: "Register GBPT - British Pound stablecoin"
+                value:
+                  context:
+                    id: "api.registry.tokenclasses.register"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "GBPT"
+                    tokenStandard: "UNITS-FT"
+                    name: "British Pound Token"
+                    description: "Stablecoin pegged 1:1 to GBP"
+                    schema:
+                      type: "object"
+                      properties:
+                        supply:
+                          type: "object"
+                          properties:
+                            total: { type: "string", pattern: "^[0-9]+$" }
+                            circulating: { type: "string", pattern: "^[0-9]+$" }
+                      required: ["supply"]
+                    identities:
+                      - id: "hsbc"
+                        type: "issuer"
+                        roles: ["admin", "minter", "burner"]
+                    metadata:
+                      decimals: 6
+                      symbol: "GBPT"
+                      currency: "GBP"
+                      fungible: true
+                      category: "stablecoin"
+              INRT:
+                summary: "Register INRT - Indian Rupee token"
+                value:
+                  context:
+                    id: "api.registry.tokenclasses.register"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "e5f6a7b8-c9d0-1234-5678-90abcdef1"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "INRT"
+                    tokenStandard: "UNITS-FT"
+                    name: "Indian Rupee Token"
+                    description: "Stablecoin pegged 1:1 to INR"
+                    schema:
+                      type: "object"
+                      properties:
+                        supply:
+                          type: "object"
+                          properties:
+                            total: { type: "string", pattern: "^[0-9]+$" }
+                            circulating: { type: "string", pattern: "^[0-9]+$" }
+                      required: ["supply"]
+                    identities:
+                      - id: "hdfc"
+                        type: "issuer"
+                        roles: ["admin", "minter", "burner"]
+                    metadata:
+                      decimals: 2
+                      symbol: "INRT"
+                      currency: "INR"
+                      fungible: true
+                      category: "stablecoin"
+              NFH-T:
+                summary: "Register NFH-T - Utility token with constraints"
+                value:
+                  context:
+                    id: "api.registry.tokenclasses.register"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "f6a7b8c9-d0e1-2345-6789-0abcdef12"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "NFH-T"
+                    tokenStandard: "UNITS-FT"
+                    name: "Network for Humanities Token"
+                    description: "Utility token with max supply and min balance constraints"
+                    schema:
+                      type: "object"
+                      properties:
+                        supply:
+                          type: "object"
+                          properties:
+                            total: { type: "string", pattern: "^[0-9]+$" }
+                            circulating: { type: "string", pattern: "^[0-9]+$" }
+                      required: ["supply"]
+                    identities:
+                      - id: "nfh"
+                        type: "issuer"
+                        roles: ["admin", "minter", "burner"]
+                    metadata:
+                      decimals: 2
+                      symbol: "NFH"
+                      fungible: true
+                      category: "utility"
+                      maxSupply: "10000000"
+                      minBalance: "1000"
+              ART-NFT:
+                summary: "Register ART-NFT - Digital art collectibles"
+                value:
+                  context:
+                    id: "api.registry.tokenclasses.register"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "a7b8c9d0-e1f2-3456-7890-abcdef123"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "ART-NFT"
+                    tokenStandard: "UNITS-NFT"
+                    name: "Digital Art Collectible"
+                    description: "NFT for unique digital artworks and collectibles"
+                    schema:
+                      type: "object"
+                      properties:
+                        tokenURI: { type: "string", format: "uri" }
+                        attributes:
+                          type: "array"
+                          items:
+                            type: "object"
+                            properties:
+                              trait_type: { type: "string" }
+                              value: { type: ["string", "number"] }
+                            required: ["trait_type", "value"]
+                        creator: { type: "string" }
+                        royaltyBps: { type: "integer", minimum: 0, maximum: 10000 }
+                      required: ["tokenURI"]
+                    identities:
+                      - id: "opensea"
+                        type: "issuer"
+                        roles: ["admin", "minter"]
+                    metadata:
+                      symbol: "ART"
+                      fungible: false
+                      category: "collectible"
+              RWA-NFT:
+                summary: "Register RWA-NFT - Real world asset tokens"
+                value:
+                  context:
+                    id: "api.registry.tokenclasses.register"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "b8c9d0e1-f2a3-4567-8901-bcdef1234"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "RWA-NFT"
+                    tokenStandard: "UNITS-NFT"
+                    name: "Real World Asset Token"
+                    description: "NFT for tokenized real-world assets like property deeds"
+                    schema:
+                      type: "object"
+                      properties:
+                        assetId: { type: "string", description: "External asset identifier" }
+                        assetType: { type: "string", enum: ["property", "vehicle", "certificate", "document"] }
+                        legalDocHash: { type: "string", pattern: "^[a-f0-9]{64}$", description: "SHA-256 hash of legal document" }
+                        jurisdiction: { type: "string" }
+                        valuationUSD: { type: "string", pattern: "^[0-9]+\\.?[0-9]*$" }
+                      required: ["assetId", "assetType", "legalDocHash"]
+                    identities:
+                      - id: "realassets"
+                        type: "issuer"
+                        roles: ["admin", "minter", "compliance"]
+                    metadata:
+                      symbol: "RWA"
+                      fungible: false
+                      category: "real_world_asset"
+                      requiresKYC: true
+      responses:
+        '201':
+          description: "Token class registered successfully"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TokenClassDetails'
+              example:
+                context:
+                  id: "api.registry.tokenclasses.register"
+                  version: "1.0"
+                  ts: "2025-01-04T10:00:00Z"
+                  msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                  status: "successful"
+                response:
+                  tokenClass: "USDC"
+                  tokenStandard: "UNITS-FT"
+                  name: "USD Coin"
+                  description: "Circle USD stablecoin pegged 1:1 to USD"
+                  status: "active"
+                  schema:
+                    type: "object"
+                    properties:
+                      supply:
+                        type: "object"
+                        properties:
+                          total: { type: "string", pattern: "^[0-9]+$" }
+                          circulating: { type: "string", pattern: "^[0-9]+$" }
+                    required: ["supply"]
+                  identities:
+                    - id: "circle"
+                      type: "issuer"
+                      roles: ["admin", "minter", "burner"]
+                  metadata:
+                    decimals: 6
+                    symbol: "USDC"
+                    currency: "USD"
+                    fungible: true
+                    category: "stablecoin"
+                    createdAt: "2025-01-04T10:00:00Z"
+                    updatedAt: "2025-01-04T10:00:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '409':
+          description: "Token class already exists"
+
+  /v1/registry/tokenclasses/update:
+    post:
+      tags:
+        - "Token Classes"
+      summary: "Update token class"
+      description: |
+        Update token class metadata, schema, or identities/roles.
+        Can be used to add/remove authorized minters or update class properties.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_UpdateTokenClassRequest'
+            example:
+              context:
+                id: "api.registry.tokenclasses.update"
+                version: "1.0"
+                ts: "2025-01-04T11:00:00Z"
+                msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef"
+                developerToken: "dev_pk_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                tokenClass: "USDC"
+                metadata:
+                  tags:
+                    category: "stablecoin"
+                    compliance: "regulated"
+                    issuer: "circle"
+                    peg: "USD"
+      responses:
+        '200':
+          description: "Token class updated successfully"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TokenClassDetails'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /v1/registry/tokenclasses/get:
+    post:
+      tags:
+        - "Token Classes"
+      summary: "Get token class details"
+      description: "Retrieve detailed information about a specific token class"
+      security:
+        - developerToken: []
+        - userToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_GetTokenClassRequest'
+            example:
+              context:
+                id: "api.registry.tokenclasses.get"
+                version: "1.0"
+                ts: "2025-01-04T10:00:00Z"
+                msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef12"
+                developerToken: "dev_pk_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                tokenClass: "USDC"
+      responses:
+        '200':
+          description: "Token class details retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TokenClassDetails'
+              example:
+                context:
+                  id: "api.registry.tokenclasses.get"
+                  version: "1.0"
+                  ts: "2025-01-04T10:00:00Z"
+                  msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
+                  status: "successful"
+                response:
+                  tokenClass: "USDC"
+                  tokenStandard: "UNITS-FT"
+                  name: "USD Coin"
+                  description: "Circle USD stablecoin pegged 1:1 to USD"
+                  status: "active"
+                  schema:
+                    type: "object"
+                    properties:
+                      supply:
+                        type: "object"
+                        properties:
+                          total: { type: "string", pattern: "^[0-9]+$" }
+                          circulating: { type: "string", pattern: "^[0-9]+$" }
+                    required: ["supply"]
+                  identities:
+                    - id: "circle"
+                      type: "issuer"
+                      roles: ["admin", "minter", "burner"]
+                  metadata:
+                    decimals: 6
+                    symbol: "USDC"
+                    currency: "USD"
+                    fungible: true
+                    category: "stablecoin"
+                    createdAt: "2025-01-04T10:00:00Z"
+                    updatedAt: "2025-01-04T10:00:00Z"
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /v1/registry/tokenclasses/search:
+    post:
+      tags:
+        - "Token Classes"
+      summary: "Search token classes"
+      description: "Search and list all registered token classes with filters"
+      security:
+        - developerToken: []
+        - userToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_SearchTokenClassRequest'
+            example:
+              context:
+                id: "api.registry.tokenclasses.search"
+                version: "1.0"
+                ts: "2025-01-04T10:00:00Z"
+                msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef123"
+                developerToken: "dev_pk_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                filters:
+                  tokenStandard: "ERC-3643"
+                  category: "stablecoin"
+                pagination:
+                  limit: 50
+                  offset: 0
+                sortBy:
+                  field: "createdAt"
+                  order: "desc"
+      responses:
+        '200':
+          description: "Token class list retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TokenClassList'
+              example:
+                context:
+                  id: "api.registry.tokenclasses.search"
+                  version: "1.0"
+                  ts: "2025-01-04T10:00:00Z"
+                  msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef"
+                  status: "successful"
+                response:
+                  tokenClasses:
+                    - tokenClass: "USDC"
+                      tokenStandard: "UNITS-FT"
+                      name: "USD Coin"
+                      description: "Circle USD stablecoin pegged 1:1 to USD"
+                      status: "active"
+                      schema:
+                        type: "object"
+                        properties:
+                          supply:
+                            type: "object"
+                            properties:
+                              total: { type: "string", pattern: "^[0-9]+$" }
+                              circulating: { type: "string", pattern: "^[0-9]+$" }
+                        required: ["supply"]
+                      identities:
+                        - id: "circle"
+                          type: "issuer"
+                          roles: ["admin", "minter", "burner"]
+                      metadata:
+                        decimals: 6
+                        symbol: "USDC"
+                        currency: "USD"
+                        fungible: true
+                        category: "stablecoin"
+                        createdAt: "2025-01-04T10:00:00Z"
+                        updatedAt: "2025-01-04T10:00:00Z"
+                    - tokenClass: "USDT"
+                      tokenStandard: "UNITS-FT"
+                      name: "Tether USD"
+                      description: "Tether USD stablecoin"
+                      status: "active"
+                      schema:
+                        type: "object"
+                        properties:
+                          supply:
+                            type: "object"
+                            properties:
+                              total: { type: "string", pattern: "^[0-9]+$" }
+                              circulating: { type: "string", pattern: "^[0-9]+$" }
+                        required: ["supply"]
+                      identities:
+                        - id: "tether"
+                          type: "issuer"
+                          roles: ["admin", "minter", "burner"]
+                      metadata:
+                        decimals: 6
+                        symbol: "USDT"
+                        currency: "USD"
+                        fungible: true
+                        category: "stablecoin"
+                        createdAt: "2025-01-04T10:00:00Z"
+                        updatedAt: "2025-01-04T10:00:00Z"
+                  pagination:
+                    total: 2
+                    limit: 50
+                    offset: 0
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  # -------------------- Token --------------------
+  /v1/token/get:
+    post:
+      tags:
+        - "Token"
+      summary: "Get token details"
+      description: "Retrieves detailed information about a specific token by its ID. Requires Developer and User auth."
+      security:
+        - developerToken: []
+        - userToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_GetTokenRequest'
+            examples:
+              raw_get:
+                summary: "Get token — raw mode (default)"
+                value:
+                  context:
+                    id: "api.token.get"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenId: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+              display_get:
+                summary: "Get token — display mode (human-readable)"
+                value:
+                  context:
+                    id: "api.token.get"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdf0"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                    valueFormat: "display"
+                  payload:
+                    tokenId: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+      responses:
+        '200':
+          description: "Token details retrieved successfully."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TokenDetails'
+              examples:
+                raw_token:
+                  summary: "Token response — raw (smallest-unit integers)"
+                  value:
+                    context:
+                      id: "api.token.get"
+                      version: "1.0"
+                      ts: "2025-01-04T10:00:01Z"
+                      msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                      status: "successful"
+                    response:
+                      id: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                      metadata:
+                        tokenClassId: "urn:uuid:b2c3d4e5-f6a7-8901-2345-67890abcdef1"
+                        tokenClass: "USDC"
+                        tokenStandard: "UNITS-FT"
+                        name: "USD Coin"
+                        symbol: "USDC"
+                        decimals: 6
+                        fungibility: "fungible"
+                      identities:
+                        - id: "did:web:circle.com"
+                          type: "issuer"
+                        - id: "did:web:alice.example"
+                          type: "owner"
+                      state:
+                        status: "active"
+                        supply:
+                          totalSupply: "1000000000000"
+                          circulatingSupply: "500000000000"
+                        stateCommitment: "0xabcdef1234567890"
+                display_token:
+                  summary: "Token response — display (human-readable decimals)"
+                  value:
+                    context:
+                      id: "api.token.get"
+                      version: "1.0"
+                      ts: "2025-01-04T10:00:01Z"
+                      msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdf0"
+                      status: "successful"
+                    response:
+                      id: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                      metadata:
+                        tokenClassId: "urn:uuid:b2c3d4e5-f6a7-8901-2345-67890abcdef1"
+                        tokenClass: "USDC"
+                        tokenStandard: "UNITS-FT"
+                        name: "USD Coin"
+                        symbol: "USDC"
+                        decimals: 6
+                        fungibility: "fungible"
+                      identities:
+                        - id: "did:web:circle.com"
+                          type: "issuer"
+                        - id: "did:web:alice.example"
+                          type: "owner"
+                      state:
+                        status: "active"
+                        supply:
+                          totalSupply: "1000000.00"
+                          circulatingSupply: "500000.00"
+                        stateCommitment: "0xabcdef1234567890"
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /v1/token/mint:
+    post:
+      tags:
+        - "Token"
+      summary: "Mint new token"
+      description: |
+        Mint (create) a new token instance. This endpoint has separate ACL controls from other token operations.
+        Only authorized identities registered for the tokenClass can mint tokens.
+
+        Requires both developer authentication and end-user signature.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_MintTokenRequest'
+            examples:
+              USDC:
+                summary: "Mint USDC - 1M tokens"
+                value:
+                  context:
+                    id: "api.token.mint"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "c1d2e3f4-a5b6-7890-1234-567890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "USDC"
+                    identities:
+                      - id: "circle"
+                        type: "issuer"
+                        roles: ["admin", "minter"]
+                      - id: "circle"
+                        type: "owner"
+                        roles: ["owner"]
+                    initialSupply: "1000000000000"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              INRT:
+                summary: "Mint INRT - 10K tokens"
+                value:
+                  context:
+                    id: "api.token.mint"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "d2e3f4a5-b6c7-8901-2345-67890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "INRT"
+                    identities:
+                      - id: "hdfc"
+                        type: "issuer"
+                        roles: ["admin", "minter"]
+                      - id: "hdfc"
+                        type: "owner"
+                        roles: ["owner"]
+                    initialSupply: "1000000"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              NFH-T:
+                summary: "Mint NFH-T - 5K tokens with constraints"
+                value:
+                  context:
+                    id: "api.token.mint"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "e3f4a5b6-c7d8-9012-3456-7890abcdef1"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "NFH-T"
+                    identities:
+                      - id: "nfh"
+                        type: "issuer"
+                        roles: ["admin", "minter"]
+                      - id: "nfh"
+                        type: "owner"
+                        roles: ["owner"]
+                    initialSupply: "500000"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              ART-NFT:
+                summary: "Mint ART-NFT - Digital Art"
+                value:
+                  context:
+                    id: "api.token.mint"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "f4a5b6c7-d8e9-0123-4567-890abcdef12"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "ART-NFT"
+                    metadata:
+                      name: "Sunset Dreams #001"
+                    data:
+                      tokenURI: "https://ipfs.io/ipfs/QmXyz123/metadata.json"
+                      attributes:
+                        - trait_type: "Artist"
+                          value: "Alice Johnson"
+                        - trait_type: "Style"
+                          value: "Digital Impressionism"
+                        - trait_type: "Year"
+                          value: 2024
+                        - trait_type: "Rarity"
+                          value: "Legendary"
+                      creator: "alice"
+                      royaltyBps: 500
+                      valuationUSD: "5000.00"
+                    identities:
+                      - id: "opensea"
+                        type: "issuer"
+                        roles: ["admin", "minter"]
+                      - id: "alice"
+                        type: "owner"
+                        roles: ["owner"]
+                    initialSupply: "1"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              RWA-NFT:
+                summary: "Mint RWA-NFT - Property Deed"
+                value:
+                  context:
+                    id: "api.token.mint"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "a5b6c7d8-e9f0-1234-5678-90abcdef123"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    tokenClass: "RWA-NFT"
+                    metadata:
+                      name: "Property Deed - 123 Main St"
+                    data:
+                      assetId: "PROP-2024-001234"
+                      assetType: "property"
+                      legalDocHash: "a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd"
+                      jurisdiction: "US-CA"
+                      valuationUSD: "750000.00"
+                      propertyAddress: "123 Main Street, San Francisco, CA 94102"
+                    identities:
+                      - id: "realassets"
+                        type: "issuer"
+                        roles: ["admin", "minter", "compliance"]
+                      - id: "bob"
+                        type: "owner"
+                        roles: ["owner"]
+                    initialSupply: "1"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+      responses:
+        '202':
+          description: "Mint transaction accepted (async)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TransactAccepted'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /v1/token/search:
+    post:
+      tags:
+        - "Token"
+      summary: "Search tokens"
+      description: "Search tokens with filters (type, status, etc.). Owner filtering inferred from JWT/ACL. Supports pagination. Requires Developer auth."
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_SearchTokensRequest'
+            examples:
+              raw_search:
+                summary: "Search tokens — raw mode (default)"
+                value:
+                  context:
+                    id: "api.token.search"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    filters:
+                      tokenStandard: "UNITS-FT"
+                      status: "active"
+                      fungibility: "fungible"
+                      tags:
+                        - "stablecoin"
+                    pagination:
+                      limit: 50
+                      offset: 0
+                    sortBy:
+                      field: "createdAt"
+                      order: "desc"
+              display_search:
+                summary: "Search tokens — display mode (human-readable)"
+                value:
+                  context:
+                    id: "api.token.search"
+                    version: "1.0"
+                    ts: "2025-01-04T10:00:00Z"
+                    msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef2"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                    valueFormat: "display"
+                  payload:
+                    filters:
+                      chainId: "eip155:1"
+                      tokenStandard: "UNITS-FT"
+                    pagination:
+                      limit: 20
+                      offset: 0
+      responses:
+        '200':
+          description: "Token list retrieved successfully."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TokenList'
+              examples:
+                raw_results:
+                  summary: "Search results — raw (smallest-unit integers)"
+                  value:
+                    context:
+                      id: "api.token.search"
+                      version: "1.0"
+                      ts: "2025-01-04T10:00:01Z"
+                      msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
+                      status: "successful"
+                    response:
+                      tokens:
+                        - id: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                          metadata:
+                            tokenClass: "USDC"
+                            tokenStandard: "UNITS-FT"
+                            name: "USD Coin"
+                            symbol: "USDC"
+                            decimals: 6
+                            fungibility: "fungible"
+                          state:
+                            status: "active"
+                            supply:
+                              totalSupply: "1000000000000"
+                              circulatingSupply: "500000000000"
+                      pagination:
+                        total: 1
+                        limit: 50
+                        offset: 0
+                display_results:
+                  summary: "Search results — display (human-readable decimals)"
+                  value:
+                    context:
+                      id: "api.token.search"
+                      version: "1.0"
+                      ts: "2025-01-04T10:00:01Z"
+                      msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef2"
+                      status: "successful"
+                    response:
+                      tokens:
+                        - id: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                          metadata:
+                            tokenClass: "USDC"
+                            tokenStandard: "UNITS-FT"
+                            name: "USD Coin"
+                            symbol: "USDC"
+                            decimals: 6
+                            fungibility: "fungible"
+                          state:
+                            status: "active"
+                            supply:
+                              totalSupply: "1000000.00"
+                              circulatingSupply: "500000.00"
+                      pagination:
+                        total: 1
+                        limit: 20
+                        offset: 0
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /v1/token/transact:
+    post:
+      tags:
+        - "Token"
+      summary: "Execute token operation"
+      description: |
+        Unified endpoint for all token write operations. The operation is specified in the payload.
+
+        **Supported Operations:**
+        - `burn` - Burn/destroy token (terminal state)
+        - `freeze` - Freeze token (compliance/regulatory hold)
+        - `unfreeze` - Unfreeze token
+        - `lock` - Lock token (for escrow/collateral)
+        - `unlock` - Unlock token
+        - `redeem` - Redeem token (for redeemable assets)
+        - `transfer` - Transfer token ownership
+        - `update` - Update token data or metadata fields
+
+        **Note:** `mint` operation has a dedicated `/v1/token/mint` endpoint with separate ACL controls.
+
+        Critical operations (burn, transfer, etc.) require end-user signature.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_TransactRequest'
+            examples:
+              TransferUSDC:
+                summary: "Transfer - USDC (P2P Payment)"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:15:00Z"
+                    msgId: "f1a2b3c4-d5e6-7890-1234-567890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "transfer"
+                    tokenId: "a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                    to: "bob"
+                    amount: "100000000"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              TransferINRT:
+                summary: "Transfer - INRT (Cross-Border Remittance)"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:15:00Z"
+                    msgId: "g2b3c4d5-e6f7-8901-2345-67890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "transfer"
+                    tokenId: "1ab71000-1001-4001-8001-000000000001"
+                    to: "lakshmi"
+                    amount: "5000000000000"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              TransferARTNFT:
+                summary: "Transfer - ART-NFT (Art Sale)"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:15:00Z"
+                    msgId: "h3c4d5e6-f7a8-9012-3456-7890abcdef1"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "transfer"
+                    tokenId: "a4571f00-57a4-4001-8001-000000000001"
+                    to: "charlie"
+                    amount: "1"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              TransferRWANFT:
+                summary: "Transfer - RWA-NFT (Property Sale)"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:15:00Z"
+                    msgId: "i4d5e6f7-a8b9-0123-4567-890abcdef12"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "transfer"
+                    tokenId: "4ea1000a-1001-4001-8001-000000000001"
+                    to: "diana"
+                    amount: "1"
+                    data:
+                      salePrice: "2500000.00"
+                      saleCurrency: "USD"
+                      closingDate: "2025-03-15"
+                      escrowAgent: "titlecompany"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              BurnUSDT:
+                summary: "Burn - USDT (Redemption)"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:05:00Z"
+                    msgId: "d1e2f3a4-b5c6-7890-1234-567890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "burn"
+                    tokenId: "05d71000-1001-4001-8001-000000000001"
+                    amount: "1000000000"
+                    reason: "Fiat withdrawal - Bank transfer to Tether redemption account"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              BurnNFHT:
+                summary: "Burn - NFH-T (Community Token Burn)"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:05:00Z"
+                    msgId: "d2e3f4a5-b6c7-8901-2345-67890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "burn"
+                    tokenId: "0ffa1000-1001-4001-8001-000000000001"
+                    amount: "500000000000000000000"
+                    reason: "Deflationary burn event - Q1 2025"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              FreezeINRT:
+                summary: "Freeze - INRT (Compliance Hold)"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:10:00Z"
+                    msgId: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "freeze"
+                    tokenId: "1ab71000-5054-4001-8001-000000000001"
+                    reason: "AML investigation - Case #AML-2025-001"
+                    frozenBy: "hdfc:compliance"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              UnfreezeToken:
+                summary: "Unfreeze a token"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:10:00Z"
+                    msgId: "e2f3a4b5-c6d7-8901-2345-67890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "unfreeze"
+                    tokenId: "1ab71000-5054-4001-8001-000000000001"
+                    reason: "Compliance review completed"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              LockEURC:
+                summary: "Lock - EURC (DeFi Collateral)"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:20:00Z"
+                    msgId: "f3a4b5c6-d7e8-9012-3456-7890abcdef1"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "lock"
+                    tokenId: "e04c1000-1001-4001-8001-000000000001"
+                    amount: "500000000"
+                    reason: "Collateral for DeFi loan - Protocol: Aave"
+                    lockUntil: "2025-12-31T23:59:59Z"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              LockGBPT:
+                summary: "Lock - GBPT (Escrow for Trade)"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:20:00Z"
+                    msgId: "f4a5b6c7-d8e9-0123-4567-890abcdef12"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "lock"
+                    tokenId: "6b971000-1001-4001-8001-000000000001"
+                    amount: "10000000000"
+                    reason: "Escrow for international trade - Invoice #INV-2025-001"
+                    lockUntil: "2025-06-30T23:59:59Z"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              UnlockToken:
+                summary: "Unlock previously locked tokens"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:20:00Z"
+                    msgId: "f5a6b7c8-d9e0-1234-5678-90abcdef123"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "unlock"
+                    tokenId: "e04c1000-1001-4001-8001-000000000001"
+                    amount: "500000000"
+                    reason: "Loan repaid"
+                  signature:
+                    type: "JsonWebSignature2020"
+                    jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
+              UpdateToken:
+                summary: "Update token data and metadata"
+                value:
+                  context:
+                    id: "api.token.transact"
+                    version: "1.0"
+                    ts: "2025-01-04T10:20:00Z"
+                    msgId: "a2b3c4d5-e6f7-8901-2345-67890abcdef"
+                    developerToken: "dev_pk_..."
+                    authorization: "Bearer eyJ..."
+                  payload:
+                    operation: "update"
+                    tokenId: "a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                    data:
+                      auditReport: "https://www.circle.com/en/usdc-transparency"
+                      lastAuditDate: "2025-04-01T00:00:00Z"
+      responses:
+        '202':
+          description: "Transaction accepted for processing (async)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TransactAccepted'
+              examples:
+                MintAccepted:
+                  summary: "Mint transaction accepted"
+                  value:
+                    context:
+                      id: "api.token.transact"
+                      version: "1.0"
+                      ts: "2025-01-04T10:00:00Z"
+                      msgId: "c1d2e3f4-a5b6-7890-1234-567890abcdef"
+                      status: "accepted"
+                      transactionId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+                    response:
+                      txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+                      status: "submitted"
+                      message: "Transaction submitted for processing"
+                TransferAccepted:
+                  summary: "Transfer transaction accepted"
+                  value:
+                    context:
+                      id: "api.token.transact"
+                      version: "1.0"
+                      ts: "2025-01-04T10:15:00Z"
+                      msgId: "f1a2b3c4-d5e6-7890-1234-567890abcdef"
+                      status: "accepted"
+                      transactionId: "urn:uuid:tx-d8e5f6a7-b8c9-0123-4567-890abcdef123"
+                    response:
+                      txId: "urn:uuid:tx-d8e5f6a7-b8c9-0123-4567-890abcdef123"
+                      status: "submitted"
+                      message: "Transfer submitted for processing"
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
+  # -------------------- Transaction APIs --------------------
+  /v1/transaction/status:
+    post:
+      tags:
+        - "Transaction"
+      summary: "Get transaction status"
+      description: |
+        Polls the status of an asynchronous transaction.
+
+        **Status Progression:**
+        submitted → pending → executing → completed/failed/rolled_back
+
+        Use this endpoint to poll for transaction completion after submitting via /v1/token/transact.
+      security:
+        - developerToken: []
+        - userToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_TransactionStatusRequest'
+            example:
+              context:
+                id: "api.transaction.status"
+                version: "1.0"
+                ts: "2025-01-04T10:00:02Z"
+                msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                developerToken: "dev_pk_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+      responses:
+        '200':
+          description: "Status retrieved successfully"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TransactionStatus'
+              examples:
+                Executing:
+                  summary: "Transaction in progress"
+                  value:
+                    context:
+                      id: "api.transaction.status"
+                      version: "1.0"
+                      ts: "2025-01-04T10:00:02Z"
+                      msgId: "..."
+                      status: "successful"
+                    response:
+                      txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+                      status: "executing"
+                      progress:
+                        currentStep: "Generating proof"
+                        completedSteps: 2
+                        totalSteps: 4
+                      timestamps:
+                        submitted: "2025-01-04T10:00:00Z"
+                        started: "2025-01-04T10:00:01Z"
+                Completed:
+                  summary: "Transaction completed"
+                  value:
+                    context:
+                      id: "api.transaction.status"
+                      version: "1.0"
+                      ts: "2025-01-04T10:00:05Z"
+                      msgId: "..."
+                      status: "successful"
+                    response:
+                      txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+                      status: "completed"
+                      timestamps:
+                        submitted: "2025-01-04T10:00:00Z"
+                        started: "2025-01-04T10:00:01Z"
+                        completed: "2025-01-04T10:00:03Z"
+                        finalized: "2025-01-04T10:00:05Z"
+                      summary:
+                        operation: "transfer"
+                        tokenCount: 1
+                        proofId: "urn:uuid:proof-a1b2c3d4"
+                Failed:
+                  summary: "Transaction failed"
+                  value:
+                    context:
+                      id: "api.transaction.status"
+                      version: "1.0"
+                      ts: "2025-01-04T10:00:02Z"
+                      msgId: "..."
+                      status: "successful"
+                    response:
+                      txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+                      status: "failed"
+                      error:
+                        code: "INSUFFICIENT_BALANCE"
+                        message: "Insufficient token balance for transfer"
+                        details:
+                          required: "100000000"
+                          available: "50000000"
+                      timestamps:
+                        submitted: "2025-01-04T10:00:00Z"
+                        started: "2025-01-04T10:00:01Z"
+                        failed: "2025-01-04T10:00:02Z"
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /v1/transaction/get:
+    post:
+      tags:
+        - "Transaction"
+      summary: "Get transaction details"
+      description: |
+        Retrieves complete details of a transaction including all token transactions,
+        proofs, and ledger anchors.
+
+        Use this after transaction completion to get full audit trail.
+      security:
+        - developerToken: []
+        - userToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_GetTransactionRequest'
+            example:
+              context:
+                id: "api.transaction.get"
+                version: "1.0"
+                ts: "2025-01-04T10:00:10Z"
+                msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef"
+                developerToken: "dev_pk_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+      responses:
+        '200':
+          description: "Transaction details retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TransactionDetails'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /v1/transaction/search:
+    post:
+      tags:
+        - "Transaction"
+      summary: "Search transactions"
+      description: |
+        Search transactions with filters and pagination.
+        Useful for transaction history, reconciliation, and reporting. Owner/initiator filtering inferred from JWT/ACL.
+      security:
+        - developerToken: []
+        - userToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_SearchTransactionsRequest'
+            example:
+              context:
+                id: "api.transaction.search"
+                version: "1.0"
+                ts: "2025-01-04T10:00:00Z"
+                msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
+                developerToken: "dev_pk_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                filters:
+                  status: "completed"
+                  dateRange:
+                    from: "2025-01-01T00:00:00Z"
+                    to: "2025-01-31T23:59:59Z"
+                pagination:
+                  limit: 50
+                  offset: 0
+                sortBy:
+                  field: "createdAt"
+                  order: "desc"
+      responses:
+        '200':
+          description: "Transaction list retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TransactionList'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /v1/token/transactions:
+    post:
+      tags:
+        - "Token"
+      summary: "Get token transaction history"
+      description: |
+        Retrieves all transactions that affected a specific token.
+        Provides complete audit trail and state history for the token.
+      security:
+        - developerToken: []
+        - userToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_TokenTransactionsRequest'
+            example:
+              context:
+                id: "api.token.transactions"
+                version: "1.0"
+                ts: "2025-01-04T10:00:00Z"
+                msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef"
+                developerToken: "dev_pk_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                filters:
+                  tokenId: "urn:uuid:usdc-a1b2c3d4"
+                  operation: "transfer"
+                  entryType: "credit"
+                pagination:
+                  limit: 100
+                  offset: 0
+                sortBy:
+                  field: "timestamp"
+                  order: "desc"
+      responses:
+        '200':
+          description: "Token transaction history retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TokenTransactionList'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /v1/token/add:
+    post:
+      tags:
+        - "Token"
+      summary: "Import token from external provider"
+      description: |
+        Process a completed journey from an external provider and mint a token.
+
+        This is a **backend-to-backend** endpoint called by Finternet App Backend after receiving a
+        successful callback from a provider (Signzy, DigiLocker, etc.).
+
+        **No User JWT Required:** This endpoint does not require end-user authentication.
+        The token owner address must be provided in the payload.
+
+        **Processing Steps:**
+        1. Re-query provider API to verify journey status (security)
+        2. Download and encrypt relevant data/images to blob storage
+        3. Transform provider response to W3C Verifiable Credential format
+        4. Mint token based on specified tokenClass
+        5. Store minimal integration data for re-verification
+        6. Return transaction ID (async processing)
+
+        **Token Characteristics vary by tokenClass:**
+        - CREDENTIAL: Soulbound (non-transferable, non-burnable, revocable)
+        - Other token classes: Per token class configuration
+
+        **Note:** Token audit trail is handled by standard token_audit mechanism.
+        Blob storage uses journey hash as key - failures override same blob.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_AddCredentialRequest'
+            examples:
+              SignzyAadhaar:
+                summary: "Import Aadhaar credential from Signzy"
+                value:
+                  context:
+                    id: "api.token.add"
+                    version: "1.0"
+                    ts: "2025-01-28T10:15:00Z"
+                    msgId: "550e8400-e29b-41d4-a716-446655440000"
+                    developerToken: "dev_pk_..."
+                  payload:
+                    tokenClass: "CREDENTIAL"
+                    owner: "alice"
+                    provider: "signzy"
+                    providerDetails:
+                      flowId: "922e2a58-6afa-4a81-a13b-37aa76793641"
+                      journeyId: "YIRJ0UBX87"
+              SignzyPassport:
+                summary: "Import Passport credential from Signzy"
+                value:
+                  context:
+                    id: "api.token.add"
+                    version: "1.0"
+                    ts: "2025-01-28T10:15:00Z"
+                    msgId: "550e8400-e29b-41d4-a716-446655440001"
+                    developerToken: "dev_pk_..."
+                  payload:
+                    tokenClass: "CREDENTIAL"
+                    owner: "bob"
+                    provider: "signzy"
+                    providerDetails:
+                      flowId: "922e2a58-6afa-4a81-a13b-37aa76793641"
+                      journeyId: "PJGR096ABC"
+      responses:
+        '202':
+          description: "Token processing accepted (async)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_AddCredentialAccepted'
+              example:
+                context:
+                  id: "api.token.add"
+                  version: "1.0"
+                  ts: "2025-01-28T10:15:05Z"
+                  msgId: "550e8400-e29b-41d4-a716-446655440002"
+                  status: "accepted"
+                  transactionId: "urn:uuid:tx-credential-12345"
+                response:
+                  txId: "urn:uuid:tx-credential-12345"
+                  status: "submitted"
+                  message: "Credential processing submitted"
+                  journeyId: "PJGR095SLR"
+                  documentType: "PAN"
+        '400':
+          description: "Invalid request or journey not completed"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              examples:
+                JourneyNotCompleted:
+                  summary: "Journey not in COMPLETED status"
+                  value:
+                    context:
+                      id: "api.token.credential.add"
+                      status: "failed"
+                      error:
+                        code: "JOURNEY_NOT_COMPLETED"
+                        message: "Journey PJGR095SLR is not in COMPLETED status"
+                    response: {}
+                VerificationFailed:
+                  summary: "Provider verification failed"
+                  value:
+                    context:
+                      id: "api.token.credential.add"
+                      status: "failed"
+                      error:
+                        code: "VERIFICATION_FAILED"
+                        message: "Document verification failed: Face match below threshold"
+                    response: {}
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: "Journey not found at provider"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                context:
+                  id: "api.token.credential.add"
+                  status: "failed"
+                  error:
+                    code: "JOURNEY_NOT_FOUND"
+                    message: "Journey PJGR095SLR not found at provider"
+                response: {}
+        '409':
+          description: "Credential already exists for this journey"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                context:
+                  id: "api.token.credential.add"
+                  status: "failed"
+                  error:
+                    code: "CREDENTIAL_EXISTS"
+                    message: "Credential already minted for journey PJGR095SLR"
+                response: {}
+
+# ===============================================================
+#   COMPONENTS
+# ===============================================================
+
+components:
+  # -------------------- Schemas --------------------
+  schemas:
+    # --- API Envelope Schemas (reusing from account API) ---
+    Context:
+      type: object
+      required: [id, version, ts, msgId]
+      properties:
+        id: { type: string, example: "api.token.get" }
+        version: { type: string, example: "1.0" }
+        ts: { type: string, format: date-time }
+        msgId: { type: string, format: uuid }
+        transactionId: { type: string, format: uuid, nullable: true, description: "ID for async operations" }
+        developerToken: { type: string, example: "dev_pk_...", nullable: true, description: "B2B Developer API Key/Token" }
+        developerSignature: { type: string, example: "t=...,v1=...", nullable: true, description: "B2B Developer Signature" }
+        authorization: { type: string, example: "Bearer eyJ...", nullable: true, description: "End-user's session token" }
+        valueFormat:
+          type: string
+          enum: [raw, display]
+          default: "raw"
+          description: |
+            Controls how numeric amounts (balances, supply, fees) are represented in responses.
+            - `raw` (default): Smallest-unit integer strings (e.g., "100500000" for 100.5 USDC with 6 decimals).
+            - `display`: Human-readable decimal strings (e.g., "100.50" for 100.5 USDC).
+            The service layer performs decimal conversion using token class metadata.
+            Amounts are always opaque strings — never parsed as float by any system.
+    ResponseContext:
+      type: object
+      required: [id, version, ts, msgId, status]
+      properties:
+        id: { type: string, example: "api.token.get" }
+        version: { type: string, example: "1.0" }
+        ts: { type: string, format: date-time }
+        msgId: { type: string, format: uuid }
+        transactionId: { type: string, format: uuid, nullable: true }
+        status: { type: string, enum: [successful, failed, pending] }
+        error: { $ref: '#/components/schemas/ErrorPayload' }
+    Signature:
+      type: object
+      required: [type, jws]
+      properties:
+        type: { type: string, example: "JsonWebSignature2020" }
+        jws: { type: string, example: "eyJ...", description: "End-user's JWS of the payload object" }
+    ErrorPayload:
+      type: object
+      required: [code, message]
+      nullable: true
+      properties:
+        code: { type: string, example: "RESOURCE_NOT_FOUND" }
+        message: { type: string }
+
+    # --- Base Request/Response Schemas ---
+    RequestContext:
+      type: object
+      required: [context, payload]
+      properties:
+        context: { $ref: '#/components/schemas/Context' }
+        payload: { type: object }
+        signature: { $ref: '#/components/schemas/Signature'}
+    ApiResponse:
+      type: object
+      required: [context, response]
+      properties:
+        context: { $ref: '#/components/schemas/ResponseContext' }
+        response: { type: object }
+    ApiError:
+      type: object
+      required: [context, response]
+      properties:
+        context: { $ref: '#/components/schemas/ResponseContext' }
+        response: { type: object, description: "Always empty on error", example: {} }
+
+    # --- Common Search Schemas ---
+
+    PaginationRequest:
+      type: object
+      description: "Pagination parameters for search requests"
+      properties:
+        limit:
+          type: integer
+          default: 50
+          minimum: 1
+          maximum: 100
+          description: "Maximum number of results to return"
+        offset:
+          type: integer
+          default: 0
+          minimum: 0
+          description: "Number of results to skip"
+
+    PaginationResponse:
+      type: object
+      description: "Pagination metadata in search responses"
+      properties:
+        total: { type: integer, description: "Total number of matching records" }
+        limit: { type: integer, description: "Requested limit" }
+        offset: { type: integer, description: "Requested offset" }
+
+    SortRequest:
+      type: object
+      description: "Sort parameters for search requests"
+      properties:
+        field:
+          type: string
+          enum: [createdAt, updatedAt, name]
+          default: createdAt
+          description: "Field to sort by"
+        order:
+          type: string
+          enum: [asc, desc]
+          default: desc
+          description: "Sort direction"
+
+    # --- TokenClass Schemas ---
+
+    TokenClass:
+      type: object
+      required: [tokenClass, tokenStandard, name, schema, status]
+      description: "Token class definition with schema and authorized identities"
+      properties:
+        tokenClass:
+          type: string
+          description: "Unique token class identifier (e.g., USDC, USDT)"
+        tokenStandard:
+          type: string
+          description: "Base protocol standard (e.g., ERC-3643, UNITS-FT)"
+        name:
+          type: string
+          description: "Human-readable name"
+        description:
+          type: string
+          description: "Detailed description"
+        status:
+          type: string
+          enum: [active, inactive, deprecated, test]
+          description: "Token class status"
+          example: "active"
+        schema:
+          type: object
+          description: "JSON Schema definition for token instances"
+          properties:
+            metadata:
+              type: object
+              description: "Metadata schema requirements"
+            data:
+              type: object
+              description: "Data schema requirements"
+        identities:
+          type: array
+          items: { $ref: '#/components/schemas/Identity' }
+          description: "Authorized identities who can mint tokens of this class"
+        chainDeployments:
+          type: array
+          description: |
+            On-chain contract deployments for this token class. Maps chain IDs to contract
+            addresses. Used for anti-spam filtering during proxy token import.
+          items:
+            $ref: '#/components/schemas/ChainDeployment'
+        metadata:
+          type: object
+          description: "Token class metadata including fungibility configuration"
+          properties:
+            fungible:
+              type: boolean
+              default: true
+              description: |
+                Defines whether tokens of this class are fungible:
+                - true: Fungible tokens (FT) - each owner has their own token with balance.
+                        Mint creates/updates token for the owner.
+                        Transfer debits sender's token, credits recipient's token.
+                - false: Non-fungible tokens (NFT) - unique assets.
+                         Mint creates the unique token.
+                         Transfer changes ownership of the token.
+            decimals:
+              type: integer
+              minimum: 0
+              maximum: 18
+              description: "Decimal places for fungible tokens (e.g., 6 for USDC, 18 for ETH)"
+            category:
+              type: string
+              description: "Category (e.g., stablecoin, security, utility)"
+            tags:
+              type: array
+              items: { type: string }
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+
+    ChainDeployment:
+      type: object
+      required: [chainId, contractAddress, assetType, decimals]
+      description: "On-chain contract deployment for a token class"
+      properties:
+        chainId:
+          type: string
+          description: "CAIP-2 chain identifier"
+          example: "eip155:1"
+        contractAddress:
+          type: string
+          description: "Contract address on chain, or 'native' for native assets"
+          example: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+        assetType:
+          type: string
+          enum: [erc20, erc721, erc1155, native, spl]
+          description: "Asset standard on chain"
+          example: "erc20"
+        decimals:
+          type: integer
+          minimum: 0
+          maximum: 18
+          description: "Decimal precision on this specific chain deployment"
+          example: 6
+
+    RegisterTokenClassRequest:
+      type: object
+      required: [tokenClass, tokenStandard, name, schema]
+      description: "Request to register a new token class"
+      properties:
+        tokenClass: { type: string, example: "USDC" }
+        tokenStandard: { type: string, example: "ERC-3643" }
+        name: { type: string, example: "USD Coin" }
+        description: { type: string }
+        schema:
+          type: object
+          description: "JSON Schema for token instances"
+        identities:
+          type: array
+          items: { $ref: '#/components/schemas/Identity' }
+          description: "Initial authorized minters"
+        metadata:
+          type: object
+          description: "Token class metadata"
+        chainDeployments:
+          type: array
+          description: |
+            On-chain contract deployments for this token class. Used for anti-spam filtering
+            during proxy token import — only holdings matching a known deployment are imported.
+          items:
+            $ref: '#/components/schemas/ChainDeployment'
+
+    UpdateTokenClassRequest:
+      type: object
+      required: [tokenClass]
+      description: "Request to update token class properties"
+      properties:
+        tokenClass: { type: string, example: "USDC" }
+        description: { type: string }
+        schema:
+          type: object
+          description: "Updated schema definition"
+        identities:
+          type: array
+          items: { $ref: '#/components/schemas/Identity' }
+          description: "Updated list of authorized identities"
+        metadata:
+          type: object
+          description: "Updated metadata"
+        chainDeployments:
+          type: array
+          description: "Updated on-chain contract deployments"
+          items:
+            $ref: '#/components/schemas/ChainDeployment'
+
+    GetTokenClassRequest:
+      type: object
+      required: [tokenClass]
+      properties:
+        tokenClass: { type: string, example: "USDC" }
+
+    SearchTokenClassRequest:
+      type: object
+      description: "Search request with filters, pagination, and sortBy at payload level"
+      properties:
+        filters:
+          type: object
+          description: |
+            Search filters for token classes.
+            Known fields: tokenStandard, status, name.
+            Use explicit paths for JSONB fields (e.g., metadata.category).
+            Use chainDeployments filter for reverse lookup by chain/contract.
+          properties:
+            tokenStandard: { type: string, description: "Filter by protocol standard" }
+            status: { type: string, description: "Filter by status" }
+            "metadata.category": { type: string, description: "Filter by metadata.category" }
+            "chainDeployments.chainId": { type: string, description: "Filter by chain ID in deployments (e.g., eip155:1)" }
+            "chainDeployments.contractAddress": { type: string, description: "Filter by contract address in deployments" }
+          additionalProperties: true
+        pagination:
+          $ref: '#/components/schemas/PaginationRequest'
+        sortBy:
+          $ref: '#/components/schemas/SortRequest'
+        groupBy:
+          type: string
+          description: |
+            Optional aggregation key. When supplied, results are grouped by the named
+            field rather than returned as a flat list. Supported values include
+            `tokenStandard`, `status`, and any top-level property of `TokenClass`.
+            JSONB paths (e.g. `metadata.category`) are also supported.
+          nullable: true
+
+    TokenClassList:
+      type: object
+      properties:
+        tokenClasses:
+          type: array
+          items: { $ref: '#/components/schemas/TokenClass' }
+        pagination:
+          $ref: '#/components/schemas/PaginationResponse'
+
+    # --- Token-Specific Schemas ---
+
+    # Identity
+    IdentityType:
+      type: string
+      description: "Type of identity relationship"
+      enum: [issuer, creator, owner, operator, custodian, manager, controller]
+
+    Identity:
+      type: object
+      description: "Identity relationship record"
+      required: [id, type]
+      properties:
+        id:
+          type: string
+          format: uri-reference
+          description: "DID, URI, or identifier"
+        type:
+          $ref: '#/components/schemas/IdentityType'
+        roles:
+          type: array
+          items: { type: string }
+          description: "Additional role descriptors"
+
+    # Token Metadata
+    TokenMetadata:
+      type: object
+      required: [tokenStandard, name, symbol, decimals, fungibility]
+      properties:
+        tokenStandard:
+          type: string
+          description: "Base protocol standard (e.g., ERC-3643, UNITS-FT, ERC-20)"
+          example: "ERC-3643"
+        name: { type: string, example: "USD Coin" }
+        symbol: { type: string, example: "USDC" }
+        decimals: { type: integer, example: 6 }
+        fungibility: { type: string, enum: [fungible, nonFungible, semiFungible] }
+        tokenClass:
+          type: string
+          description: "Specific token class identifier (e.g., USDC, USDT, WETH)"
+          example: "USDC"
+        version: { type: string, example: "1.0.0" }
+        status: { type: string, enum: [active, inactive, deprecated, test] }
+        valuationType: { type: string, enum: [fixed, pegged, market] }
+        stateModel: { type: string, enum: [native, proxy] }
+        flags:
+          type: object
+          properties:
+            transactable: { type: boolean, default: true }
+            transferable: { type: boolean, default: true }
+            locked: { type: boolean, default: false }
+            revocable: { type: boolean, default: false }
+        tags:
+          type: object
+          description: "Key-value pairs for categorization and filtering"
+          additionalProperties: { type: string }
+          example: { "category": "stablecoin", "region": "US", "compliance": "regulated" }
+        description: { type: string }
+        externalUrls: { type: array, items: { type: string, format: uri } }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    # Token State
+    TokenState:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [active, frozen, redeemed, burned, expired] }
+        effectiveFrom: { type: string, format: date-time }
+        effectiveUntil: { type: string, format: date-time, nullable: true }
+        supply:
+          type: object
+          description: "Supply information. Amount format depends on `context.valueFormat` (raw: integer strings, display: decimal strings)."
+          properties:
+            totalSupply: { type: string, description: "Total supply. Format depends on context.valueFormat." }
+            circulatingSupply: { type: string, description: "Circulating supply. Format depends on context.valueFormat." }
+            availableSupply: { type: string, description: "Supply still available to mint (maxSupply - circulatingSupply). Null when maxSupply is unlimited." }
+            maxSupply: { type: string, description: "Maximum supply cap. Null when unlimited." }
+        lockState:
+          type: object
+          properties:
+            locked: { type: boolean }
+            lockReason: { type: string }
+            lockedBy: { type: string, format: uri-reference }
+            lockedAt: { type: string, format: date-time }
+        restrictions:
+          type: object
+          properties:
+            jurisdiction: { type: array, items: { type: string } }
+            allowedUseCases: { type: array, items: { type: string } }
+        customState: { type: object, additionalProperties: true }
+        stateCommitment: { type: string }
+
+    # Verifiable Claim
+    Claim:
+      type: object
+      required: [id, "@context", type, issuer, issuanceDate, credentialSubject]
+      properties:
+        id: { type: string, format: uri }
+        "@context":
+          oneOf:
+            - type: string
+            - type: array
+              items: { type: string }
+        type:
+          oneOf:
+            - type: string
+            - type: array
+              items: { type: string }
+        issuer: { type: string, format: uri-reference }
+        issuanceDate: { type: string, format: date-time }
+        expirationDate: { type: string, format: date-time }
+        visibility: { type: string, enum: [public, private, protected] }
+        credentialSubject:
+          type: object
+          required: [id]
+          properties:
+            id: { type: string, format: uri-reference }
+          additionalProperties: true
+        proof:
+          type: object
+          properties:
+            type: { type: string }
+            created: { type: string, format: date-time }
+            verificationMethod: { type: string, format: uri }
+            proofPurpose: { type: string }
+            jws: { type: string }
+        status: { type: string, enum: [asserted, verified, revoked, expired] }
+
+    # Token Details (full representation)
+    Token:
+      type: object
+      required: [id, metadata, state]
+      properties:
+        id: { type: string, format: uri-reference }
+        metadata: { $ref: '#/components/schemas/TokenMetadata' }
+        data: { type: object, additionalProperties: true }
+        claims: { type: array, items: { $ref: '#/components/schemas/Claim' } }
+        identities:
+          type: array
+          items: { $ref: '#/components/schemas/Identity' }
+          description: "Identity relationships (issuer, creator, owner, etc.)"
+        state: { $ref: '#/components/schemas/TokenState' }
+
+    # --- Request Payloads ---
+    GetTokenRequest:
+      type: object
+      required: [tokenId]
+      properties:
+        tokenId: { type: string, format: uri-reference, example: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab" }
+
+    MintTokenRequest:
+      type: object
+      required: [tokenClass, initialSupply]
+      description: "Request to mint a new token instance"
+      properties:
+        tokenClass:
+          type: string
+          description: "Token class identifier (must be pre-registered)"
+          example: "USDC"
+        metadata:
+          type: object
+          description: "Token metadata (optional)"
+          additionalProperties: true
+        data:
+          type: object
+          description: "Token data section (optional)"
+          additionalProperties: true
+        identities:
+          type: array
+          items: { $ref: '#/components/schemas/Identity' }
+          description: "Identity relationships for this token"
+        claims:
+          type: array
+          items: { $ref: '#/components/schemas/Claim' }
+          description: "Initial verifiable claims (optional)"
+        initialSupply:
+          type: string
+          description: "Initial token supply (for fungible tokens). Format depends on `context.valueFormat` (raw: integer string, display: decimal string)."
+
+    SearchTokensRequest:
+      type: object
+      description: "Search request with filters, pagination, and sortBy at payload level"
+      properties:
+        filters:
+          type: object
+          description: |
+            Search filters for tokens. Owner filtering inferred from JWT/ACL.
+
+            Known column filters:
+            - `tokenClass` — Token class name (e.g., "USDC")
+            - `tokenStandard` — Protocol standard (e.g., "UNITS-FT")
+            - `tokenClassId` — Token class UUID
+            - `chainId` — CAIP-2 chain ID (e.g., "eip155:1"). Filters to tokens
+              backed by assets on the specified chain. Omit to see all tokens.
+            - `contractId` — Contract address on source chain
+
+            Use explicit paths for JSONB fields (e.g., metadata.category, data.field).
+
+            **Note:** There is no `isProxy` filter. Proxy vs native is an internal
+            representation detail. Use `chainId` to filter by chain origin, which
+            is the user-meaningful equivalent.
+          properties:
+            tokenClass: { type: string, description: "Filter by token class (e.g., USDC, USDT)" }
+            tokenStandard: { type: string, description: "Filter by protocol standard" }
+            tokenClassId: { type: string, description: "Filter by token class ID (UUID)" }
+            chainId: { type: string, description: "Filter by chain (CAIP-2 ID, e.g., eip155:1). Returns only tokens backed by assets on this chain." }
+            contractId: { type: string, description: "Filter by contract address on the source chain" }
+          additionalProperties: true
+        pagination:
+          $ref: '#/components/schemas/PaginationRequest'
+        sortBy:
+          $ref: '#/components/schemas/SortRequest'
+        groupBy:
+          type: string
+          description: |
+            Optional aggregation key. When supplied, results are grouped by the named
+            field — typical values: `tokenClass`, `chainId`, `tokenStandard`. Useful
+            for portfolio/holdings rollups by chain or class.
+          nullable: true
+
+    TransactRequest:
+      type: object
+      required: [operation]
+      description: |
+        Request payload for token operations. The structure varies by operation:
+
+        **For update:** `operation`, `tokenId`, `data` (optional), `metadata` (optional)
+        **For burn/freeze/transfer:** `operation`, `tokenId`, plus operation-specific params at root level
+        **For sign (proxy tokens):** `operation`, `tokenId`, `transactionId`, `signedTx`
+
+        **Note:** `mint` operation is handled by separate `/v1/token/mint` endpoint.
+      properties:
+        operation:
+          type: string
+          enum: [burn, freeze, unfreeze, lock, unlock, redeem, transfer, update, sign]
+        tokenId:
+          type: string
+          format: uri-reference
+          description: "Required for all operations except mint"
+        metadata:
+          type: object
+          description: "Token metadata (for mint, update operations)"
+          additionalProperties: true
+        data:
+          type: object
+          description: "Token data section (for mint, update operations)"
+          additionalProperties: true
+        amount:
+          type: string
+          description: "Amount for burn/transfer operations"
+        to:
+          type: string
+          format: uri-reference
+          description: "Recipient for transfer operation"
+        reason:
+          type: string
+          description: "Reason for burn/freeze/lock operations"
+        frozenBy:
+          type: string
+          format: uri-reference
+          description: "Entity performing freeze operation"
+        lockedBy:
+          type: string
+          format: uri-reference
+          description: "Entity performing lock operation"
+        lockUntil:
+          type: string
+          format: date-time
+          description: "Lock expiration timestamp (optional)"
+        initialSupply:
+          type: string
+          description: "Initial supply for mint operation (fungible tokens)"
+        transactionId:
+          type: string
+          format: uuid
+          description: "Reference to the original transaction in AWAITING_SIGNATURE state (for sign operation on proxy tokens)"
+        signedTx:
+          type: string
+          description: "Externally signed transaction payload (for sign operation on proxy tokens)"
+
+    AddCredentialRequest:
+      type: object
+      required: [tokenClass, owner, provider, providerDetails]
+      description: |
+        Request to import a token from an external provider journey.
+        Called by Finternet App Backend after successful provider callback.
+
+        The owner address must be provided in the payload (no user JWT required).
+        This supports any token type - credential, asset, or other token classes.
+      properties:
+        tokenClass:
+          type: string
+          description: "Token class to mint (e.g., CREDENTIAL)"
+          example: "CREDENTIAL"
+        owner:
+          type: string
+          description: "Finternet address of the token owner (e.g., alice)"
+          example: "alice"
+        provider:
+          type: string
+          description: "Provider identifier (signzy, digilocker, etc.)"
+          example: "signzy"
+        providerDetails:
+          type: object
+          description: "Provider-specific details (structure varies by provider)"
+          properties:
+            flowId:
+              type: string
+              format: uuid
+              description: "Flow ID from provider (Signzy)"
+            providerId:
+              type: string
+              format: uuid
+              description: "Provider ID from integration_providers table"
+            journeyId:
+              type: string
+              description: "Journey ID from provider"
+          required: [journeyId]
+
+    # --- Response Payloads ---
+    TokenDetails:
+      allOf:
+        - $ref: '#/components/schemas/Token'
+
+    TokenList:
+      type: object
+      properties:
+        tokens:
+          type: array
+          items:
+            $ref: '#/components/schemas/Token'
+        pagination:
+          $ref: '#/components/schemas/PaginationResponse'
+
+    TransactAccepted:
+      type: object
+      description: "Async transaction submission response"
+      required: [txId, status, message]
+      properties:
+        txId:
+          type: string
+          format: uri-reference
+          description: "Transaction ID for tracking"
+        status:
+          type: string
+          enum: [submitted, queued]
+          description: "Initial status"
+        message:
+          type: string
+          description: "Confirmation message"
+        estimatedCompletionTime:
+          type: string
+          format: date-time
+          description: "Estimated completion time (optional)"
+
+    AddCredentialAccepted:
+      type: object
+      description: "Credential processing accepted response"
+      required: [txId, status, message, journeyId]
+      properties:
+        txId:
+          type: string
+          format: uri-reference
+          description: "Transaction ID for tracking credential minting"
+        status:
+          type: string
+          enum: [submitted, queued]
+          description: "Processing status"
+        message:
+          type: string
+          description: "Confirmation message"
+        journeyId:
+          type: string
+          description: "Provider journey ID being processed"
+        documentType:
+          type: string
+          description: "Document type detected from journey (PAN, AADHAAR, etc.)"
+        tokenId:
+          type: string
+          format: uuid
+          description: "Token ID (only present if sync processing completed)"
+
+    # --- Transaction Schemas ---
+
+    ExecutionStatus:
+      type: string
+      description: "Transaction execution status"
+      enum: [submitted, pending, executing, awaiting_signature, completed, failed, rolled_back]
+
+    ExecutionTimestamps:
+      type: object
+      description: "Transaction lifecycle timestamps"
+      properties:
+        submitted:
+          type: string
+          format: date-time
+          description: "When transaction was submitted"
+        started:
+          type: string
+          format: date-time
+          description: "When execution started"
+        completed:
+          type: string
+          format: date-time
+          description: "When execution completed"
+        finalized:
+          type: string
+          format: date-time
+          description: "When transaction was finalized"
+        failed:
+          type: string
+          format: date-time
+          description: "When transaction failed (if applicable)"
+
+    TransactionProgress:
+      type: object
+      description: "Progress information for in-flight transactions"
+      properties:
+        currentStep:
+          type: string
+          description: "Current step being executed"
+        completedSteps:
+          type: integer
+          description: "Number of completed steps"
+        totalSteps:
+          type: integer
+          description: "Total number of steps"
+
+    TransactionSummary:
+      type: object
+      description: "High-level transaction summary"
+      properties:
+        operation:
+          type: string
+          description: "Primary operation type"
+        tokenCount:
+          type: integer
+          description: "Number of tokens affected"
+        proofId:
+          type: string
+          format: uri-reference
+          description: "Reference to proof record"
+
+    TransactionError:
+      type: object
+      description: "Error details for failed transactions"
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: "Error code"
+        message:
+          type: string
+          description: "Error message"
+        details:
+          type: object
+          description: "Additional error details"
+          additionalProperties: true
+
+    TransactionStatus:
+      type: object
+      description: "Transaction status response"
+      required: [txId, status, timestamps]
+      properties:
+        txId:
+          type: string
+          format: uri-reference
+        status:
+          $ref: '#/components/schemas/ExecutionStatus'
+        progress:
+          $ref: '#/components/schemas/TransactionProgress'
+        timestamps:
+          $ref: '#/components/schemas/ExecutionTimestamps'
+        summary:
+          $ref: '#/components/schemas/TransactionSummary'
+        error:
+          $ref: '#/components/schemas/TransactionError'
+        responseData:
+          type: object
+          description: |
+            Operation-specific response data. For proxy transfers in AWAITING_SIGNATURE state,
+            contains the unsigned transaction payload for external signing.
+          additionalProperties: true
+
+    TransactionLog:
+      type: object
+      description: "Complete transaction log with all details"
+      required: [txId, initiator, tokenTransactions, status, timestamps]
+      properties:
+        txId:
+          type: string
+          format: uri-reference
+        correlationId:
+          type: string
+          description: "External correlation ID"
+        initiator:
+          type: string
+          format: uri-reference
+          description: "Account that initiated the transaction"
+        identities:
+          type: array
+          items: { $ref: '#/components/schemas/Identity' }
+          description: "Snapshot of all identities involved (captured at transaction time for auditability)"
+        tokenTransactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TokenTransactionReference'
+          description: "References to token transactions"
+        workflowInstanceId:
+          type: string
+          format: uri-reference
+          description: "Workflow instance reference"
+        status:
+          $ref: '#/components/schemas/ExecutionStatus'
+        timestamps:
+          $ref: '#/components/schemas/ExecutionTimestamps'
+        proofId:
+          type: string
+          format: uri-reference
+        proofProfile:
+          type: string
+          enum: [zk-snark, zk-stark, merkle, tee-attestation, signature-bundle, none]
+        batchId:
+          type: string
+        ledgerAnchors:
+          type: array
+          items:
+            $ref: '#/components/schemas/LedgerAnchor'
+        metadata:
+          type: object
+          additionalProperties: true
+
+    TokenTransactionReference:
+      type: object
+      description: "Reference to a token transaction"
+      required: [tokenTxId, tokenId, operation]
+      properties:
+        tokenTxId:
+          type: string
+          format: uri-reference
+        tokenId:
+          type: string
+          format: uri-reference
+        operation:
+          type: string
+
+    TokenTransaction:
+      type: object
+      description: "Detailed token transaction record"
+      required: [tokenTxId, txId, tokenId, operation, stateAfter, timestamp]
+      properties:
+        tokenTxId:
+          type: string
+          format: uri-reference
+        txId:
+          type: string
+          format: uri-reference
+        tokenId:
+          type: string
+          format: uri-reference
+        operation:
+          type: string
+          enum: [mint, burn, transfer, freeze, unfreeze, lock, unlock, redeem, update]
+        entryType:
+          type: string
+          enum: [debit, credit]
+          nullable: true
+          description: |
+            Double-entry bookkeeping indicator for transfer operations:
+            - "debit": Reduces sender's balance (outgoing transfer)
+            - "credit": Increases recipient's balance (incoming transfer)
+            - null: For non-transfer operations (mint, burn, freeze, etc.)
+
+            Transfer operations create TWO token_transactions with the same txId:
+            one debit entry for the sender and one credit entry for the recipient.
+        identities:
+          type: array
+          items: { $ref: '#/components/schemas/Identity' }
+          description: "Snapshot of token identities at time of this transaction"
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/Participant'
+        fromAccount:
+          type: string
+          format: uri-reference
+        toAccount:
+          type: string
+          format: uri-reference
+        amount:
+          $ref: '#/components/schemas/AmountTransferred'
+        stateBefore:
+          $ref: '#/components/schemas/StateReference'
+        stateAfter:
+          $ref: '#/components/schemas/StateReference'
+        proofId:
+          type: string
+          format: uri-reference
+        timestamp:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+
+    Participant:
+      type: object
+      description: "Transaction participant"
+      required: [accountId, role]
+      properties:
+        accountId:
+          type: string
+          format: uri-reference
+        role:
+          type: string
+          enum: [sender, receiver, operator, approver]
+
+    AmountTransferred:
+      type: object
+      description: "Amount transferred/affected"
+      properties:
+        amount:
+          type: string
+          description: "Amount (string for big numbers)"
+        unit:
+          type: string
+          default: "token"
+        decimals:
+          type: integer
+
+    StateReference:
+      type: object
+      description: |
+        State reference with cryptographic commitment for verification.
+        State commitments form a chain where each commitment includes the previous one,
+        enabling tamper detection and full state history verification.
+      required: [stateCommitment]
+      properties:
+        stateCommitment:
+          type: string
+          description: |
+            SHA-256 hash of the token state computed from:
+            previousCommitment + lastTxId + timestamp + tokenId + owner +
+            identities + claims + state + stateVersion
+        previousCommitment:
+          type: string
+          description: "Previous state commitment hash (enables chain verification)"
+        lastTxId:
+          type: string
+          format: uri-reference
+          description: "Transaction ID that caused this state change"
+        stateVersion:
+          type: integer
+          description: "Monotonically increasing version number (optimistic locking)"
+        stateSnapshot:
+          type: object
+          additionalProperties: true
+          description: "Full state snapshot at this version"
+
+    LedgerAnchor:
+      type: object
+      description: "External blockchain anchor"
+      properties:
+        chain:
+          type: string
+          example: [ethereum, bitcoin, solana]
+        network:
+          type: string
+          example: [mainnet, sepolia]
+        txHash:
+          type: string
+        blockId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    # --- Transaction Request Payloads ---
+
+    TransactionStatusRequest:
+      type: object
+      required: [txId]
+      properties:
+        txId:
+          type: string
+          format: uri-reference
+
+    GetTransactionRequest:
+      type: object
+      required: [txId]
+      properties:
+        txId:
+          type: string
+          format: uri-reference
+
+    SearchTransactionsRequest:
+      type: object
+      description: "Search request with filters, pagination at payload level"
+      properties:
+        filters:
+          type: object
+          description: |
+            Search filters for transactions. Initiator filtering inferred from JWT/ACL.
+            Known fields: status, correlationId, initiator, workflowInstanceId.
+            Use explicit paths for JSONB fields (e.g., metadata.field).
+          properties:
+            status:
+              $ref: '#/components/schemas/ExecutionStatus'
+            correlationId:
+              type: string
+              description: "Filter by correlation ID"
+            dateRange:
+              type: object
+              description: "Filter by date range"
+              properties:
+                from: { type: string, format: date-time }
+                to: { type: string, format: date-time }
+          additionalProperties: true
+        pagination:
+          $ref: '#/components/schemas/PaginationRequest'
+        sortBy:
+          allOf:
+            - $ref: '#/components/schemas/SortRequest'
+            - properties:
+                field:
+                  enum: [createdAt, updatedAt, timestamp]
+                  default: createdAt
+
+    TokenTransactionsRequest:
+      type: object
+      description: "Request for token transaction history with filters and pagination at payload level"
+      properties:
+        filters:
+          type: object
+          description: |
+            Transaction history filters.
+            Known fields: tokenId, operation, entryType, fromAccount, toAccount.
+            Use explicit paths for JSONB fields (e.g., metadata.field).
+          properties:
+            tokenId:
+              type: string
+              format: uri-reference
+              description: "Token ID to get history for"
+            operation:
+              type: string
+              enum: [mint, burn, transfer, freeze, unfreeze, lock, unlock, redeem, update]
+              description: "Filter by operation type"
+            entryType:
+              type: string
+              enum: [debit, credit]
+              description: "Filter by entry type (for transfer operations)"
+            dateRange:
+              type: object
+              description: "Filter by date range"
+              properties:
+                from: { type: string, format: date-time }
+                to: { type: string, format: date-time }
+          additionalProperties: true
+        pagination:
+          allOf:
+            - $ref: '#/components/schemas/PaginationRequest'
+            - properties:
+                limit:
+                  default: 100
+        sortBy:
+          allOf:
+            - $ref: '#/components/schemas/SortRequest'
+            - properties:
+                field:
+                  enum: [timestamp, createdAt]
+                  default: timestamp
+
+    # --- Transaction Response Payloads ---
+
+    TransactionDetails:
+      allOf:
+        - $ref: '#/components/schemas/TransactionLog'
+
+    TransactionList:
+      type: object
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionLog'
+        pagination:
+          $ref: '#/components/schemas/PaginationResponse'
+
+    TokenTransactionList:
+      type: object
+      properties:
+        tokenTransactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TokenTransaction'
+        pagination:
+          $ref: '#/components/schemas/PaginationResponse'
+
+    # --- Specific Request Envelopes ---
+
+    # TokenClass API Envelopes
+    ApiRequest_RegisterTokenClassRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/RegisterTokenClassRequest' }
+
+    ApiRequest_UpdateTokenClassRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/UpdateTokenClassRequest' }
+
+    ApiRequest_GetTokenClassRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/GetTokenClassRequest' }
+
+    ApiRequest_SearchTokenClassRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/SearchTokenClassRequest' }
+
+    ApiResponse_TokenClassDetails:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/TokenClass' }
+
+    ApiResponse_TokenClassList:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/TokenClassList' }
+
+    # Token API Envelopes
+    ApiRequest_GetTokenRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/GetTokenRequest' }
+
+    ApiRequest_MintTokenRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/MintTokenRequest' }
+            signature: { $ref: '#/components/schemas/Signature' }
+
+    ApiRequest_SearchTokensRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/SearchTokensRequest' }
+
+    ApiRequest_TransactRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/TransactRequest' }
+            signature: { $ref: '#/components/schemas/Signature' }
+
+    ApiRequest_AddCredentialRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/AddCredentialRequest' }
+
+    # --- Specific Response Envelopes ---
+    ApiResponse_TokenDetails:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/TokenDetails' }
+
+    ApiResponse_TokenList:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/TokenList' }
+
+    ApiResponse_TransactAccepted:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            context:
+              allOf:
+                - $ref: '#/components/schemas/ResponseContext'
+                - properties:
+                    status:
+                      type: string
+                      enum: ["accepted"]
+                    transactionId:
+                      type: string
+                      format: uri-reference
+            response: { $ref: '#/components/schemas/TransactAccepted' }
+
+    ApiResponse_AddCredentialAccepted:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            context:
+              allOf:
+                - $ref: '#/components/schemas/ResponseContext'
+                - properties:
+                    status:
+                      type: string
+                      enum: ["accepted"]
+                    transactionId:
+                      type: string
+                      format: uri-reference
+            response: { $ref: '#/components/schemas/AddCredentialAccepted' }
+
+    # --- Transaction API Request Envelopes ---
+    ApiRequest_TransactionStatusRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/TransactionStatusRequest' }
+
+    ApiRequest_GetTransactionRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/GetTransactionRequest' }
+
+    ApiRequest_SearchTransactionsRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/SearchTransactionsRequest' }
+
+    ApiRequest_TokenTransactionsRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/TokenTransactionsRequest' }
+
+    # --- Transaction API Response Envelopes ---
+    ApiResponse_TransactionStatus:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/TransactionStatus' }
+
+    ApiResponse_TransactionDetails:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/TransactionDetails' }
+
+    ApiResponse_TransactionList:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/TransactionList' }
+
+    ApiResponse_TokenTransactionList:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/TokenTransactionList' }
+
+    # --- Proof Schemas ---
+
+    ProofStatus:
+      type: string
+      description: "Proof generation and anchoring status"
+      enum: [pending, proven, anchored]
+
+    ProofDirection:
+      type: string
+      description: "Direction indicator for Merkle proof path nodes"
+      enum: [left, right]
+
+    ProofPathNode:
+      type: object
+      description: "A single node in the Merkle proof path"
+      required: [hash, direction]
+      properties:
+        hash:
+          type: string
+          description: "Sibling hash at this level (hex-encoded)"
+        direction:
+          $ref: '#/components/schemas/ProofDirection'
+
+    BlockchainAnchor:
+      type: object
+      description: "Blockchain anchoring details"
+      properties:
+        network:
+          type: string
+          description: "Blockchain network name"
+          example: "ethereum_sepolia"
+        txHash:
+          type: string
+          description: "Blockchain transaction hash containing the Merkle root"
+          example: "0x1234567890abcdef..."
+        blockNumber:
+          type: integer
+          format: int64
+          description: "Block number where the anchor was confirmed"
+        blockTimestamp:
+          type: string
+          format: date-time
+          description: "Block timestamp"
+        contractAddress:
+          type: string
+          description: "Smart contract address used for anchoring"
+
+    VerificationInfo:
+      type: object
+      description: "Information for independent verification"
+      properties:
+        algorithm:
+          type: string
+          description: "Hashing algorithm used"
+          default: "sha256"
+        leafDataEndpoint:
+          type: string
+          description: "Endpoint to retrieve raw leaf data for verification"
+          example: "/v1/transaction/proof/leaf"
+
+    ProofDetails:
+      type: object
+      description: "Complete Merkle proof details for a transaction"
+      required: [txId, proofStatus]
+      properties:
+        txId:
+          type: string
+          format: uri-reference
+          description: "Transaction ID"
+        leafHash:
+          type: string
+          description: "SHA-256 hash of the transaction leaf data (hex-encoded)"
+        merkleRoot:
+          type: string
+          description: "Merkle tree root hash (hex-encoded)"
+        proofPath:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProofPathNode'
+          description: "Path from leaf to root for verification"
+        leafIndex:
+          type: integer
+          description: "Position of this transaction's leaf in the Merkle tree"
+        batchId:
+          type: string
+          format: uri-reference
+          description: "Batch identifier grouping transactions in this Merkle tree"
+        proofStatus:
+          $ref: '#/components/schemas/ProofStatus'
+        anchor:
+          $ref: '#/components/schemas/BlockchainAnchor'
+        verification:
+          $ref: '#/components/schemas/VerificationInfo'
+        message:
+          type: string
+          description: "Additional status message (e.g., for pending proofs)"
+
+    TokenTransactionSummary:
+      type: object
+      description: "Summary of a token transaction for Merkle leaf data"
+      required: [id, tokenId]
+      properties:
+        id:
+          type: string
+          format: uri-reference
+          description: "Token transaction ID"
+        tokenId:
+          type: string
+          format: uri-reference
+          description: "Token ID"
+        entryType:
+          type: string
+          enum: [debit, credit]
+          nullable: true
+          description: "Double-entry bookkeeping type (for transfers)"
+        amount:
+          type: string
+          description: "Amount (as string for precision)"
+        identities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Identity'
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/Participant'
+
+    ProofLeafData:
+      type: object
+      description: "Raw transaction leaf data used in Merkle tree"
+      required: [txId, operation, tokenClass, status, createdAt, tokenTransactions]
+      properties:
+        txId:
+          type: string
+          format: uri-reference
+          description: "Transaction ID"
+        operation:
+          type: string
+          description: "Operation type (mint, transfer, burn, etc.)"
+        tokenClass:
+          type: string
+          description: "Token class identifier"
+        status:
+          type: string
+          description: "Transaction status"
+        createdAt:
+          type: string
+          format: date-time
+          description: "Transaction creation timestamp"
+        tokenTransactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TokenTransactionSummary'
+          description: "All token transactions included in this transaction"
+
+    ProofVerificationResult:
+      type: object
+      description: "Result of server-side proof verification"
+      required: [verified, verifiedAt]
+      properties:
+        verified:
+          type: boolean
+          description: "Overall verification result"
+        leafHashValid:
+          type: boolean
+          description: "Whether the leaf hash matches the transaction data"
+        proofPathValid:
+          type: boolean
+          description: "Whether the proof path correctly computes to the Merkle root"
+        anchorValid:
+          type: boolean
+          nullable: true
+          description: "Whether the Merkle root exists on the blockchain (null if not yet anchored)"
+        error:
+          type: string
+          description: "Error message if verification failed"
+        message:
+          type: string
+          description: "Additional information about verification status"
+        verifiedAt:
+          type: string
+          format: date-time
+          description: "Timestamp of verification"
+
+    # --- Proof API Request Payloads ---
+
+    GetProofRequest:
+      type: object
+      required: [txId]
+      properties:
+        txId:
+          type: string
+          format: uri-reference
+          description: "Transaction ID to get proof for"
+
+    GetProofLeafRequest:
+      type: object
+      required: [txId]
+      properties:
+        txId:
+          type: string
+          format: uri-reference
+          description: "Transaction ID to get leaf data for"
+
+    VerifyProofRequest:
+      type: object
+      required: [txId]
+      properties:
+        txId:
+          type: string
+          format: uri-reference
+          description: "Transaction ID to verify proof for"
+
+    # --- Proof API Request Envelopes ---
+
+    ApiRequest_GetProofRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/GetProofRequest' }
+
+    ApiRequest_GetProofLeafRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/GetProofLeafRequest' }
+
+    ApiRequest_VerifyProofRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/VerifyProofRequest' }
+
+    # --- Proof API Response Envelopes ---
+
+    ApiResponse_ProofDetails:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/ProofDetails' }
+
+    ApiResponse_ProofLeafData:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/ProofLeafData' }
+
+    ApiResponse_ProofVerification:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/ProofVerificationResult' }
+
+  # -------------------- Responses --------------------
+  responses:
+    UnauthorizedError:
+      description: "Authentication failed. Can be invalid Developer Token OR invalid User JWT."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "AUTHENTICATION_FAILED", message: "Token invalid or expired." } }
+            response: {}
+    ForbiddenError:
+      description: "Forbidden. Insufficient permissions."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "PERMISSION_DENIED", message: "Insufficient permissions to perform this action." } }
+            response: {}
+    NotFoundError:
+      description: "Resource not found."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "The requested token was not found." } }
+            response: {}
+    BadRequestError:
+      description: "Invalid request."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "INVALID_REQUEST", message: "Invalid request parameters." } }
+            response: {}
+    ConflictError:
+      description: "Conflict with existing resource or state."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "RESOURCE_CONFLICT", message: "Operation conflicts with current token state." } }
+            response: {}
+    RateLimitedError:
+      description: |
+        Request exceeded the scope-tier sliding-window rate limit. The `Retry-After`
+        response header indicates how long the caller should wait before retrying.
+      headers:
+        Retry-After:
+          schema: { type: integer, description: "Seconds to wait before retrying." }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "RATE_LIMITED", message: "Too many requests. Retry after 30s." } }
+            response: {}
+
+  # -------------------- Security --------------------
+  securitySchemes:
+    developerToken:
+      type: http
+      scheme: bearer
+      bearerFormat: "JWT or Opaque"
+      description: |
+        A JWT or Opaque token that identifies the calling B2B developer/backend service.
+        This is passed in the standard `Authorization: Bearer <token>` header.
+        (This can also be passed in the `context.developerToken` as a fallback).
+
+    developerSignature:
+      type: apiKey
+      in: header
+      name: Signature
+      description: |
+        The IETF HTTP Signature (RFC 9421) used by B2B developers to ensure message
+        integrity and non-repudiation. This is passed in the `Signature` header.
+
+    userToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        A JWT token that identifies the end-user making the request. This is obtained
+        after user authentication (e.g., via `/v1/account/login`) and is passed in
+        the `context.authorization` field as `Bearer <token>`.

@@ -1,0 +1,289 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://finternet-io.github.io/specs/schemas/account.schema.json",
+  "title": "Finternet Account",
+  "description": "Validation schema for a Finternet Account data object. References the account/v1 schema definitions.",
+  "type": "object",
+  "$comment": "This schema validates account instances. For full schema definitions including JSON-LD context, see v1/attributes.yaml",
+  "definitions": {
+    "Identifier": {
+      "$ref": "https://finternet-io.github.io/specs/schemas/core/v1/core.yaml#/components/schemas/Identifier",
+      "type": "object",
+      "description": "Structured identifier for Finternet addressing",
+      "required": [
+        "identifierValue",
+        "identifierDomain"
+      ],
+      "properties": {
+        "identifierValue": {
+          "type": "string",
+          "pattern": "^[a-z0-9._-]+$",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Local part of the identifier (before @)"
+        },
+        "identifierDomain": {
+          "type": "string",
+          "pattern": "^[a-z0-9.-]+$",
+          "minLength": 1,
+          "maxLength": 253,
+          "description": "Domain part of the identifier (after @)"
+        }
+      }
+    },
+    "Flags": {
+      "$ref": "https://finternet-io.github.io/specs/schemas/account/v1/attributes.yaml#/components/schemas/Flags",
+      "type": "object",
+      "description": "Structured feature flags and permissions",
+      "properties": {
+        "notificationPreferences": {
+          "type": "object",
+          "description": "Structured notification preferences",
+          "properties": {
+            "email": {
+              "type": "boolean",
+              "default": true
+            },
+            "push": {
+              "type": "boolean",
+              "default": true
+            },
+            "sms": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "Preferences": {
+      "type": "object",
+      "description": "User preferences for UI and localization",
+      "properties": {
+        "userDefinedTheme": {
+          "type": "string",
+          "description": "User's preferred UI theme",
+          "enum": [
+            "light",
+            "dark",
+            "auto"
+          ],
+          "default": "auto"
+        },
+        "language": {
+          "type": "string",
+          "description": "Preferred language code (ISO 639-1)",
+          "pattern": "^[a-z]{2}$",
+          "default": "en"
+        },
+        "timezone": {
+          "type": "string",
+          "description": "Preferred timezone (IANA timezone identifier)",
+          "default": "UTC"
+        }
+      },
+      "additionalProperties": false
+    },
+    "EntityType": {
+      "description": "Legal entity type enumeration (PERSONAL or BUSINESS)",
+      "type": "string",
+      "enum": [
+        "PERSONAL",
+        "BUSINESS"
+      ]
+    },
+    "ContactMethodType": {
+      "description": "Contact method type enumeration",
+      "type": "string",
+      "enum": [
+        "EMAIL",
+        "MOBILE"
+      ]
+    },
+    "ContactMethod": {
+      "$ref": "https://finternet-io.github.io/specs/schemas/account/v1/attributes.yaml#/components/schemas/ContactMethod",
+      "type": "object",
+      "description": "A contact method for recovery or notifications",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/ContactMethodType"
+        },
+        "value": {
+          "type": "string",
+          "minLength": 3,
+          "description": "The contact value (email, phone, etc.)"
+        },
+        "verified": {
+          "type": "boolean",
+          "description": "Whether this contact method has been verified",
+          "default": false
+        },
+        "primary": {
+          "type": "boolean",
+          "description": "Whether this is the primary contact method",
+          "default": false
+        },
+        "verifiedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the contact method was verified"
+        }
+      }
+    },
+    "AccountStatus": {
+      "description": "Account status enumeration (ACTIVE or SUSPENDED)",
+      "type": "string",
+      "enum": [
+        "ACTIVE",
+        "SUSPENDED"
+      ],
+      "default": "ACTIVE"
+    }
+  },
+  "properties": {
+    "@context": {
+      "description": "The JSON-LD context, should reference https://finternet-io.github.io/specs/schemas/account/v1/context.jsonld",
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "https://finternet-io.github.io/specs/schemas/account/v1/context.jsonld"
+        },
+        {
+          "type": "object"
+        },
+        {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "@type": {
+      "description": "The JSON-LD type, must be 'Account'.",
+      "type": "string",
+      "const": "Account"
+    },
+    "@id": {
+      "description": "The unique URN identifier for the account.",
+      "type": "string",
+      "format": "uri-reference",
+      "examples": [
+        "urn:uuid:018b41f8-37c8-7c83-9429-7a670d8a598a"
+      ]
+    },
+    "did": {
+      "description": "The DID (Decentralized Identifier) of the account.",
+      "type": "string",
+      "pattern": "^did:",
+      "examples": [
+        "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBa82SsoPfnH4Ujp"
+      ]
+    },
+    "address": {
+      "$ref": "#/definitions/Identifier",
+      "description": "The unique, human-readable identifier for the account."
+    },
+    "name": {
+      "description": "The legal name of the individual or business.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[\\p{L} ]+$",
+      "examples": [
+        "Alice Smith"
+      ]
+    },
+    "mobile": {
+      "description": "The optional primary mobile phone number (E.164 format).",
+      "type": "string",
+      "pattern": "^\\+[1-9]\\d{1,14}$",
+      "examples": [
+        "+919876543210"
+      ]
+    },
+    "email": {
+      "description": "The primary contact email for the account.",
+      "type": "string",
+      "format": "email",
+      "examples": [
+        "alice.smith@example.com"
+      ]
+    },
+    "entityType": {
+      "$ref": "#/definitions/EntityType",
+      "description": "The type of entity (PERSONAL or BUSINESS)."
+    },
+    "status": {
+      "$ref": "#/definitions/AccountStatus",
+      "description": "The current status of the account."
+    },
+    "flags": {
+      "$ref": "#/definitions/Flags",
+      "description": "Structured feature flags and permissions for the account."
+    },
+    "preferences": {
+      "$ref": "#/definitions/Preferences",
+      "description": "User preferences for UI and localization."
+    },
+    "controllers": {
+      "description": "Array of controller DIDs for multi-sig or delegated control.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uri",
+        "pattern": "^did:"
+      },
+      "examples": [
+        [
+          "did:key:z6Mkf5rGMoatrSj1f4CyvuHBeXJELe9RPdzo2PKGNCKVtZxP"
+        ]
+      ]
+    },
+    "contactMethods": {
+      "description": "An array of secondary contact methods for recovery or notifications.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ContactMethod"
+      }
+    },
+    "aliases": {
+      "description": "An array of alternative, non-primary addresses for the account.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Identifier"
+      }
+    },
+    "created": {
+      "description": "Account creation timestamp.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "modified": {
+      "description": "Last modification timestamp.",
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "did",
+    "address",
+    "name",
+    "email",
+    "entityType"
+  ],
+  "additionalProperties": false
+}

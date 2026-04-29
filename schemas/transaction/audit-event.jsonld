@@ -1,0 +1,48 @@
+{
+  "@context": "https://finternet-io.github.io/specs/schemas/transaction/v1/context.jsonld",
+  "@type": "AuditEvent",
+  "auditEventId": "urn:uuid:audit-550e8400-e29b-41d4-a716-446655440003",
+  "tokenId": "urn:uuid:token-550e8400-e29b-41d4-a716-446655440000",
+  "txId": "urn:uuid:tx-550e8400-e29b-41d4-a716-446655440001",
+  "actor": "urn:account:issuer:central-bank-001",
+  "eventType": "MetadataUpdated",
+  "changeDetails": [
+    {
+      "fieldPath": "metadata.name",
+      "before": "Central Bank Digital Currency (CBDC) - Beta",
+      "after": "Central Bank Digital Currency (CBDC) - v1.0",
+      "changeType": "updated"
+    }
+  ],
+  "reason": "Updated token name from beta to production version following successful pilot completion",
+  "approvals": [
+    {
+      "approver": "urn:account:compliance:compliance-officer-001",
+      "approved": true,
+      "timestamp": "2025-01-04T09:30:00Z",
+      "signature": "0x8f5c9b2a1d3e4f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a"
+    },
+    {
+      "approver": "urn:account:admin:system-admin-001",
+      "approved": true,
+      "timestamp": "2025-01-04T09:45:00Z",
+      "signature": "0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b"
+    }
+  ],
+  "timestamp": "2025-01-04T10:00:00Z",
+  "proofId": "urn:uuid:proof-550e8400-e29b-41d4-a716-446655440002",
+  "metadata": {
+    "ipAddress": "192.168.1.100",
+    "userAgent": "Finternet-AdminConsole/1.0",
+    "sessionId": "sess-7890abcd",
+    "custom": {
+      "department": "Monetary Policy",
+      "ticketId": "CHANGE-12345"
+    }
+  },
+  "signature": {
+    "type": "Ed25519Signature2020",
+    "value": "0x9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b",
+    "signer": "urn:account:issuer:central-bank-001"
+  }
+}

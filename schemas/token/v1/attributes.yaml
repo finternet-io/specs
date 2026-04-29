@@ -1,0 +1,298 @@
+openapi: 3.1.0
+info:
+  title: Finternet Token Instance Schema v1
+  version: 1.0.0
+  description: |
+    Lightweight Token instance schema for the Finternet protocol.
+
+    ## Token vs TokenClass
+
+    | Aspect | TokenClass | Token |
+    |--------|------------|-------|
+    | Purpose | Template/definition | Instance |
+    | Fields | ~15 fields | ~10 fields |
+    | Supply | totalSupply, maxSupply | (none) |
+    | Balance | (none) | balance |
+    | Relationships | (none) | dependsOn, hasDependents |
+    | Identities | issuer, creator, manager | owner, operator, custodian |
+
+    ## Key Design Principles
+
+    1. **Lightweight**: Token instances are minimal (~10 fields)
+    2. **References TokenClass**: Inherits static configuration from TokenClass
+    3. **Instance-specific state**: Owns balance, status, lock state
+    4. **Relationships**: Token-to-token dependencies (e.g., LEASE → PROPERTY)
+    5. **Denormalized owner**: Fast owner lookups without joining identities
+
+components:
+  schemas:
+    # -------------------- Identity (Instance-Level) --------------------
+
+    InstanceIdentityType:
+      type: string
+      description: Type of identity relationship at the Token instance level
+      enum:
+        - owner
+        - operator
+        - custodian
+      x-jsonld: { "@id": "finternet:identityType", "@type": "@vocab" }
+
+    Identity:
+      type: object
+      description: Instance-level identity relationship
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld
+        "@type": finternet:Identity
+      required:
+        - id
+        - type
+      properties:
+        id:
+          type: string
+          description: FinternetAddress or DID of the identity
+          x-jsonld: { "@id": "@id", "@type": "@id" }
+        type:
+          $ref: "#/components/schemas/InstanceIdentityType"
+        roles:
+          type: array
+          items:
+            type: string
+          description: Additional role descriptors
+          x-jsonld: { "@id": "finternet:roles", "@container": "@set" }
+
+    # -------------------- State --------------------
+
+    TokenStatus:
+      type: string
+      description: Lifecycle status of the token
+      enum:
+        - active
+        - frozen
+        - redeemed
+        - burned
+        - expired
+      x-jsonld: { "@id": "finternet:status", "@type": "@vocab" }
+
+    LockState:
+      type: object
+      description: Lock state information
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld
+        "@type": finternet:LockState
+      required:
+        - locked
+      properties:
+        locked:
+          type: boolean
+          description: Whether the token is locked
+          x-jsonld: { "@id": "finternet:locked", "@type": "xsd:boolean" }
+        lockReason:
+          type: string
+          description: Reason or code for the lock
+          x-jsonld: { "@id": "finternet:lockReason" }
+        lockedBy:
+          type: string
+          description: Entity that applied the lock
+          x-jsonld: { "@id": "finternet:lockedBy", "@type": "@id" }
+        lockedAt:
+          type: string
+          format: date-time
+          description: Lock timestamp
+          x-jsonld: { "@id": "finternet:lockedAt", "@type": "xsd:dateTime" }
+
+    TokenState:
+      type: object
+      description: |
+        Runtime state of a token instance.
+
+        The `balance` field represents the holder's current balance:
+        - FungibleToken: Variable amount (e.g., "100500000" = 100.5 USDC with 6 decimals)
+        - NonFungibleToken: Always "1"
+        - CredentialToken: Always "1"
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld
+        "@type": finternet:TokenState
+      required:
+        - status
+        - balance
+      properties:
+        status:
+          $ref: "#/components/schemas/TokenStatus"
+        balance:
+          type: string
+          description: |
+            Holder's current balance in smallest units (string for big numbers).
+            Examples:
+            - "100500000" = 100.5 USDC (with 6 decimals)
+            - "1" = NFT or Credential
+          pattern: "^[0-9]+$"
+          x-jsonld: { "@id": "finternet:balance" }
+        effectiveFrom:
+          type: string
+          format: date-time
+          description: When this token instance became effective
+          x-jsonld: { "@id": "finternet:effectiveFrom", "@type": "xsd:dateTime" }
+        effectiveUntil:
+          type: string
+          format: date-time
+          description: When this token instance expires (null if no expiry)
+          x-jsonld: { "@id": "finternet:effectiveUntil", "@type": "xsd:dateTime" }
+        lockState:
+          $ref: "#/components/schemas/LockState"
+        chainId:
+          type: string
+          description: |
+            CAIP-2 chain identifier of the source blockchain (proxy tokens only).
+            NULL for native tokens. When present, indicates this token is a proxy
+            (shadow copy) of an external blockchain asset whose balance is sourced
+            from an external chain and operations route through chain adapters.
+            Example: "eip155:1" for Ethereum Mainnet.
+          x-jsonld: { "@id": "finternet:chainId" }
+        contractId:
+          type: string
+          description: |
+            Contract address on the source chain (proxy tokens only).
+            Use "native" for native assets (ETH, POL, etc.).
+            NULL for native tokens.
+          x-jsonld: { "@id": "finternet:contractId" }
+        walletAddress:
+          type: string
+          description: |
+            On-chain wallet address that holds this asset (proxy tokens only).
+            Required for proxy tokens — the adapter needs the "from" address
+            to build transactions. Same seed phrase produces the same address
+            regardless of wallet software (MetaMask, Coinbase Wallet, etc.).
+            NULL for native tokens.
+          x-jsonld: { "@id": "finternet:walletAddress" }
+        syncStatus:
+          type: string
+          description: Balance synchronization status (proxy tokens only)
+          enum:
+            - SYNCED
+            - STALE
+            - SYNCING
+            - ERROR
+          x-jsonld: { "@id": "finternet:syncStatus", "@type": "@vocab" }
+        lastSyncedAt:
+          type: string
+          format: date-time
+          description: Timestamp of the last successful balance sync (proxy tokens only)
+          x-jsonld: { "@id": "finternet:lastSyncedAt", "@type": "xsd:dateTime" }
+        stateCommitment:
+          type: string
+          description: Cryptographic hash/commitment representing this state
+          x-jsonld: { "@id": "finternet:stateCommitment" }
+
+    # -------------------- Relationships --------------------
+
+    RelationshipType:
+      type: string
+      description: Type of token-to-token relationship
+      enum:
+        - dependsOn
+        - hasDependents
+      x-jsonld: { "@id": "finternet:relationshipType", "@type": "@vocab" }
+
+    Relationship:
+      type: object
+      description: |
+        Token-to-token dependency relationship.
+
+        Examples:
+        - LEASE token dependsOn PROPERTY token
+        - RENTAL_INCOME token dependsOn LEASE token
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld
+        "@type": finternet:Relationship
+      required:
+        - type
+        - targetTokenId
+      properties:
+        type:
+          $ref: "#/components/schemas/RelationshipType"
+        targetTokenId:
+          type: string
+          format: uri
+          description: Token ID of the related token
+          x-jsonld: { "@id": "finternet:targetTokenId", "@type": "@id" }
+        description:
+          type: string
+          description: Human-readable description of the relationship
+          x-jsonld: { "@id": "schema:description" }
+
+    # -------------------- Token --------------------
+
+    Token:
+      type: object
+      description: |
+        Lightweight Token instance.
+
+        This is an instance of a TokenClass - it references the class for static
+        configuration and holds only instance-specific data.
+
+        Key fields:
+        - **tokenId**: Unique instance identifier
+        - **tokenClassId**: Reference to the TokenClass template
+        - **owner**: Denormalized owner address (for fast lookups)
+        - **identities**: Instance-level roles (owner, operator, custodian)
+        - **state**: Runtime state (status, balance, lock)
+        - **relationships**: Token-to-token dependencies
+        - **data**: Optional mutable business data
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/token/v1/context.jsonld
+        "@type": finternet:Token
+      required:
+        - tokenId
+        - tokenClassId
+        - owner
+        - identities
+        - state
+      properties:
+        tokenId:
+          type: string
+          format: uri
+          description: Unique identifier for this token instance
+          x-jsonld: { "@id": "@id", "@type": "@id" }
+        tokenClassId:
+          type: string
+          format: uri
+          description: Reference to the TokenClass this token is an instance of
+          x-jsonld: { "@id": "finternet:tokenClassId", "@type": "@id" }
+        owner:
+          type: string
+          description: |
+            Denormalized owner address (FinternetAddress).
+            Duplicated from identities for fast owner-based queries.
+          x-jsonld: { "@id": "finternet:owner" }
+        identities:
+          type: array
+          items:
+            $ref: "#/components/schemas/Identity"
+          description: |
+            Instance-level identity relationships.
+            Types: owner, operator, custodian
+          minItems: 1
+          x-jsonld: { "@id": "finternet:identities", "@container": "@set" }
+        state:
+          $ref: "#/components/schemas/TokenState"
+        relationships:
+          type: array
+          items:
+            $ref: "#/components/schemas/Relationship"
+          description: Token-to-token dependencies
+          x-jsonld: { "@id": "finternet:relationships", "@container": "@set" }
+        data:
+          type: object
+          description: Optional mutable business data (token-class-specific)
+          additionalProperties: true
+          x-jsonld: { "@id": "finternet:data", "@type": "@json" }
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+          x-jsonld: { "@id": "schema:dateCreated", "@type": "xsd:dateTime" }
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          x-jsonld: { "@id": "schema:dateModified", "@type": "xsd:dateTime" }

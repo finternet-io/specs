@@ -1,0 +1,263 @@
+{
+    "@context": {
+        "finternet": "https://finternet-io.github.io/specs/schemas/account/v1#",
+        "schema": "https://schema.org/",
+        "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+        "xsd": "http://www.w3.org/2001/XMLSchema#",
+        "didCore": "https://www.w3.org/ns/did/v1#",
+        "sec": "https://w3id.org/security#"
+    },
+    "@graph": [
+        {
+            "@id": "finternet:Account",
+            "@type": "rdfs:Class",
+            "rdfs:subClassOf": "https://finternet-io.github.io/specs/schemas/core/v1#Entity",
+            "rdfs:label": "Account",
+            "rdfs:comment": "Represents a core Finternet Account, which is a top-level entity representing a user or organization with cryptographic identity and contact information."
+        },
+        {
+            "@id": "finternet:publicKey",
+            "@type": "rdf:Property",
+            "rdfs:label": "publicKey",
+            "rdfs:comment": "The root cryptographic public key that controls the Account.",
+            "rdfs:domain": "finternet:Account",
+            "rdfs:range": "sec:Key"
+        },
+        {
+            "@id": "finternet:entityType",
+            "@type": "rdf:Property",
+            "rdfs:label": "entityType",
+            "rdfs:comment": "Defines the legal nature of the account (PERSONAL or BUSINESS).",
+            "rdfs:domain": "finternet:Account",
+            "rdfs:range": "finternet:EntityType"
+        },
+        {
+            "@id": "finternet:flags",
+            "@type": "rdf:Property",
+            "rdfs:label": "flags",
+            "rdfs:comment": "Structured preferences and feature flags for the account.",
+            "rdfs:domain": "finternet:Account",
+            "rdfs:range": "finternet:Flags"
+        },
+        {
+            "@id": "finternet:preferences",
+            "@type": "rdf:Property",
+            "rdfs:label": "preferences",
+            "rdfs:comment": "User preferences for UI and localization.",
+            "rdfs:domain": "finternet:Account",
+            "rdfs:range": "finternet:Preferences"
+        },
+        {
+            "@id": "finternet:contactMethods",
+            "@type": "rdf:Property",
+            "rdfs:label": "contactMethods",
+            "rdfs:comment": "A set of secondary contact methods for recovery or notifications.",
+            "rdfs:domain": "finternet:Account",
+            "rdfs:range": "finternet:ContactMethod"
+        },
+        {
+            "@id": "finternet:aliases",
+            "@type": "rdf:Property",
+            "rdfs:label": "aliases",
+            "rdfs:comment": "A set of alternative, non-primary addresses for the account.",
+            "rdfs:domain": "finternet:Account",
+            "rdfs:range": "https://finternet-io.github.io/specs/schemas/core/v1#Identifier"
+        },
+        {
+            "@id": "finternet:EntityType",
+            "@type": "schema:Enumeration",
+            "schema:name": "Entity Type",
+            "rdfs:comment": "Enumeration of legal entity types for accounts.",
+            "schema:hasEnumerationMember": [
+                {
+                    "@id": "finternet:PERSONAL"
+                },
+                {
+                    "@id": "finternet:BUSINESS"
+                }
+            ]
+        },
+        {
+            "@id": "finternet:PERSONAL",
+            "@type": [
+                "finternet:EntityType",
+                "schema:Enumeration"
+            ],
+            "schema:name": "Personal",
+            "schema:identifier": "PERSONAL"
+        },
+        {
+            "@id": "finternet:BUSINESS",
+            "@type": [
+                "finternet:EntityType",
+                "schema:Enumeration"
+            ],
+            "schema:name": "Business",
+            "schema:identifier": "BUSINESS"
+        },
+        {
+            "@id": "finternet:ContactMethodType",
+            "@type": "schema:Enumeration",
+            "schema:name": "Contact Method Type",
+            "rdfs:comment": "Enumeration of contact method types for account recovery and notifications.",
+            "schema:hasEnumerationMember": [
+                {
+                    "@id": "finternet:EMAIL"
+                },
+                {
+                    "@id": "finternet:MOBILE"
+                }
+            ]
+        },
+        {
+            "@id": "finternet:EMAIL",
+            "@type": [
+                "finternet:ContactMethodType",
+                "schema:Enumeration"
+            ],
+            "schema:name": "Email",
+            "schema:identifier": "EMAIL"
+        },
+        {
+            "@id": "finternet:MOBILE",
+            "@type": [
+                "finternet:ContactMethodType",
+                "schema:Enumeration"
+            ],
+            "schema:name": "Mobile",
+            "schema:identifier": "MOBILE"
+        },
+        {
+            "@id": "finternet:ContactMethod",
+            "@type": "rdfs:Class",
+            "rdfs:label": "ContactMethod",
+            "rdfs:comment": "A structured representation of a contact method for recovery or notifications."
+        },
+        {
+            "@id": "finternet:contactMethodType",
+            "@type": "rdf:Property",
+            "rdfs:label": "contactMethodType",
+            "rdfs:comment": "The type of contact method.",
+            "rdfs:domain": "finternet:ContactMethod",
+            "rdfs:range": "finternet:ContactMethodType"
+        },
+        {
+            "@id": "finternet:contactValue",
+            "@type": "rdf:Property",
+            "rdfs:label": "contactValue",
+            "rdfs:comment": "The actual contact value (email address, phone number, etc.).",
+            "rdfs:domain": "finternet:ContactMethod",
+            "rdfs:range": "xsd:string"
+        },
+        {
+            "@id": "finternet:verified",
+            "@type": "rdf:Property",
+            "rdfs:label": "verified",
+            "rdfs:comment": "Indicates whether the contact method has been verified.",
+            "rdfs:domain": "finternet:ContactMethod",
+            "rdfs:range": "xsd:boolean"
+        },
+        {
+            "@id": "finternet:verifiedAt",
+            "@type": "rdf:Property",
+            "rdfs:label": "verifiedAt",
+            "rdfs:comment": "Timestamp when the contact method was verified.",
+            "rdfs:domain": "finternet:ContactMethod",
+            "rdfs:range": "xsd:dateTime"
+        },
+        {
+            "@id": "finternet:primary",
+            "@type": "rdf:Property",
+            "rdfs:label": "primary",
+            "rdfs:comment": "Indicates whether this is the primary contact method.",
+            "rdfs:domain": "finternet:ContactMethod",
+            "rdfs:range": "xsd:boolean"
+        },
+        {
+            "@id": "finternet:Flags",
+            "@type": "rdfs:Class",
+            "rdfs:label": "Flags",
+            "rdfs:comment": "Account-specific feature flags and permissions."
+        },
+        {
+            "@id": "finternet:notificationPreferences",
+            "@type": "rdf:Property",
+            "rdfs:label": "notificationPreferences",
+            "rdfs:comment": "Structured notification preferences.",
+            "rdfs:domain": "finternet:Flags",
+            "rdfs:range": "rdf:JSON"
+        },
+        {
+            "@id": "finternet:Preferences",
+            "@type": "rdfs:Class",
+            "rdfs:label": "Preferences",
+            "rdfs:comment": "User preferences for UI and localization."
+        },
+        {
+            "@id": "finternet:userDefinedTheme",
+            "@type": "rdf:Property",
+            "rdfs:label": "userDefinedTheme",
+            "rdfs:comment": "User's preferred UI theme.",
+            "rdfs:domain": "finternet:Preferences",
+            "rdfs:range": "xsd:string"
+        },
+        {
+            "@id": "finternet:language",
+            "@type": "rdf:Property",
+            "rdfs:label": "language",
+            "rdfs:comment": "Preferred language code (ISO 639-1).",
+            "rdfs:domain": "finternet:Preferences",
+            "rdfs:range": "xsd:string"
+        },
+        {
+            "@id": "finternet:timezone",
+            "@type": "rdf:Property",
+            "rdfs:label": "timezone",
+            "rdfs:comment": "Preferred timezone (IANA timezone identifier).",
+            "rdfs:domain": "finternet:Preferences",
+            "rdfs:range": "xsd:string"
+        },
+        {
+            "@id": "finternet:accountStatus",
+            "@type": "rdf:Property",
+            "rdfs:subPropertyOf": "finternet:status",
+            "rdfs:label": "status",
+            "rdfs:comment": "The status of an account.",
+            "rdfs:domain": "finternet:Account",
+            "rdfs:range": "finternet:AccountStatus"
+        },
+        {
+            "@id": "finternet:AccountStatus",
+            "@type": "schema:Enumeration",
+            "schema:name": "Account Status",
+            "rdfs:comment": "Enumeration of account status values.",
+            "schema:hasEnumerationMember": [
+                {
+                    "@id": "finternet:ACTIVE"
+                },
+                {
+                    "@id": "finternet:SUSPENDED"
+                }
+            ]
+        },
+        {
+            "@id": "finternet:ACTIVE",
+            "@type": [
+                "finternet:AccountStatus",
+                "schema:Enumeration"
+            ],
+            "schema:name": "Active",
+            "schema:identifier": "ACTIVE"
+        },
+        {
+            "@id": "finternet:SUSPENDED",
+            "@type": [
+                "finternet:AccountStatus",
+                "schema:Enumeration"
+            ],
+            "schema:name": "Suspended",
+            "schema:identifier": "SUSPENDED"
+        }
+    ]
+}

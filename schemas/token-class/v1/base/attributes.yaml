@@ -1,0 +1,411 @@
+openapi: 3.1.0
+info:
+  title: Finternet TokenClass Schema v1 - Base
+  version: 1.0.0
+  description: |
+    Base TokenClass schema for the Finternet protocol.
+
+    TokenClass is a template/definition that describes a category of tokens.
+    Individual Token instances reference a TokenClass and inherit its configuration.
+
+    ## TokenClass vs Token
+
+    | Aspect | TokenClass | Token |
+    |--------|------------|-------|
+    | Purpose | Template/definition | Instance |
+    | Fields | ~15 fields | ~10 fields |
+    | Supply | totalSupply, maxSupply | (none) |
+    | Balance | (none) | balance |
+    | Relationships | (none) | dependsOn, hasDependents |
+
+    ## TokenClass Types
+
+    - **FungibleTokenClass** (UNITS-FT): Interchangeable tokens (USDC, USDT)
+    - **NonFungibleTokenClass** (UNITS-NFT): Unique tokens (property deeds)
+    - **CredentialTokenClass** (UNITS-SBT): Soulbound credentials (KYC, W3C VC)
+
+components:
+  schemas:
+    # -------------------- Identity (Class-Level) --------------------
+
+    IdentityType:
+      type: string
+      description: Type of identity relationship to the TokenClass
+      enum:
+        - issuer
+        - creator
+        - manager
+        - controller
+      x-jsonld: { "@id": "finternet:identityType", "@type": "@vocab" }
+
+    Identity:
+      type: object
+      description: Identity relationship record at the TokenClass level
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/token-class/v1/context.jsonld
+        "@type": finternet:Identity
+      required:
+        - id
+        - type
+      properties:
+        id:
+          type: string
+          format: uri-reference
+          description: DID, URI, or Finternet username of the identity
+          x-jsonld: { "@id": "@id", "@type": "@id" }
+        type:
+          $ref: "#/components/schemas/IdentityType"
+        roles:
+          type: array
+          items:
+            type: string
+          description: Additional role descriptors
+          x-jsonld: { "@id": "finternet:roles", "@container": "@set" }
+
+    # -------------------- Behavioral Flags --------------------
+
+    TokenFlags:
+      type: object
+      description: |
+        Behavioral flags controlling what operations are permitted.
+
+        These are CLASS-level defaults. Individual tokens may override some flags.
+
+        | Flag | FT Default | NFT Default | Credential Default |
+        |------|------------|-------------|-------------------|
+        | transactable | true | true | true |
+        | transferable | true | true | **false** |
+        | divisible | true | **false** | **false** |
+        | locked | false | false | false |
+        | revocable | false | varies | **true** |
+        | burnable | true | true | **false** |
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/token-class/v1/context.jsonld
+        "@type": finternet:TokenFlags
+      properties:
+        transactable:
+          type: boolean
+          description: Whether tokens of this class can participate in transactions
+          default: true
+          x-jsonld: { "@id": "finternet:transactable", "@type": "xsd:boolean" }
+        transferable:
+          type: boolean
+          description: |
+            Whether ownership can be transferred to another holder.
+            - true: Token can be sent to another account
+            - false: Token is soulbound (cannot be transferred)
+          default: true
+          x-jsonld: { "@id": "finternet:transferable", "@type": "xsd:boolean" }
+        divisible:
+          type: boolean
+          description: |
+            Whether the token balance can be split/divided.
+            - true: Can transfer partial amounts (fungible tokens)
+            - false: Must transfer whole token (NFTs, credentials)
+          default: true
+          x-jsonld: { "@id": "finternet:divisible", "@type": "xsd:boolean" }
+        locked:
+          type: boolean
+          description: High-level lock flag (prevents all operations when true)
+          default: false
+          x-jsonld: { "@id": "finternet:locked", "@type": "xsd:boolean" }
+        revocable:
+          type: boolean
+          description: Whether the issuer can revoke tokens of this class
+          default: false
+          x-jsonld: { "@id": "finternet:revocable", "@type": "xsd:boolean" }
+        burnable:
+          type: boolean
+          description: Whether the holder can burn (destroy) tokens of this class
+          default: true
+          x-jsonld: { "@id": "finternet:burnable", "@type": "xsd:boolean" }
+
+    # -------------------- Supply (Class-Level) --------------------
+
+    Supply:
+      type: object
+      description: Class-level supply information for fungible tokens
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/token-class/v1/context.jsonld
+        "@type": finternet:Supply
+      properties:
+        totalSupply:
+          type: string
+          description: Total supply ever minted (string for big numbers)
+          x-jsonld: { "@id": "finternet:totalSupply" }
+        maxSupply:
+          type: string
+          description: Maximum supply cap (null if unlimited)
+          x-jsonld: { "@id": "finternet:maxSupply" }
+        circulatingSupply:
+          type: string
+          description: Current circulating supply (totalSupply - burned)
+          x-jsonld: { "@id": "finternet:circulatingSupply" }
+        availableSupply:
+          type: string
+          description: |
+            Supply still available to mint (maxSupply - circulatingSupply). Null when
+            `maxSupply` is unlimited. Format follows `context.valueFormat`.
+          x-jsonld: { "@id": "finternet:availableSupply" }
+
+    # -------------------- State Provider (for Proxy Tokens) --------------------
+
+    StateProvider:
+      type: object
+      description: State provider configuration for proxy tokens
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/token-class/v1/context.jsonld
+        "@type": finternet:StateProvider
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          description: Type of state provider
+          enum:
+            - chain
+            - registry
+            - custodian
+          x-jsonld: { "@id": "finternet:stateProviderType", "@type": "@vocab" }
+        network:
+          type: string
+          description: Network identifier (e.g., ethereum, solana)
+          x-jsonld: { "@id": "finternet:network" }
+        contract:
+          type: string
+          description: Contract address or identifier
+          x-jsonld: { "@id": "finternet:contract" }
+        proofFormat:
+          type: string
+          description: Proof format used for state verification
+          enum:
+            - merkle-proof
+            - zk-proof
+            - signature-chain
+            - registry-based
+          x-jsonld: { "@id": "finternet:proofFormat", "@type": "@vocab" }
+
+    # -------------------- Valuation Model --------------------
+
+    ValuationModel:
+      type: object
+      description: Valuation model configuration
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/token-class/v1/context.jsonld
+        "@type": finternet:ValuationModel
+      properties:
+        type:
+          type: string
+          description: Valuation type
+          enum:
+            - fixed
+            - pegged
+            - market
+          x-jsonld: { "@id": "finternet:valuationType", "@type": "@vocab" }
+        parValue:
+          type: object
+          description: Par value for fixed-value tokens
+          properties:
+            amount:
+              type: string
+              description: Immutable face value per token unit
+            currency:
+              type: string
+              description: Currency code (ISO 4217)
+        peggedTo:
+          type: object
+          description: Peg configuration for pegged tokens
+          properties:
+            assetCode:
+              type: string
+              description: Target reference asset code
+            source:
+              type: string
+              description: Source authority
+
+    # -------------------- Chain Deployment --------------------
+
+    ChainDeployment:
+      type: object
+      description: |
+        On-chain contract deployment for a token class.
+        Maps a specific chain to the contract address where this token exists.
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/token-class/v1/context.jsonld
+        "@type": finternet:ChainDeployment
+      required:
+        - chainId
+        - contractAddress
+        - assetType
+        - decimals
+      properties:
+        chainId:
+          type: string
+          description: CAIP-2 chain identifier (e.g., "eip155:1")
+          x-jsonld: { "@id": "finternet:chainId" }
+        contractAddress:
+          type: string
+          description: Contract address on chain, or "native" for native assets
+          x-jsonld: { "@id": "finternet:contractAddress" }
+        assetType:
+          type: string
+          description: Asset standard on chain
+          enum:
+            - erc20
+            - erc721
+            - erc1155
+            - native
+            - spl
+          x-jsonld: { "@id": "finternet:assetType", "@type": "@vocab" }
+        decimals:
+          type: integer
+          minimum: 0
+          maximum: 18
+          description: Decimal precision on this specific chain deployment
+          x-jsonld: { "@id": "finternet:deploymentDecimals", "@type": "xsd:integer" }
+
+    # -------------------- TokenClass (Base) --------------------
+
+    TokenClass:
+      type: object
+      description: |
+        Base TokenClass - template/definition for a category of tokens.
+
+        This defines the static configuration that all Token instances of this class inherit.
+
+        Key fields:
+        - **tokenStandard**: Array of standards (first = primary)
+        - **symbol**: Short ticker (e.g., "USDC")
+        - **decimals**: Precision (0 for NFTs, 0-18 for FTs)
+        - **fungibility**: fungible, nonFungible, or semiFungible
+        - **flags**: Behavioral permissions (transferable, divisible, etc.)
+        - **identities**: Class-level roles (issuer, creator, manager)
+        - **supply**: Total/max/circulating supply tracking
+        - **programId**: Token program handling operations
+      x-jsonld:
+        "@context": https://finternet-io.github.io/specs/schemas/token-class/v1/context.jsonld
+        "@type": finternet:TokenClass
+      required:
+        - tokenClassId
+        - tokenStandard
+        - name
+        - symbol
+        - decimals
+        - fungibility
+        - identities
+      properties:
+        tokenClassId:
+          type: string
+          format: uri
+          description: Unique identifier for this TokenClass (URN or URI)
+          x-jsonld: { "@id": "@id", "@type": "@id" }
+        tokenStandard:
+          type: array
+          description: |
+            Token standards this class complies with.
+            First element is the primary/authoritative standard.
+
+            Examples:
+            - ["UNITS-FT"] - Simple fungible
+            - ["UNITS-FT", "ERC-20"] - Fungible with Ethereum interop
+            - ["UNITS-NFT", "ERC-721"] - NFT with Ethereum interop
+            - ["UNITS-SBT", "W3C-VC-2.0"] - Soulbound credential
+          items:
+            type: string
+          minItems: 1
+          x-jsonld: { "@id": "finternet:tokenStandard", "@container": "@list" }
+        name:
+          type: string
+          description: Human-readable name for the token class
+          minLength: 1
+          x-jsonld: { "@id": "schema:name" }
+        symbol:
+          type: string
+          description: Short ticker symbol
+          minLength: 1
+          maxLength: 10
+          x-jsonld: { "@id": "finternet:symbol" }
+        decimals:
+          type: integer
+          description: Number of decimal places (0 for NFTs, 0-18 for FTs)
+          minimum: 0
+          maximum: 18
+          x-jsonld: { "@id": "finternet:decimals", "@type": "xsd:integer" }
+        fungibility:
+          type: string
+          description: Token fungibility type
+          enum:
+            - fungible
+            - nonFungible
+            - semiFungible
+          x-jsonld: { "@id": "finternet:fungibility", "@type": "@vocab" }
+        description:
+          type: string
+          description: Human-readable description
+          x-jsonld: { "@id": "schema:description" }
+        flags:
+          $ref: "#/components/schemas/TokenFlags"
+        identities:
+          type: array
+          items:
+            $ref: "#/components/schemas/Identity"
+          description: Class-level identity relationships (issuer, creator, manager)
+          minItems: 1
+          x-jsonld: { "@id": "finternet:identities", "@container": "@set" }
+        supply:
+          $ref: "#/components/schemas/Supply"
+          description: Class-level supply tracking
+        stateModel:
+          type: string
+          description: Whether token state is native or proxied
+          enum:
+            - native
+            - proxy
+          x-jsonld: { "@id": "finternet:stateModel", "@type": "@vocab" }
+        stateProvider:
+          $ref: "#/components/schemas/StateProvider"
+          description: State provider configuration (for proxy tokens)
+        valuationModel:
+          $ref: "#/components/schemas/ValuationModel"
+          description: Valuation model configuration
+        programId:
+          type: string
+          description: Reference to the token program that handles operations
+          x-jsonld: { "@id": "finternet:programId" }
+        chainDeployments:
+          type: array
+          description: |
+            On-chain contract deployments for this token class.
+            Maps chain IDs to contract addresses. Used for anti-spam filtering
+            during proxy token import — only holdings matching a known deployment are imported.
+          items:
+            $ref: "#/components/schemas/ChainDeployment"
+          x-jsonld: { "@id": "finternet:chainDeployments", "@container": "@set" }
+        tags:
+          type: array
+          items:
+            type: string
+          description: Classification tags
+          x-jsonld: { "@id": "schema:keywords", "@container": "@set" }
+        externalUrls:
+          type: array
+          items:
+            type: string
+            format: uri
+          description: URLs to off-chain resources
+          x-jsonld: { "@id": "schema:url", "@container": "@set", "@type": "@id" }
+        metadata:
+          type: object
+          description: Additional metadata (extensible)
+          additionalProperties: true
+          x-jsonld: { "@id": "finternet:metadata", "@type": "@json" }
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+          x-jsonld: { "@id": "schema:dateCreated", "@type": "xsd:dateTime" }
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          x-jsonld: { "@id": "schema:dateModified", "@type": "xsd:dateTime" }
