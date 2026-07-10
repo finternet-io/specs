@@ -1,0 +1,513 @@
+openapi: 3.0.4
+info:
+  title: "Finternet API - Workflows"
+  description: |
+    The official API specification for the Finternet Workflows service. These
+    endpoints drive registered, multi-step workflow actions (started and signalled
+    through the Restate runtime), query their status, and cancel running instances.
+
+    ### Protocol-Agnostic Envelope
+    All API interactions use a standard JSON envelope.
+
+    **Request Envelope:**
+    ```json
+    {
+      "context": { ... },
+      "payload": { ... },
+      "signature": { ... } // Optional
+    }
+    ```
+
+    **Response Envelope (Success):**
+    ```json
+    {
+      "context": { ..., "status": "successful" },
+      "response": { ... }
+    }
+    ```
+
+    **Response Envelope (Error):**
+    ```json
+    {
+      "context": { ..., "status": "failed", "error": {"code": "...", "message": "..." },
+      "response": {} // Empty on error
+    }
+    ```
+    (Error details are in the context.error object)
+
+    ### Authentication and Authorization
+    This API uses a two-level authorization model contained within the `context`:
+
+    1.  **Platform-Level (Developer) Authentication:**
+        * `context.developerToken`: The B2B Developer's API Key/Token.
+        * `context.developerSignature`: The B2B Developer's signature (e.g., RFC 9421) of the payload.
+
+    2.  **User-Level (End-User) Authorization:**
+        * `context.authorization`: The end-user's JWT session token (for session-based calls).
+        * `signature` (top-level): The end-user's JWS for critical, cryptographically-signed operations.
+
+    *Note for HTTP Clients:* As a convenience, the `developerToken` may be provided in the standard `Authorization: Bearer <token>` HTTP header, and the `developerSignature` in an `X-Finternet-Signature` header. The server will check the headers first, then fall back to the `context` object.
+
+    ### Per-endpoint authentication
+
+    All three endpoints require Developer auth **plus** an end-user JWT
+    (`context.authorization`). In addition:
+
+    * `POST /v1/workflows/execute` — requires an **active consent** (enforced by the
+      consent middleware) on top of the user JWT.
+    * `POST /v1/workflows/status` — user JWT only.
+    * `POST /v1/workflows/cancel` — requires an **active consent** on top of the user JWT.
+
+    ### RBAC Scopes
+
+    | Endpoint | Required scope |
+    |----------|----------------|
+    | `POST /v1/workflows/execute` | `workflows:create` |
+    | `POST /v1/workflows/status` | `workflows:view` |
+    | `POST /v1/workflows/cancel` | `workflows:manage` |
+
+    Calls failing the scope check return `403 PERMISSION_DENIED`.
+
+    ### Rate limiting
+
+    All endpoints are protected by a scope-tier sliding-window rate limiter; on
+    breach the response is `429 Too Many Requests` with a `Retry-After` header.
+  version: "1.0.0"
+servers:
+  - url: "https://foundry.finternetlab.io"
+    description: "Development Environment"
+  - url: "http://localhost:3000"
+    description: "Local Server"
+tags:
+  - name: "Workflow"
+    description: "Endpoints for executing, tracking, and cancelling registered workflow actions."
+
+# ===============================================================
+#   PATHS
+# ===============================================================
+
+paths:
+  /v1/workflows/execute:
+    post:
+      tags:
+        - "Workflow"
+      summary: "Execute a workflow action"
+      description: |
+        Executes a registered workflow action. If the action is the first step of the
+        workflow, a new workflow instance is started (**202 Accepted**, returning the
+        generated `workflowId`). For subsequent steps, the existing workflow is signalled
+        (**200 OK**, returning the signal/handler response). The `data` object is validated
+        dynamically against the workflow's registered JSON schema for the given action.
+
+        Requires Developer auth, an end-user JWT (`context.authorization`), and an active
+        consent.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      x-scopes: [workflows:create]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_WorkflowExecuteRequest'
+            example:
+              context:
+                id: "api.workflow.execute"
+                version: "1.0"
+                ts: "2026-07-09T12:00:00Z"
+                msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                developerToken: "fnt_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                workflow: "profile-update"
+                action: "initiate"
+                data:
+                  name: "Alice Smith-Jones"
+      responses:
+        '200':
+          description: "Workflow action signalled (subsequent step). Body is the handler/signal response, which is workflow-defined and may vary."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_WorkflowSignal'
+              example:
+                context:
+                  id: "api.workflow.execute"
+                  version: "1.0"
+                  ts: "2026-07-09T12:00:01Z"
+                  msgId: "b1b2c3d4-e5f6-7890-1234-567890abcdef"
+                  status: "successful"
+                response:
+                  workflowId: "profile-update-3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                  action: "verify_current_ownership"
+                  status: "signaled"
+        '202':
+          description: "New workflow instance started (first step). Returns the generated workflow ID."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_WorkflowStarted'
+              example:
+                context:
+                  id: "api.workflow.execute"
+                  version: "1.0"
+                  ts: "2026-07-09T12:00:01Z"
+                  msgId: "c1b2c3d4-e5f6-7890-1234-567890abcdef"
+                  status: "accepted"
+                response:
+                  workflowId: "profile-update-3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                  status: "accepted"
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404':
+          description: "The named workflow is not registered."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example:
+                context: { id: "api.workflow.execute", version: "1.0", ts: "...", msgId: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "workflow not found: profile-update" } }
+                response: {}
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+  /v1/workflows/status:
+    post:
+      tags:
+        - "Workflow"
+      summary: "Get workflow status"
+      description: |
+        Queries the current status of a running workflow by its instance ID. The response
+        body is the raw status payload returned by the workflow runtime (`getStatus`
+        query) and is therefore workflow-defined.
+
+        Requires Developer auth and an end-user JWT (`context.authorization`).
+      security:
+        - developerToken: []
+        - developerSignature: []
+      x-scopes: [workflows:view]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_WorkflowStatusRequest'
+            example:
+              context:
+                id: "api.workflow.status"
+                version: "1.0"
+                ts: "2026-07-09T12:10:00Z"
+                msgId: "d1b2c3d4-e5f6-7890-1234-567890abcdef"
+                developerToken: "fnt_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                workflowId: "profile-update-3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+      responses:
+        '200':
+          description: "Current workflow status. The `response` object is workflow-defined (the runtime's getStatus payload)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_WorkflowStatus'
+              example:
+                context:
+                  id: "api.workflow.status"
+                  version: "1.0"
+                  ts: "2026-07-09T12:10:01Z"
+                  msgId: "e1b2c3d4-e5f6-7890-1234-567890abcdef"
+                  status: "successful"
+                response:
+                  workflowId: "profile-update-3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                  state: "running"
+                  currentStep: "verify_current_ownership"
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404':
+          description: "No workflow found for the supplied ID (or the ID is malformed)."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example:
+                context: { id: "api.workflow.status", version: "1.0", ts: "...", msgId: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "workflow not found: profile-update" } }
+                response: {}
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+  /v1/workflows/cancel:
+    post:
+      tags:
+        - "Workflow"
+      summary: "Cancel a running workflow"
+      description: |
+        Cancels a running workflow instance by rejecting all its outstanding promises.
+        Both the workflow instance ID and its workflow name are required (the name is
+        used to resolve the runtime service).
+
+        Requires Developer auth, an end-user JWT (`context.authorization`), and an active
+        consent.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      x-scopes: [workflows:manage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_WorkflowCancelRequest'
+            example:
+              context:
+                id: "api.workflow.cancel"
+                version: "1.0"
+                ts: "2026-07-09T12:20:00Z"
+                msgId: "f1b2c3d4-e5f6-7890-1234-567890abcdef"
+                developerToken: "fnt_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                workflowId: "profile-update-3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                workflowName: "profile-update"
+      responses:
+        '200':
+          description: "Workflow cancelled."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_WorkflowCancel'
+              example:
+                context:
+                  id: "api.workflow.cancel"
+                  version: "1.0"
+                  ts: "2026-07-09T12:20:01Z"
+                  msgId: "a2b2c3d4-e5f6-7890-1234-567890abcdef"
+                  status: "successful"
+                response:
+                  workflowId: "profile-update-3f2504e0-4f89-41d3-9a0c-0305e82c3301"
+                  status: "cancelled"
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404':
+          description: "No workflow found for the supplied name."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example:
+                context: { id: "api.workflow.cancel", version: "1.0", ts: "...", msgId: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "workflow not found: profile-update" } }
+                response: {}
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+# ===============================================================
+#   COMPONENTS
+# ===============================================================
+
+components:
+  # -------------------- Schemas --------------------
+  schemas:
+    # --- API Envelope Schemas ---
+    Context:
+      type: object
+      required: [id, version, ts, msgId]
+      properties:
+        id: { type: string, example: "api.workflow.execute" }
+        version: { type: string, example: "1.0" }
+        ts: { type: string, format: date-time }
+        msgId: { type: string, format: uuid }
+        transactionId: { type: string, format: uuid, nullable: true, description: "ID for async operations" }
+        developerToken: { type: string, example: "fnt_...", nullable: true, description: "B2B Developer API Key/Token" }
+        developerSignature: { type: string, example: "t=...,v1=...", nullable: true, description: "B2B Developer Signature (e.g., HMAC)" }
+        authorization: { type: string, example: "Bearer eyJ...", nullable: true, description: "End-user's session token." }
+    ResponseContext:
+      type: object
+      required: [id, version, ts, msgId, status]
+      properties:
+        id: { type: string, example: "api.workflow.execute" }
+        version: { type: string, example: "1.0" }
+        ts: { type: string, format: date-time }
+        msgId: { type: string, format: uuid }
+        transactionId: { type: string, format: uuid, nullable: true }
+        status: { type: string, enum: [successful, failed, pending, accepted], description: "`accepted` is used by 202 responses (e.g. a started workflow)." }
+        error:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/ErrorPayload'
+    Signature:
+      type: object
+      required: [key_id, jws]
+      properties:
+        key_id: { type: string, format: uuid, example: "0f8fad5b-d9cb-469f-a165-70867728950e", description: "UUID of the registered key that produced the signature." }
+        jws: { type: string, example: "eyJ...", description: "End-user's JWS of the payload object." }
+    ErrorPayload:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, example: "RESOURCE_NOT_FOUND" }
+        message: { type: string }
+
+    # --- Base Request/Response Schemas ---
+    RequestContext:
+      type: object
+      required: [context, payload]
+      properties:
+        context: { $ref: '#/components/schemas/Context' }
+        payload: { type: object }
+        signature:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Signature'
+    ApiResponse:
+      type: object
+      required: [context, response]
+      properties:
+        context: { $ref: '#/components/schemas/ResponseContext' }
+        response: { type: object }
+    ApiError:
+      type: object
+      required: [context, response]
+      properties:
+        context: { $ref: '#/components/schemas/ResponseContext' }
+        response: { type: object, description: "Always empty on error.", example: {} }
+
+    # --- Specific Request Envelopes ---
+    ApiRequest_WorkflowExecuteRequest: { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/WorkflowExecuteRequest' } } } ] }
+    ApiRequest_WorkflowStatusRequest:  { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/WorkflowStatusRequest' } } } ] }
+    ApiRequest_WorkflowCancelRequest:  { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/WorkflowCancelRequest' } } } ] }
+
+    # --- Specific Response Envelopes ---
+    ApiResponse_WorkflowStarted: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/WorkflowStartedResponse' } } } ] }
+    ApiResponse_WorkflowSignal:  { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/WorkflowSignalResponse' } } } ] }
+    ApiResponse_WorkflowStatus:  { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/WorkflowStatusResponse' } } } ] }
+    ApiResponse_WorkflowCancel:  { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/WorkflowCancelResponse' } } } ] }
+
+    # --- Core Data Schemas (Payloads) ---
+    WorkflowExecuteRequest:
+      type: object
+      required: [workflow, action, data]
+      properties:
+        workflow: { type: string, minLength: 1, example: "profile-update", description: "Workflow name (e.g., profile-update)." }
+        action: { type: string, minLength: 1, example: "initiate", description: "Action/step name (e.g., initiate, verify_current_ownership)." }
+        data:
+          type: object
+          description: |
+            Action-specific data, validated dynamically against the workflow's registered
+            JSON schema. For delegation-create allow/deny actions this may include an
+            optional nested `allowedOperations` map: scope → dot-path → permitted
+            stringified values.
+          additionalProperties: true
+    WorkflowStatusRequest:
+      type: object
+      required: [workflowId]
+      properties:
+        workflowId: { type: string, minLength: 1, example: "profile-update-3f2504e0-4f89-41d3-9a0c-0305e82c3301", description: "The workflow instance ID." }
+    WorkflowCancelRequest:
+      type: object
+      required: [workflowId, workflowName]
+      properties:
+        workflowId: { type: string, minLength: 1, example: "profile-update-3f2504e0-4f89-41d3-9a0c-0305e82c3301", description: "The workflow instance ID." }
+        workflowName: { type: string, minLength: 1, example: "profile-update", description: "The workflow name (e.g., profile-update)." }
+
+    # --- Response payloads ---
+    WorkflowStartedResponse:
+      type: object
+      description: "Returned (202) when the action starts a new workflow instance."
+      properties:
+        workflowId: { type: string, example: "profile-update-3f2504e0-4f89-41d3-9a0c-0305e82c3301", description: "Generated as {workflowName}-{uuid}." }
+        status: { type: string, example: "accepted" }
+    WorkflowSignalResponse:
+      type: object
+      description: |
+        Returned (200) when the action signals an existing workflow. When the runtime
+        returns a body, that body is passed through verbatim (shape is workflow-defined);
+        otherwise this default object is returned. Modelled loosely — additional
+        properties are permitted.
+      additionalProperties: true
+      properties:
+        workflowId: { type: string, example: "profile-update-3f2504e0-4f89-41d3-9a0c-0305e82c3301" }
+        action: { type: string, example: "verify_current_ownership" }
+        status: { type: string, example: "signaled" }
+    WorkflowStatusResponse:
+      type: object
+      description: |
+        The raw status payload returned by the workflow runtime's getStatus query. Its
+        shape is workflow-defined; the fields shown are illustrative only.
+      additionalProperties: true
+    WorkflowCancelResponse:
+      type: object
+      description: "Returned (200) when a running workflow is cancelled."
+      properties:
+        workflowId: { type: string, example: "profile-update-3f2504e0-4f89-41d3-9a0c-0305e82c3301" }
+        status: { type: string, example: "cancelled" }
+
+  # -------------------- Responses --------------------
+  responses:
+    UnauthorizedError:
+      description: "Authentication failed. Can be invalid Developer Token OR invalid User JWT."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "AUTHENTICATION_FAILED", message: "Token invalid or expired." } }
+            response: {}
+    ForbiddenError:
+      description: "Forbidden. Insufficient permissions (missing required scope) or consent not granted."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "PERMISSION_DENIED", message: "Insufficient permissions to perform this action." } }
+            response: {}
+    NotFoundError:
+      description: "Resource not found."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "The requested resource was not found." } }
+            response: {}
+    BadRequestError:
+      description: "Invalid request (e.g. schema validation failure, invalid workflow ID format, or invalid action for the workflow)."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "INVALID_REQUEST", message: "Invalid request parameters." } }
+            response: {}
+    RateLimitedError:
+      description: |
+        Request exceeded the scope-tier sliding-window rate limit. The `Retry-After`
+        response header indicates how long the caller should wait before retrying.
+      headers:
+        Retry-After:
+          schema: { type: integer, description: "Seconds to wait before retrying." }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "RATE_LIMITED", message: "Too many requests. Retry after 30s." } }
+            response: {}
+
+  # -------------------- Security --------------------
+  securitySchemes:
+    # This section is for documentation purposes.
+    # The server will check for the HTTP header first and fallbacks to context in case the headers are missing.
+
+    # 1. The Developer's Identity Token (Who they are)
+    developerToken:
+      type: http
+      scheme: bearer
+      bearerFormat: "JWT or Opaque"
+      description: |
+        A JWT or Opaque token that identifies the calling B2B developer/backend service.
+        This is passed in the standard `Authorization: Bearer <token>` header.
+        (This can also be passed in the `context.developerToken` as a fallback).
+
+    # 2. The Developer's Request Signature (What they're attesting to)
+    developerSignature:
+      type: apiKey
+      in: header
+      name: Signature
+      description: |
+        The IETF HTTP Signature (RFC 9421) used by B2B developers to ensure message
+        integrity and non-repudiation. This is passed in the `Signature` header.
+
+        Example Format:
+        Signature keyId="...",algorithm="...",created="...",expires="...",headers="...",signature="..."

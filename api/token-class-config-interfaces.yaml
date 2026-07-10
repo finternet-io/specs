@@ -112,7 +112,7 @@ paths:
                     version: "1.0"
                     ts: "2026-03-05T10:00:00Z"
                     msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer ..."
                   payload:
                     tokenClass: "USDC"
@@ -143,7 +143,7 @@ paths:
                     version: "1.0"
                     ts: "2026-03-05T10:05:00Z"
                     msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer ..."
                   payload:
                     tokenClass: "FINT-KYC-CRED"
@@ -233,7 +233,7 @@ paths:
                     version: "1.0"
                     ts: "2026-03-05T11:00:00Z"
                     msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef012"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer ..."
                   payload:
                     tokenClass: "USDC"
@@ -253,7 +253,7 @@ paths:
                     version: "1.0"
                     ts: "2026-03-05T11:30:00Z"
                     msgId: "e5f6a7b8-c9d0-1234-5678-90abcdef0123"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer ..."
                   payload:
                     tokenClass: "USDC"
@@ -296,7 +296,7 @@ paths:
                 version: "1.0"
                 ts: "2026-03-05T10:00:00Z"
                 msgId: "f6a7b8c9-d0e1-2345-6789-0abcdef01234"
-                developerToken: "dev_pk_..."
+                developerToken: "fnt_..."
                 authorization: "Bearer ..."
               payload:
                 tokenClass: "USDC"
@@ -334,7 +334,7 @@ paths:
                 version: "1.0"
                 ts: "2026-03-05T10:00:00Z"
                 msgId: "a7b8c9d0-e1f2-3456-7890-abcdef012345"
-                developerToken: "dev_pk_..."
+                developerToken: "fnt_..."
                 authorization: "Bearer ..."
               payload:
                 filters:
@@ -343,7 +343,7 @@ paths:
                 pagination:
                   limit: 50
                   offset: 0
-                sort:
+                sortBy:
                   field: "createdAt"
                   order: "desc"
       responses:
@@ -415,8 +415,8 @@ components:
     PaginationRequest:
       type: object
       properties:
-        limit: { type: integer, default: 50, minimum: 1, maximum: 100 }
-        offset: { type: integer, default: 0, minimum: 0 }
+        limit: { type: integer, minimum: 0 }
+        offset: { type: integer, minimum: 0 }
     PaginationResponse:
       type: object
       properties:
@@ -426,50 +426,13 @@ components:
     SortRequest:
       type: object
       properties:
-        field: { type: string, enum: [createdAt, updatedAt, tokenClass], default: createdAt }
-        order: { type: string, enum: [asc, desc], default: desc }
-
-    # --- Hook Configuration ---
-    HookConfig:
-      type: object
-      required: [hookId, priority, enabled]
-      description: |
-        A pre- or post-hook bound to operations on this token class. Hooks run
-        in priority order (lower numbers first). Pre-hook failures abort the
-        operation; post-hook failures are logged but do not roll back state.
-      properties:
-        hookId:
-          type: string
-          description: "Identifier of the hook implementation registered with the runtime."
-          example: "min-balance"
-        priority:
-          type: integer
-          minimum: 0
-          description: "Execution order. Lower runs first."
-          example: 1
-        enabled:
-          type: boolean
-          description: "Whether this hook is currently active."
-          example: true
-        operations:
-          type: array
-          items: { type: string }
-          nullable: true
-          description: |
-            Limit this hook to specific operations (mint, burn, transfer, freeze,
-            unfreeze, lock, unlock, redeem, update, addClaim, revokeClaim).
-            If omitted, the hook applies to all operations.
-          example: ["transfer", "burn"]
-        config:
-          type: object
-          nullable: true
-          additionalProperties: true
-          description: "Hook-specific configuration. Schema is defined by the hook implementation."
+        field: { type: string }
+        order: { type: string, enum: [asc, desc] }
 
     # --- Token Class Config ---
     TokenClassConfig:
       type: object
-      required: [id, tokenClass, tokenClassId, programId, status]
+      required: [id, tokenClass, tokenClassId, programId, status, createdAt, updatedAt]
       description: "Configuration mapping a Token Class to a Token Program with hooks and per-operation overrides."
       properties:
         id:
@@ -491,32 +454,28 @@ components:
         preHooks:
           type: array
           nullable: true
-          items: { $ref: '#/components/schemas/HookConfig' }
-          description: "Hooks executed before the operation. A failure aborts the operation."
+          items: { type: object, additionalProperties: true }
+          description: "Free-form hooks executed before the operation. Structure is defined by the hook implementation."
         postHooks:
           type: array
           nullable: true
-          items: { $ref: '#/components/schemas/HookConfig' }
-          description: "Hooks executed after the operation completes. Failures are logged but do not roll back state."
+          items: { type: object, additionalProperties: true }
+          description: "Free-form hooks executed after the operation completes. Structure is defined by the hook implementation."
         operationOverrides:
           type: object
           nullable: true
           additionalProperties: true
-          description: |
-            Per-operation override settings keyed by operation name
-            (e.g., `mint`, `transfer`, `burn`). Schema is operation-specific.
+          description: "Free-form per-operation override settings. Structure is service-defined."
         config:
           type: object
           nullable: true
           additionalProperties: true
-          description: |
-            Class-specific configuration. Recognised keys:
-              * `stateCommitmentFields` (string[]) — fields included in the per-token state-commitment chain.
-              * `stateCommitmentAlgorithm` (string) — hash algorithm. One of `sha256`, `blake3`.
+          description: "Free-form class-specific configuration. Structure is service-defined."
+        identities:
+          description: "Free-form identity metadata associated with the config (structure is service-defined)."
         status:
           type: string
-          enum: [active, inactive, suspended]
-          description: "Current status of the config. Operations are only routed when status is `active`."
+          description: "Current status of the config (e.g. `active`). Operations are only routed when status is `active`."
           example: "active"
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
@@ -530,10 +489,10 @@ components:
         programId: { type: string, example: "reference-ft" }
         preHooks:
           type: array
-          items: { $ref: '#/components/schemas/HookConfig' }
+          items: { type: object, additionalProperties: true }
         postHooks:
           type: array
-          items: { $ref: '#/components/schemas/HookConfig' }
+          items: { type: object, additionalProperties: true }
         operationOverrides:
           type: object
           additionalProperties: true
@@ -549,10 +508,10 @@ components:
         programId: { type: string }
         preHooks:
           type: array
-          items: { $ref: '#/components/schemas/HookConfig' }
+          items: { type: object, additionalProperties: true }
         postHooks:
           type: array
-          items: { $ref: '#/components/schemas/HookConfig' }
+          items: { type: object, additionalProperties: true }
         operationOverrides:
           type: object
           additionalProperties: true
@@ -561,7 +520,6 @@ components:
           additionalProperties: true
         status:
           type: string
-          enum: [active, inactive, suspended]
 
     GetTokenClassConfigRequest:
       type: object
@@ -574,19 +532,14 @@ components:
       properties:
         filters:
           type: object
-          description: |
-            Search filters for token class configs.
-            Known fields: tokenClass, programId, status.
-          properties:
-            tokenClass: { type: string }
-            programId: { type: string }
-            status: { type: string }
           additionalProperties: true
+          description: "Free-form search filters for token class configs."
         pagination: { $ref: '#/components/schemas/PaginationRequest' }
-        sort: { $ref: '#/components/schemas/SortRequest' }
+        sortBy: { $ref: '#/components/schemas/SortRequest' }
 
     TokenClassConfigList:
       type: object
+      required: [tokenClassConfigs, pagination]
       properties:
         tokenClassConfigs:
           type: array

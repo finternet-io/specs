@@ -50,14 +50,18 @@ info:
 
     | Endpoint | Required scope |
     |----------|----------------|
-    | `POST /v1/registry/chains/register` | `chains:manage` |
-    | `POST /v1/registry/chains/update` | `chains:manage` |
-    | `POST /v1/registry/chains/get` | `chains:view` |
-    | `POST /v1/registry/chains/search` | `chains:view` |
-    | `POST /v1/registry/wallets/register` | `wallets:manage` |
-    | `POST /v1/registry/wallets/update` | `wallets:manage` |
-    | `POST /v1/registry/wallets/get` | `wallets:view` |
-    | `POST /v1/registry/wallets/search` | `wallets:view` |
+    | `POST /v1/registry/chains/register` | `registry-chains:create` |
+    | `POST /v1/registry/chains/update` | `registry-chains:manage` |
+    | `POST /v1/registry/chains/get` | `registry-chains:view` |
+    | `POST /v1/registry/chains/search` | `registry-chains:view` |
+    | `POST /v1/registry/wallets/register` | `registry-wallets:create` |
+    | `POST /v1/registry/wallets/update` | `registry-wallets:manage` |
+    | `POST /v1/registry/wallets/get` | `registry-wallets:view` |
+    | `POST /v1/registry/wallets/search` | `registry-wallets:view` |
+    | `POST /v1/adapter/register` | `registry-adapters:create` |
+    | `POST /v1/adapter/update` | `registry-adapters:manage` |
+    | `POST /v1/adapter/get` | `registry-adapters:view` |
+    | `POST /v1/adapter/search` | `registry-adapters:view` |
 
     ### Rate limiting
 
@@ -75,6 +79,15 @@ tags:
     description: "Endpoints for chain registry management. Routes chain IDs to adapter services."
   - name: "Wallet Provider Registry"
     description: "Endpoints for wallet provider registry management. Policy allow-list for wallet apps."
+  - name: "Adapter Registry"
+    description: |
+      Endpoints for adapter service registry management. The AdapterOrchestrator uses
+      this table for priority-based routing of chain operations. All adapter endpoints
+      require both Developer and end-user authentication.
+  - name: "Federation"
+    description: |
+      Federation address resolution. Resolves an on-chain (chain_id, address) pair to the
+      owning UNITS account, its DID, and home instance. Developer-token gated.
 
 # ===============================================================
 #   PATHS
@@ -108,21 +121,12 @@ paths:
                     version: "1.0"
                     ts: "2026-02-17T10:00:00Z"
                     msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                   payload:
                     networkId: "eip155:1"
                     name: "Ethereum Mainnet"
                     chainFamily: "evm"
                     isTestnet: false
-                    adapters:
-                      - url: "https://adapter-alchemy.finternet.io"
-                        type: "alchemy"
-                        priority: 1
-                        status: "active"
-                      - url: "https://adapter-kwala.finternet.io"
-                        type: "kwala"
-                        priority: 2
-                        status: "active"
                     metadata:
                       iconUrl: "https://assets.finternet.io/chains/ethereum.svg"
                       explorers:
@@ -142,17 +146,12 @@ paths:
                     version: "1.0"
                     ts: "2026-02-17T10:00:00Z"
                     msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef0"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                   payload:
                     networkId: "eip155:137"
                     name: "Polygon Mainnet"
                     chainFamily: "evm"
                     isTestnet: false
-                    adapters:
-                      - url: "https://adapter-alchemy.finternet.io"
-                        type: "alchemy"
-                        priority: 1
-                        status: "active"
                     metadata:
                       iconUrl: "https://assets.finternet.io/chains/polygon.svg"
                       explorers:
@@ -172,17 +171,12 @@ paths:
                     version: "1.0"
                     ts: "2026-02-17T10:00:00Z"
                     msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef01"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                   payload:
                     networkId: "eip155:11155111"
                     name: "Sepolia Testnet"
                     chainFamily: "evm"
                     isTestnet: true
-                    adapters:
-                      - url: "https://adapter-alchemy-testnet.finternet.io"
-                        type: "alchemy"
-                        priority: 1
-                        status: "active"
                     metadata:
                       iconUrl: "https://assets.finternet.io/chains/ethereum.svg"
                       explorers:
@@ -214,15 +208,6 @@ paths:
                   chainFamily: "evm"
                   isTestnet: false
                   status: "ACTIVE"
-                  adapters:
-                    - url: "https://adapter-alchemy.finternet.io"
-                      type: "alchemy"
-                      priority: 1
-                      status: "active"
-                    - url: "https://adapter-kwala.finternet.io"
-                      type: "kwala"
-                      priority: 2
-                      status: "active"
                   metadata:
                     iconUrl: "https://assets.finternet.io/chains/ethereum.svg"
                     explorers:
@@ -263,30 +248,21 @@ paths:
             schema:
               $ref: '#/components/schemas/ApiRequest_UpdateChainRequest'
             examples:
-              add_adapter:
-                summary: "Add a new adapter to Ethereum"
+              update_metadata:
+                summary: "Update Ethereum name and metadata"
                 value:
                   context:
                     id: "api.registry.chains.update"
                     version: "1.0"
                     ts: "2026-02-17T11:00:00Z"
                     msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef012"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                   payload:
                     networkId: "eip155:1"
-                    adapters:
-                      - url: "https://adapter-alchemy.finternet.io"
-                        type: "alchemy"
-                        priority: 1
-                        status: "active"
-                      - url: "https://adapter-kwala.finternet.io"
-                        type: "kwala"
-                        priority: 2
-                        status: "active"
-                      - url: "https://adapter-community.example.io"
-                        type: "community"
-                        priority: 3
-                        status: "active"
+                    name: "Ethereum"
+                    metadata:
+                      iconUrl: "https://assets.finternet.io/chains/ethereum.svg"
+                      blockTime: 12
               deactivate_chain:
                 summary: "Deactivate a chain"
                 value:
@@ -295,7 +271,7 @@ paths:
                     version: "1.0"
                     ts: "2026-02-17T11:00:00Z"
                     msgId: "e5f6a7b8-c9d0-1234-5678-90abcdef0123"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                   payload:
                     networkId: "eip155:11155111"
                     status: "INACTIVE"
@@ -335,7 +311,7 @@ paths:
                 version: "1.0"
                 ts: "2026-02-17T10:00:00Z"
                 msgId: "f6a7b8c9-d0e1-2345-6789-0abcdef01234"
-                developerToken: "dev_pk_..."
+                developerToken: "fnt_..."
               payload:
                 networkId: "eip155:1"
       responses:
@@ -373,7 +349,7 @@ paths:
                     version: "1.0"
                     ts: "2026-02-17T10:00:00Z"
                     msgId: "a7b8c9d0-e1f2-3456-7890-abcdef012345"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                   payload:
                     filters:
                       status: "ACTIVE"
@@ -392,7 +368,7 @@ paths:
                     version: "1.0"
                     ts: "2026-02-17T10:00:00Z"
                     msgId: "b8c9d0e1-f2a3-4567-8901-bcdef0123456"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                   payload:
                     filters:
                       chainFamily: "evm"
@@ -421,11 +397,6 @@ paths:
                       chainFamily: "evm"
                       isTestnet: false
                       status: "ACTIVE"
-                      adapters:
-                        - url: "https://adapter-alchemy.finternet.io"
-                          type: "alchemy"
-                          priority: 1
-                          status: "active"
                       metadata:
                         iconUrl: "https://assets.finternet.io/chains/ethereum.svg"
                         nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }
@@ -437,11 +408,6 @@ paths:
                       chainFamily: "evm"
                       isTestnet: false
                       status: "ACTIVE"
-                      adapters:
-                        - url: "https://adapter-alchemy.finternet.io"
-                          type: "alchemy"
-                          priority: 1
-                          status: "active"
                       metadata:
                         iconUrl: "https://assets.finternet.io/chains/polygon.svg"
                         nativeCurrency: { name: "POL", symbol: "POL", decimals: 18 }
@@ -482,7 +448,7 @@ paths:
                     version: "1.0"
                     ts: "2026-02-17T10:00:00Z"
                     msgId: "c9d0e1f2-a3b4-5678-9012-cdef01234567"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                   payload:
                     name: "MetaMask"
                     rdns: "io.metamask"
@@ -502,7 +468,7 @@ paths:
                     version: "1.0"
                     ts: "2026-02-17T10:00:00Z"
                     msgId: "d0e1f2a3-b4c5-6789-0123-def012345678"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                   payload:
                     name: "Coinbase Wallet"
                     rdns: "com.coinbase.wallet"
@@ -521,7 +487,7 @@ paths:
                     version: "1.0"
                     ts: "2026-02-17T10:00:00Z"
                     msgId: "e1f2a3b4-c5d6-7890-1234-ef0123456789"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                   payload:
                     name: "Trust Wallet"
                     rdns: "com.trustwallet.app"
@@ -594,7 +560,7 @@ paths:
                     version: "1.0"
                     ts: "2026-02-17T11:00:00Z"
                     msgId: "f2a3b4c5-d6e7-8901-2345-f01234567890"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                   payload:
                     rdns: "io.metamask"
                     supportedChains: ["eip155:1", "eip155:137", "eip155:8453", "eip155:42161", "eip155:56", "eip155:10", "eip155:59144"]
@@ -606,7 +572,7 @@ paths:
                     version: "1.0"
                     ts: "2026-02-17T11:00:00Z"
                     msgId: "a3b4c5d6-e7f8-9012-3456-012345678901"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                   payload:
                     rdns: "com.suspicious.wallet"
                     status: "BLOCKED"
@@ -646,7 +612,7 @@ paths:
                 version: "1.0"
                 ts: "2026-02-17T10:00:00Z"
                 msgId: "b4c5d6e7-f8a9-0123-4567-123456789012"
-                developerToken: "dev_pk_..."
+                developerToken: "fnt_..."
               payload:
                 rdns: "io.metamask"
       responses:
@@ -684,7 +650,7 @@ paths:
                     version: "1.0"
                     ts: "2026-02-17T10:00:00Z"
                     msgId: "c5d6e7f8-a9b0-1234-5678-234567890123"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                   payload:
                     filters:
                       status: "ACTIVE"
@@ -699,7 +665,7 @@ paths:
                     version: "1.0"
                     ts: "2026-02-17T10:00:00Z"
                     msgId: "d6e7f8a9-b0c1-2345-6789-345678901234"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                   payload:
                     filters:
                       "supportedChains": "eip155:1"
@@ -746,6 +712,282 @@ paths:
                       updatedAt: "2026-02-17T10:00:00Z"
                   pagination:
                     total: 2
+                    limit: 50
+                    offset: 0
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  # -------------------- Federation --------------------
+  /v1/registry/lookup-address:
+    post:
+      tags:
+        - "Federation"
+      summary: "Resolve an on-chain address to a UNITS account"
+      description: |
+        Resolve an on-chain `(chain_id, address)` pair to the owning UNITS account —
+        returning its DID, home instance, and account ID. Developer-token gated.
+      security:
+        - developerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_LookupAddressRequest'
+            example:
+              context:
+                id: "api.registry.lookup.address"
+                version: "1.0"
+                ts: "2026-02-17T10:00:00Z"
+                msgId: "e7f8a9b0-c1d2-3456-7890-456789012345"
+                developerToken: "fnt_..."
+              payload:
+                chain_id: "eip155:1"
+                address: "0x1111111111111111111111111111111111111111"
+      responses:
+        '200':
+          description: "Address resolved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_LookupAddress'
+              example:
+                context:
+                  id: "api.registry.lookup.address"
+                  version: "1.0"
+                  ts: "2026-02-17T10:00:00Z"
+                  msgId: "e7f8a9b0-c1d2-3456-7890-456789012345"
+                  status: "successful"
+                response:
+                  did: "did:units:acct:550e8400-e29b-41d4-a716-446655440000"
+                  home_instance: "https://foundry.finternetlab.io"
+                  account_id: "550e8400-e29b-41d4-a716-446655440000"
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  # -------------------- Adapter Registry --------------------
+  /v1/adapter/register:
+    post:
+      tags:
+        - "Adapter Registry"
+      summary: "Register a new adapter"
+      description: |
+        Register a new adapter service instance in the adapter registry. Each adapter
+        declares the chains it serves via `chainIds[]`. The AdapterOrchestrator uses this
+        table for priority-based routing. Requires Developer + User auth.
+      security:
+        - developerToken: []
+        - userToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_RegisterAdapterRequest'
+            example:
+              context:
+                id: "api.adapter.register"
+                version: "1.0"
+                ts: "2026-03-05T10:00:00Z"
+                msgId: "f5a6b7c8-d9e0-1234-f012-567890abcdef"
+                developerToken: "fnt_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                adapterId: "alchemy_chain_adapter"
+                name: "Alchemy Chain Adapter"
+                type: "chain"
+                chainIds: ["eip155:1", "eip155:8453", "eip155:11155111"]
+                priority: 1
+                active: true
+                config:
+                  url: "http://chain-adapter:3500"
+                  timeoutMs: 5000
+      responses:
+        '201':
+          description: "Adapter registered successfully"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_AdapterDetails'
+              example:
+                context:
+                  id: "api.adapter.register"
+                  version: "1.0"
+                  ts: "2026-03-05T10:00:00Z"
+                  msgId: "f5a6b7c8-d9e0-1234-f012-567890abcdef"
+                  status: "successful"
+                response:
+                  id: "990e8400-e29b-41d4-a716-446655440004"
+                  adapterId: "alchemy_chain_adapter"
+                  name: "Alchemy Chain Adapter"
+                  type: "chain"
+                  chainIds: ["eip155:1", "eip155:8453", "eip155:11155111"]
+                  priority: 1
+                  active: true
+                  config:
+                    url: "http://chain-adapter:3500"
+                    timeoutMs: 5000
+                  createdAt: "2026-03-05T10:00:00Z"
+                  updatedAt: "2026-03-05T10:00:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '409':
+          description: "Adapter with this adapterId already exists"
+
+  /v1/adapter/update:
+    post:
+      tags:
+        - "Adapter Registry"
+      summary: "Update an adapter"
+      description: |
+        Update an adapter's configuration. Only the fields provided in the payload are
+        updated. Requires Developer + User auth.
+      security:
+        - developerToken: []
+        - userToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_UpdateAdapterRequest'
+            example:
+              context:
+                id: "api.adapter.update"
+                version: "1.0"
+                ts: "2026-03-05T11:00:00Z"
+                msgId: "a6b7c8d9-e0f1-2345-0123-67890abcdef0"
+                developerToken: "fnt_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                adapterId: "alchemy_chain_adapter"
+                chainIds: ["eip155:1", "eip155:8453", "eip155:11155111", "eip155:137"]
+                priority: 2
+      responses:
+        '200':
+          description: "Adapter updated successfully"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_AdapterDetails'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /v1/adapter/get:
+    post:
+      tags:
+        - "Adapter Registry"
+      summary: "Get adapter details"
+      description: "Retrieve details of a specific adapter by its adapter ID. Requires Developer + User auth."
+      security:
+        - developerToken: []
+        - userToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_GetAdapterRequest'
+            example:
+              context:
+                id: "api.adapter.get"
+                version: "1.0"
+                ts: "2026-03-05T10:00:00Z"
+                msgId: "b7c8d9e0-f1a2-3456-1234-7890abcdef01"
+                developerToken: "fnt_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                adapterId: "alchemy_chain_adapter"
+      responses:
+        '200':
+          description: "Adapter details retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_AdapterDetails'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /v1/adapter/search:
+    post:
+      tags:
+        - "Adapter Registry"
+      summary: "Search adapters"
+      description: "Search and list registered adapters with filters and pagination. Requires Developer + User auth."
+      security:
+        - developerToken: []
+        - userToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_SearchAdapterRequest'
+            example:
+              context:
+                id: "api.adapter.search"
+                version: "1.0"
+                ts: "2026-03-05T10:00:00Z"
+                msgId: "c8d9e0f1-a2b3-4567-2345-890abcdef012"
+                developerToken: "fnt_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                filters:
+                  type: "chain"
+                  active: true
+                pagination:
+                  limit: 50
+                  offset: 0
+                sortBy:
+                  field: "priority"
+                  order: "asc"
+      responses:
+        '200':
+          description: "Adapter list retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_AdapterList'
+              example:
+                context:
+                  id: "api.adapter.search"
+                  version: "1.0"
+                  ts: "2026-03-05T10:00:00Z"
+                  msgId: "c8d9e0f1-a2b3-4567-2345-890abcdef012"
+                  status: "successful"
+                response:
+                  adapters:
+                    - id: "990e8400-e29b-41d4-a716-446655440004"
+                      adapterId: "alchemy_chain_adapter"
+                      name: "Alchemy Chain Adapter"
+                      type: "chain"
+                      chainIds: ["eip155:1", "eip155:8453"]
+                      priority: 1
+                      active: true
+                      config:
+                        url: "http://chain-adapter:3500"
+                      createdAt: "2026-03-05T10:00:00Z"
+                      updatedAt: "2026-03-05T10:00:00Z"
+                  pagination:
+                    total: 1
                     limit: 50
                     offset: 0
         '401':
@@ -823,34 +1065,9 @@ components:
 
     # --- Chain Registry Schemas ---
 
-    AdapterConfig:
-      type: object
-      required: [url, type, priority, status]
-      description: "Configuration for a chain adapter service"
-      properties:
-        url:
-          type: string
-          format: uri
-          description: "Base URL of the adapter service"
-          example: "https://adapter-alchemy.finternet.io"
-        type:
-          type: string
-          description: "Adapter type identifier (e.g., alchemy, kwala, community)"
-          example: "alchemy"
-        priority:
-          type: integer
-          minimum: 1
-          description: "Selection priority (1 = highest). Used for failover ordering."
-          example: 1
-        status:
-          type: string
-          enum: [active, inactive, deprecated]
-          description: "Adapter operational status"
-          example: "active"
-
     Chain:
       type: object
-      required: [id, networkId, name, chainFamily, isTestnet, status, adapters]
+      required: [id, networkId, name, chainFamily, isTestnet, status]
       description: "Blockchain network registry entry"
       properties:
         id:
@@ -878,14 +1095,14 @@ components:
           enum: [ACTIVE, INACTIVE, DEPRECATED]
           description: "Registry status"
           example: "ACTIVE"
-        adapters:
-          type: array
-          items: { $ref: '#/components/schemas/AdapterConfig' }
-          description: "Adapter service configurations, ordered by priority"
         metadata:
           type: object
           description: "Extensible chain metadata (icons, explorers, native currency, etc.)"
           additionalProperties: true
+        identities:
+          description: |
+            Optional identities associated with the chain. Untyped (interface{}) in the
+            service — any JSON value; the concrete shape is not constrained by the API.
         createdAt:
           type: string
           format: date-time
@@ -901,9 +1118,6 @@ components:
         name: { type: string, example: "Ethereum Mainnet" }
         chainFamily: { type: string, enum: [evm, solana, cosmos, substrate] }
         isTestnet: { type: boolean, default: false }
-        adapters:
-          type: array
-          items: { $ref: '#/components/schemas/AdapterConfig' }
         metadata:
           type: object
           additionalProperties: true
@@ -914,11 +1128,9 @@ components:
       properties:
         networkId: { type: string, example: "eip155:1" }
         name: { type: string }
+        chainFamily: { type: string, enum: [evm, solana, cosmos, substrate] }
+        isTestnet: { type: boolean }
         status: { type: string, enum: [ACTIVE, INACTIVE, DEPRECATED] }
-        adapters:
-          type: array
-          items: { $ref: '#/components/schemas/AdapterConfig' }
-          description: "Full replacement of adapters list"
         metadata:
           type: object
           additionalProperties: true
@@ -943,7 +1155,7 @@ components:
             isTestnet: { type: boolean, description: "Filter by testnet flag" }
           additionalProperties: true
         pagination: { $ref: '#/components/schemas/PaginationRequest' }
-        sort: { $ref: '#/components/schemas/SortRequest' }
+        sortBy: { $ref: '#/components/schemas/SortRequest' }
 
     ChainList:
       type: object
@@ -986,6 +1198,10 @@ components:
           type: object
           description: "Extensible wallet metadata (icon, website, platforms, deep links, etc.)"
           additionalProperties: true
+        identities:
+          description: |
+            Optional identities associated with the wallet provider. Untyped (interface{})
+            in the service — any JSON value; the concrete shape is not constrained by the API.
         createdAt:
           type: string
           format: date-time
@@ -1040,7 +1256,7 @@ components:
             supportedChains: { type: string, description: "Filter by a chain ID the wallet supports" }
           additionalProperties: true
         pagination: { $ref: '#/components/schemas/PaginationRequest' }
-        sort: { $ref: '#/components/schemas/SortRequest' }
+        sortBy: { $ref: '#/components/schemas/SortRequest' }
 
     WalletProviderList:
       type: object
@@ -1048,6 +1264,156 @@ components:
         walletProviders:
           type: array
           items: { $ref: '#/components/schemas/WalletProvider' }
+        pagination: { $ref: '#/components/schemas/PaginationResponse' }
+
+    # --- Federation Schemas ---
+
+    LookupAddressRequest:
+      type: object
+      required: [chain_id, address]
+      additionalProperties: false
+      properties:
+        chain_id:
+          type: string
+          minLength: 1
+          description: "CAIP-2 chain identifier"
+          example: "eip155:1"
+        address:
+          type: string
+          minLength: 1
+          description: "On-chain address to resolve"
+          example: "0x1111111111111111111111111111111111111111"
+
+    LookupAddress:
+      type: object
+      required: [did, home_instance, account_id]
+      description: "Resolved UNITS account for an on-chain address"
+      properties:
+        did:
+          type: string
+          description: "Decentralized identifier of the owning account"
+        home_instance:
+          type: string
+          description: "Home UNITS instance URL for the account"
+        account_id:
+          type: string
+          description: "Internal UNITS account ID"
+
+    # --- Adapter Registry Schemas ---
+
+    Adapter:
+      type: object
+      required: [id, adapterId, name, type, chainIds, priority, active, config, createdAt, updatedAt]
+      description: "Adapter service registry entry, used by the AdapterOrchestrator for priority-based routing."
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: "Internal registry ID"
+        adapterId:
+          type: string
+          description: "Client-supplied unique adapter identifier"
+          example: "alchemy_chain_adapter"
+        name:
+          type: string
+          example: "Alchemy Chain Adapter"
+        type:
+          type: string
+          description: "Adapter type (e.g. chain)"
+          example: "chain"
+        chainIds:
+          type: array
+          items: { type: string }
+          description: "CAIP-2 chain IDs this adapter serves"
+          example: ["eip155:1", "eip155:8453"]
+        priority:
+          type: integer
+          description: "Selection priority (used for failover ordering)"
+          example: 1
+        active:
+          type: boolean
+        config:
+          type: object
+          additionalProperties: true
+          description: "Adapter-specific configuration (e.g. url, timeouts)"
+        identities:
+          description: |
+            Optional adapter identities. Untyped (interface{}) in the service — any JSON
+            value; the concrete shape is not constrained by the API.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    RegisterAdapterRequest:
+      type: object
+      required: [adapterId, name, chainIds, config]
+      additionalProperties: true
+      properties:
+        adapterId: { type: string, example: "alchemy_chain_adapter" }
+        name: { type: string, example: "Alchemy Chain Adapter" }
+        type: { type: string, description: "Adapter type", example: "chain" }
+        chainIds:
+          type: array
+          items: { type: string }
+          example: ["eip155:1", "eip155:8453"]
+        priority: { type: integer, description: "Selection priority (1 = highest)" }
+        active: { type: boolean }
+        config:
+          type: object
+          additionalProperties: true
+          description: "Adapter-specific configuration"
+
+    UpdateAdapterRequest:
+      type: object
+      required: [adapterId]
+      additionalProperties: true
+      properties:
+        adapterId: { type: string, example: "alchemy_chain_adapter" }
+        name: { type: string }
+        type: { type: string }
+        chainIds:
+          type: array
+          items: { type: string }
+        priority: { type: integer }
+        active: { type: boolean }
+        config:
+          type: object
+          additionalProperties: true
+
+    GetAdapterRequest:
+      type: object
+      required: [adapterId]
+      properties:
+        adapterId: { type: string, example: "alchemy_chain_adapter" }
+
+    SearchAdapterRequest:
+      type: object
+      properties:
+        filters:
+          type: object
+          description: |
+            Search filters for adapters. Common fields: type, active.
+          properties:
+            type: { type: string }
+            active: { type: boolean }
+          additionalProperties: true
+        pagination: { $ref: '#/components/schemas/PaginationRequest' }
+        sortBy:
+          type: object
+          description: "Sort options. `field` is free-form; `order` is asc or desc."
+          properties:
+            field: { type: string }
+            order: { type: string, enum: [asc, desc] }
+
+    AdapterList:
+      type: object
+      properties:
+        adapters:
+          type: array
+          items: { $ref: '#/components/schemas/Adapter' }
         pagination: { $ref: '#/components/schemas/PaginationResponse' }
 
     # --- Request Envelopes ---
@@ -1124,6 +1490,54 @@ components:
         - properties:
             response: { $ref: '#/components/schemas/WalletProviderList' }
 
+    ApiRequest_LookupAddressRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/LookupAddressRequest' }
+
+    ApiResponse_LookupAddress:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/LookupAddress' }
+
+    ApiRequest_RegisterAdapterRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/RegisterAdapterRequest' }
+
+    ApiRequest_UpdateAdapterRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/UpdateAdapterRequest' }
+
+    ApiRequest_GetAdapterRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/GetAdapterRequest' }
+
+    ApiRequest_SearchAdapterRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/SearchAdapterRequest' }
+
+    ApiResponse_AdapterDetails:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/Adapter' }
+
+    ApiResponse_AdapterList:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/AdapterList' }
+
   # -------------------- Responses --------------------
   responses:
     UnauthorizedError:
@@ -1184,3 +1598,10 @@ components:
       in: header
       name: Signature
       description: "IETF HTTP Signature (RFC 9421) for message integrity."
+    userToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        End-user JWT session token, passed in `context.authorization` as `Bearer <token>`.
+        Required by the adapter registry endpoints (register, update, get, search).

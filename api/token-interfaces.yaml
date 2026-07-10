@@ -70,6 +70,10 @@ info:
     | `POST /v1/transaction/status` | `transactions:view` |
     | `POST /v1/transaction/get` | `transactions:view` |
     | `POST /v1/transaction/search` | `transactions:view` |
+    | `POST /v1/transactions/status` | `transactions:view` |
+    | `POST /v1/transaction/proof` | `tokens:view` |
+    | `POST /v1/transaction/proof/leaf` | `tokens:view` |
+    | `POST /v1/transaction/proof/verify` | `tokens:view` |
 
     ### Rate limiting
 
@@ -90,6 +94,8 @@ tags:
     description: "Endpoints for token creation, querying, and lifecycle management."
   - name: "Transaction"
     description: "Endpoints for transaction management."
+  - name: "Proof"
+    description: "Endpoints for retrieving and verifying Merkle proofs of transactions."
 
 # ===============================================================
 #   PATHS
@@ -123,7 +129,7 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "USDC"
@@ -150,19 +156,6 @@ paths:
                       currency: "USD"
                       fungible: true
                       category: "stablecoin"
-                    chainDeployments:
-                      - chainId: "eip155:1"
-                        contractAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-                        assetType: "erc20"
-                        decimals: 6
-                      - chainId: "eip155:137"
-                        contractAddress: "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"
-                        assetType: "erc20"
-                        decimals: 6
-                      - chainId: "eip155:8453"
-                        contractAddress: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
-                        assetType: "erc20"
-                        decimals: 6
               USDT:
                 summary: "Register USDT - Tether's USD stablecoin"
                 value:
@@ -171,7 +164,7 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "USDT"
@@ -205,7 +198,7 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "EURC"
@@ -239,7 +232,7 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "GBPT"
@@ -273,7 +266,7 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "e5f6a7b8-c9d0-1234-5678-90abcdef1"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "INRT"
@@ -307,7 +300,7 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "f6a7b8c9-d0e1-2345-6789-0abcdef12"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "NFH-T"
@@ -342,7 +335,7 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "a7b8c9d0-e1f2-3456-7890-abcdef123"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "ART-NFT"
@@ -380,7 +373,7 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "b8c9d0e1-f2a3-4567-8901-bcdef1234"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "RWA-NFT"
@@ -420,6 +413,7 @@ paths:
                   msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                   status: "successful"
                 response:
+                  id: "urn:uuid:b2c3d4e5-f6a7-8901-2345-67890abcdef1"
                   tokenClass: "USDC"
                   tokenStandard: "UNITS-FT"
                   name: "USD Coin"
@@ -444,8 +438,8 @@ paths:
                     currency: "USD"
                     fungible: true
                     category: "stablecoin"
-                    createdAt: "2025-01-04T10:00:00Z"
-                    updatedAt: "2025-01-04T10:00:00Z"
+                  createdAt: "2025-01-04T10:00:00Z"
+                  updatedAt: "2025-01-04T10:00:00Z"
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -478,7 +472,7 @@ paths:
                 version: "1.0"
                 ts: "2025-01-04T11:00:00Z"
                 msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef"
-                developerToken: "dev_pk_..."
+                developerToken: "fnt_..."
                 authorization: "Bearer eyJ..."
               payload:
                 tokenClass: "USDC"
@@ -525,7 +519,7 @@ paths:
                 version: "1.0"
                 ts: "2025-01-04T10:00:00Z"
                 msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef12"
-                developerToken: "dev_pk_..."
+                developerToken: "fnt_..."
                 authorization: "Bearer eyJ..."
               payload:
                 tokenClass: "USDC"
@@ -544,6 +538,7 @@ paths:
                   msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
                   status: "successful"
                 response:
+                  id: "urn:uuid:b2c3d4e5-f6a7-8901-2345-67890abcdef1"
                   tokenClass: "USDC"
                   tokenStandard: "UNITS-FT"
                   name: "USD Coin"
@@ -568,8 +563,8 @@ paths:
                     currency: "USD"
                     fungible: true
                     category: "stablecoin"
-                    createdAt: "2025-01-04T10:00:00Z"
-                    updatedAt: "2025-01-04T10:00:00Z"
+                  createdAt: "2025-01-04T10:00:00Z"
+                  updatedAt: "2025-01-04T10:00:00Z"
         '404':
           $ref: '#/components/responses/NotFoundError'
         '401':
@@ -596,7 +591,7 @@ paths:
                 version: "1.0"
                 ts: "2025-01-04T10:00:00Z"
                 msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef123"
-                developerToken: "dev_pk_..."
+                developerToken: "fnt_..."
                 authorization: "Bearer eyJ..."
               payload:
                 filters:
@@ -624,7 +619,8 @@ paths:
                   status: "successful"
                 response:
                   tokenClasses:
-                    - tokenClass: "USDC"
+                    - id: "urn:uuid:b2c3d4e5-f6a7-8901-2345-67890abcdef1"
+                      tokenClass: "USDC"
                       tokenStandard: "UNITS-FT"
                       name: "USD Coin"
                       description: "Circle USD stablecoin pegged 1:1 to USD"
@@ -648,9 +644,10 @@ paths:
                         currency: "USD"
                         fungible: true
                         category: "stablecoin"
-                        createdAt: "2025-01-04T10:00:00Z"
-                        updatedAt: "2025-01-04T10:00:00Z"
-                    - tokenClass: "USDT"
+                      createdAt: "2025-01-04T10:00:00Z"
+                      updatedAt: "2025-01-04T10:00:00Z"
+                    - id: "urn:uuid:c3d4e5f6-a7b8-9012-3456-7890abcdef12"
+                      tokenClass: "USDT"
                       tokenStandard: "UNITS-FT"
                       name: "Tether USD"
                       description: "Tether USD stablecoin"
@@ -674,8 +671,8 @@ paths:
                         currency: "USD"
                         fungible: true
                         category: "stablecoin"
-                        createdAt: "2025-01-04T10:00:00Z"
-                        updatedAt: "2025-01-04T10:00:00Z"
+                      createdAt: "2025-01-04T10:00:00Z"
+                      updatedAt: "2025-01-04T10:00:00Z"
                   pagination:
                     total: 2
                     limit: 50
@@ -708,7 +705,7 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenId: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
@@ -720,7 +717,7 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdf0"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                     valueFormat: "display"
                   payload:
@@ -744,6 +741,8 @@ paths:
                       status: "successful"
                     response:
                       id: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                      tokenClass: "USDC"
+                      chainRegistryInfo: {}
                       metadata:
                         tokenClassId: "urn:uuid:b2c3d4e5-f6a7-8901-2345-67890abcdef1"
                         tokenClass: "USDC"
@@ -774,6 +773,8 @@ paths:
                       status: "successful"
                     response:
                       id: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                      tokenClass: "USDC"
+                      chainRegistryInfo: {}
                       metadata:
                         tokenClassId: "urn:uuid:b2c3d4e5-f6a7-8901-2345-67890abcdef1"
                         tokenClass: "USDC"
@@ -826,7 +827,7 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "c1d2e3f4-a5b6-7890-1234-567890abcdef"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "USDC"
@@ -839,7 +840,7 @@ paths:
                         roles: ["owner"]
                     initialSupply: "1000000000000"
                   signature:
-                    type: "JsonWebSignature2020"
+                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               INRT:
                 summary: "Mint INRT - 10K tokens"
@@ -849,7 +850,7 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "d2e3f4a5-b6c7-8901-2345-67890abcdef"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "INRT"
@@ -862,7 +863,7 @@ paths:
                         roles: ["owner"]
                     initialSupply: "1000000"
                   signature:
-                    type: "JsonWebSignature2020"
+                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               NFH-T:
                 summary: "Mint NFH-T - 5K tokens with constraints"
@@ -872,7 +873,7 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "e3f4a5b6-c7d8-9012-3456-7890abcdef1"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "NFH-T"
@@ -885,7 +886,7 @@ paths:
                         roles: ["owner"]
                     initialSupply: "500000"
                   signature:
-                    type: "JsonWebSignature2020"
+                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               ART-NFT:
                 summary: "Mint ART-NFT - Digital Art"
@@ -895,7 +896,7 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "f4a5b6c7-d8e9-0123-4567-890abcdef12"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "ART-NFT"
@@ -924,7 +925,7 @@ paths:
                         roles: ["owner"]
                     initialSupply: "1"
                   signature:
-                    type: "JsonWebSignature2020"
+                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               RWA-NFT:
                 summary: "Mint RWA-NFT - Property Deed"
@@ -934,7 +935,7 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "a5b6c7d8-e9f0-1234-5678-90abcdef123"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "RWA-NFT"
@@ -956,15 +957,28 @@ paths:
                         roles: ["owner"]
                     initialSupply: "1"
                   signature:
-                    type: "JsonWebSignature2020"
+                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
       responses:
-        '202':
-          description: "Mint transaction accepted (async)"
+        '200':
+          description: "Mint transaction submitted (async). The txId tracks the mint workflow."
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse_TransactAccepted'
+                $ref: '#/components/schemas/ApiResponse_MintTokenResult'
+              example:
+                context:
+                  id: "api.token.mint"
+                  version: "1.0"
+                  ts: "2025-01-04T10:00:00Z"
+                  msgId: "c1d2e3f4-a5b6-7890-1234-567890abcdef"
+                  status: "successful"
+                  transactionId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+                response:
+                  txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+                  status: "submitted"
+                  message: "domain_lifecycle_workflow_submitted"
+                  estimatedCompletionTime: "2025-01-04T10:00:30Z"
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -996,7 +1010,7 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     filters:
@@ -1019,7 +1033,7 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef2"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                     valueFormat: "display"
                   payload:
@@ -1049,6 +1063,8 @@ paths:
                     response:
                       tokens:
                         - id: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                          tokenClass: "USDC"
+                          chainRegistryInfo: {}
                           metadata:
                             tokenClass: "USDC"
                             tokenStandard: "UNITS-FT"
@@ -1077,6 +1093,8 @@ paths:
                     response:
                       tokens:
                         - id: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                          tokenClass: "USDC"
+                          chainRegistryInfo: {}
                           metadata:
                             tokenClass: "USDC"
                             tokenStandard: "UNITS-FT"
@@ -1135,15 +1153,15 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:15:00Z"
                     msgId: "f1a2b3c4-d5e6-7890-1234-567890abcdef"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "transfer"
                     tokenId: "a1b2c3d4-e5f6-7890-abcd-1234567890ab"
                     to: "bob"
-                    amount: "100000000"
+                    value: "100000000"
                   signature:
-                    type: "JsonWebSignature2020"
+                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               TransferINRT:
                 summary: "Transfer - INRT (Cross-Border Remittance)"
@@ -1153,15 +1171,15 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:15:00Z"
                     msgId: "g2b3c4d5-e6f7-8901-2345-67890abcdef"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "transfer"
                     tokenId: "1ab71000-1001-4001-8001-000000000001"
                     to: "lakshmi"
-                    amount: "5000000000000"
+                    value: "5000000000000"
                   signature:
-                    type: "JsonWebSignature2020"
+                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               TransferARTNFT:
                 summary: "Transfer - ART-NFT (Art Sale)"
@@ -1171,15 +1189,15 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:15:00Z"
                     msgId: "h3c4d5e6-f7a8-9012-3456-7890abcdef1"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "transfer"
                     tokenId: "a4571f00-57a4-4001-8001-000000000001"
                     to: "charlie"
-                    amount: "1"
+                    value: "1"
                   signature:
-                    type: "JsonWebSignature2020"
+                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               TransferRWANFT:
                 summary: "Transfer - RWA-NFT (Property Sale)"
@@ -1189,20 +1207,20 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:15:00Z"
                     msgId: "i4d5e6f7-a8b9-0123-4567-890abcdef12"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "transfer"
                     tokenId: "4ea1000a-1001-4001-8001-000000000001"
                     to: "diana"
-                    amount: "1"
+                    value: "1"
                     data:
                       salePrice: "2500000.00"
                       saleCurrency: "USD"
                       closingDate: "2025-03-15"
                       escrowAgent: "titlecompany"
                   signature:
-                    type: "JsonWebSignature2020"
+                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               BurnUSDT:
                 summary: "Burn - USDT (Redemption)"
@@ -1212,15 +1230,15 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:05:00Z"
                     msgId: "d1e2f3a4-b5c6-7890-1234-567890abcdef"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "burn"
                     tokenId: "05d71000-1001-4001-8001-000000000001"
-                    amount: "1000000000"
+                    value: "1000000000"
                     reason: "Fiat withdrawal - Bank transfer to Tether redemption account"
                   signature:
-                    type: "JsonWebSignature2020"
+                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               BurnNFHT:
                 summary: "Burn - NFH-T (Community Token Burn)"
@@ -1230,15 +1248,15 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:05:00Z"
                     msgId: "d2e3f4a5-b6c7-8901-2345-67890abcdef"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "burn"
                     tokenId: "0ffa1000-1001-4001-8001-000000000001"
-                    amount: "500000000000000000000"
+                    value: "500000000000000000000"
                     reason: "Deflationary burn event - Q1 2025"
                   signature:
-                    type: "JsonWebSignature2020"
+                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               FreezeINRT:
                 summary: "Freeze - INRT (Compliance Hold)"
@@ -1248,7 +1266,7 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:10:00Z"
                     msgId: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "freeze"
@@ -1256,7 +1274,7 @@ paths:
                     reason: "AML investigation - Case #AML-2025-001"
                     frozenBy: "hdfc:compliance"
                   signature:
-                    type: "JsonWebSignature2020"
+                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               UnfreezeToken:
                 summary: "Unfreeze a token"
@@ -1266,14 +1284,14 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:10:00Z"
                     msgId: "e2f3a4b5-c6d7-8901-2345-67890abcdef"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "unfreeze"
                     tokenId: "1ab71000-5054-4001-8001-000000000001"
                     reason: "Compliance review completed"
                   signature:
-                    type: "JsonWebSignature2020"
+                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               LockEURC:
                 summary: "Lock - EURC (DeFi Collateral)"
@@ -1283,16 +1301,16 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:20:00Z"
                     msgId: "f3a4b5c6-d7e8-9012-3456-7890abcdef1"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "lock"
                     tokenId: "e04c1000-1001-4001-8001-000000000001"
-                    amount: "500000000"
+                    value: "500000000"
                     reason: "Collateral for DeFi loan - Protocol: Aave"
                     lockUntil: "2025-12-31T23:59:59Z"
                   signature:
-                    type: "JsonWebSignature2020"
+                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               LockGBPT:
                 summary: "Lock - GBPT (Escrow for Trade)"
@@ -1302,16 +1320,16 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:20:00Z"
                     msgId: "f4a5b6c7-d8e9-0123-4567-890abcdef12"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "lock"
                     tokenId: "6b971000-1001-4001-8001-000000000001"
-                    amount: "10000000000"
+                    value: "10000000000"
                     reason: "Escrow for international trade - Invoice #INV-2025-001"
                     lockUntil: "2025-06-30T23:59:59Z"
                   signature:
-                    type: "JsonWebSignature2020"
+                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               UnlockToken:
                 summary: "Unlock previously locked tokens"
@@ -1321,15 +1339,15 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:20:00Z"
                     msgId: "f5a6b7c8-d9e0-1234-5678-90abcdef123"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "unlock"
                     tokenId: "e04c1000-1001-4001-8001-000000000001"
-                    amount: "500000000"
+                    value: "500000000"
                     reason: "Loan repaid"
                   signature:
-                    type: "JsonWebSignature2020"
+                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               UpdateToken:
                 summary: "Update token data and metadata"
@@ -1339,7 +1357,7 @@ paths:
                     version: "1.0"
                     ts: "2025-01-04T10:20:00Z"
                     msgId: "a2b3c4d5-e6f7-8901-2345-67890abcdef"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "update"
@@ -1353,24 +1371,10 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse_TransactAccepted'
+                $ref: '#/components/schemas/ApiResponse_TransactTokenResult'
               examples:
-                MintAccepted:
-                  summary: "Mint transaction accepted"
-                  value:
-                    context:
-                      id: "api.token.transact"
-                      version: "1.0"
-                      ts: "2025-01-04T10:00:00Z"
-                      msgId: "c1d2e3f4-a5b6-7890-1234-567890abcdef"
-                      status: "accepted"
-                      transactionId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
-                    response:
-                      txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
-                      status: "submitted"
-                      message: "Transaction submitted for processing"
                 TransferAccepted:
-                  summary: "Transfer transaction accepted"
+                  summary: "Federation transfer submitted (workflow fields present)"
                   value:
                     context:
                       id: "api.token.transact"
@@ -1382,7 +1386,24 @@ paths:
                     response:
                       txId: "urn:uuid:tx-d8e5f6a7-b8c9-0123-4567-890abcdef123"
                       status: "submitted"
-                      message: "Transfer submitted for processing"
+                      message: "Transfer workflow submitted for primitive orchestration"
+                      workflowInstanceId: "urn:uuid:tx-d8e5f6a7-b8c9-0123-4567-890abcdef123"
+                      workflowUrl: "https://restate.example/PrimitiveOperationWorkflow/urn:uuid:tx-d8e5f6a7-b8c9-0123-4567-890abcdef123"
+                BurnAccepted:
+                  summary: "Burn submitted (no workflow fields)"
+                  value:
+                    context:
+                      id: "api.token.transact"
+                      version: "1.0"
+                      ts: "2025-01-04T10:05:00Z"
+                      msgId: "d1e2f3a4-b5c6-7890-1234-567890abcdef"
+                      status: "accepted"
+                      transactionId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+                    response:
+                      txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+                      status: "submitted"
+                      message: "Transaction submitted for processing"
+                      estimatedCompletionTime: "2025-01-04T10:05:30Z"
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -1401,10 +1422,16 @@ paths:
         - "Transaction"
       summary: "Get transaction status"
       description: |
-        Polls the status of an asynchronous transaction.
+        Polls the stored status of a transaction. Returns the transaction's `txId`,
+        its lifecycle `status`, an optional free-form `error` payload (present only
+        on failure), and lifecycle `timestamps`.
 
-        **Status Progression:**
-        submitted → pending → executing → completed/failed/rolled_back
+        The base `status` defaults to `pending` and advances through the transaction's
+        own lifecycle (e.g. `pending`, `processing`, `awaiting_signature`, `completed`,
+        `failed`, `cancelled`).
+
+        For the richer per-operation federation lifecycle (ops, retries, outcome), use
+        `POST /v1/transactions/status` instead.
 
         Use this endpoint to poll for transaction completion after submitting via /v1/token/transact.
       security:
@@ -1422,7 +1449,7 @@ paths:
                 version: "1.0"
                 ts: "2025-01-04T10:00:02Z"
                 msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
-                developerToken: "dev_pk_..."
+                developerToken: "fnt_..."
                 authorization: "Bearer eyJ..."
               payload:
                 txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
@@ -1434,8 +1461,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse_TransactionStatus'
               examples:
-                Executing:
-                  summary: "Transaction in progress"
+                Pending:
+                  summary: "Transaction pending"
                   value:
                     context:
                       id: "api.transaction.status"
@@ -1445,14 +1472,9 @@ paths:
                       status: "successful"
                     response:
                       txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
-                      status: "executing"
-                      progress:
-                        currentStep: "Generating proof"
-                        completedSteps: 2
-                        totalSteps: 4
+                      status: "pending"
                       timestamps:
                         submitted: "2025-01-04T10:00:00Z"
-                        started: "2025-01-04T10:00:01Z"
                 Completed:
                   summary: "Transaction completed"
                   value:
@@ -1470,10 +1492,6 @@ paths:
                         started: "2025-01-04T10:00:01Z"
                         completed: "2025-01-04T10:00:03Z"
                         finalized: "2025-01-04T10:00:05Z"
-                      summary:
-                        operation: "transfer"
-                        tokenCount: 1
-                        proofId: "urn:uuid:proof-a1b2c3d4"
                 Failed:
                   summary: "Transaction failed"
                   value:
@@ -1489,9 +1507,6 @@ paths:
                       error:
                         code: "INSUFFICIENT_BALANCE"
                         message: "Insufficient token balance for transfer"
-                        details:
-                          required: "100000000"
-                          available: "50000000"
                       timestamps:
                         submitted: "2025-01-04T10:00:00Z"
                         started: "2025-01-04T10:00:01Z"
@@ -1526,7 +1541,7 @@ paths:
                 version: "1.0"
                 ts: "2025-01-04T10:00:10Z"
                 msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef"
-                developerToken: "dev_pk_..."
+                developerToken: "fnt_..."
                 authorization: "Bearer eyJ..."
               payload:
                 txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
@@ -1565,7 +1580,7 @@ paths:
                 version: "1.0"
                 ts: "2025-01-04T10:00:00Z"
                 msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
-                developerToken: "dev_pk_..."
+                developerToken: "fnt_..."
                 authorization: "Bearer eyJ..."
               payload:
                 filters:
@@ -1588,6 +1603,80 @@ paths:
                 $ref: '#/components/schemas/ApiResponse_TransactionList'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+
+  /v1/transactions/status:
+    post:
+      tags:
+        - "Transaction"
+      summary: "Get federation transaction status (developer-facing)"
+      description: |
+        Returns the federation lifecycle view of a transaction: overall `status`, the
+        ordered list of workflow operations (`ops`), retry/error info, and the final
+        `outcome` when available.
+
+        This is the developer-facing federation status endpoint (backed by
+        FederationController.Status). It reads the `transactions` row plus the
+        `workflow_ops` audit list. A txn id with no transactions row returns 404.
+
+        Requires a developer token (+ scope) and a user token.
+
+        The request has no dedicated JSON schema; the payload is modelled here as the
+        transaction id (`txn_id`).
+      security:
+        - developerToken: []
+        - userToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_FederationTransactionStatusRequest'
+            example:
+              context:
+                id: "api.transactions.status"
+                version: "1.0"
+                ts: "2025-01-04T10:00:02Z"
+                msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                developerToken: "fnt_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                txn_id: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+      responses:
+        '200':
+          description: "Federation transaction status retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_FederationTransactionStatus'
+              example:
+                context:
+                  id: "api.transactions.status"
+                  version: "1.0"
+                  ts: "2025-01-04T10:00:05Z"
+                  msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                  status: "successful"
+                response:
+                  txn_id: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+                  workflow_name: "PrimitiveOperationWorkflow"
+                  status: "COMMITTED"
+                  ops:
+                    - op_seq: 0
+                      op_type: "DebitSource"
+                      result: { ok: true }
+                      created_at: "2025-01-04T10:00:01Z"
+                    - op_seq: 1
+                      op_type: "CommitCredit"
+                      result: { ok: true }
+                      created_at: "2025-01-04T10:00:03Z"
+                  outcome: { committed: true }
+                  created_at: "2025-01-04T10:00:00Z"
+                  updated_at: "2025-01-04T10:00:05Z"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
 
   /v1/token/transactions:
     post:
@@ -1612,7 +1701,7 @@ paths:
                 version: "1.0"
                 ts: "2025-01-04T10:00:00Z"
                 msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef"
-                developerToken: "dev_pk_..."
+                developerToken: "fnt_..."
                 authorization: "Bearer eyJ..."
               payload:
                 filters:
@@ -1641,30 +1730,22 @@ paths:
     post:
       tags:
         - "Token"
-      summary: "Import token from external provider"
+      summary: "Add a token (credential VC or proxy token)"
       description: |
-        Process a completed journey from an external provider and mint a token.
+        Add a token to an owner. Two shapes are supported (selected via the payload's
+        `oneOf`):
+        - **Credential token** (W3C Verifiable Credential): supply `credential` + `metadata`.
+        - **Proxy token** (USDC, ETH, SOL, etc.): supply `chainId`, `contractAddress`,
+          `walletAddress`, `value`.
 
-        This is a **backend-to-backend** endpoint called by Finternet App Backend after receiving a
-        successful callback from a provider (Signzy, DigiLocker, etc.).
+        This is a **backend-to-backend** endpoint, typically called by the Finternet App
+        Backend on a provider callback.
 
         **No User JWT Required:** This endpoint does not require end-user authentication.
-        The token owner address must be provided in the payload.
+        The token owner address is provided in the payload.
 
-        **Processing Steps:**
-        1. Re-query provider API to verify journey status (security)
-        2. Download and encrypt relevant data/images to blob storage
-        3. Transform provider response to W3C Verifiable Credential format
-        4. Mint token based on specified tokenClass
-        5. Store minimal integration data for re-verification
-        6. Return transaction ID (async processing)
-
-        **Token Characteristics vary by tokenClass:**
-        - CREDENTIAL: Soulbound (non-transferable, non-burnable, revocable)
-        - Other token classes: Per token class configuration
-
-        **Note:** Token audit trail is handled by standard token_audit mechanism.
-        Blob storage uses journey hash as key - failures override same blob.
+        The token is created via an async transaction/workflow; the returned `txId`
+        tracks it.
       security:
         - developerToken: []
         - developerSignature: []
@@ -1673,118 +1754,346 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ApiRequest_AddCredentialRequest'
+              $ref: '#/components/schemas/ApiRequest_AddTokenRequest'
             examples:
-              SignzyAadhaar:
-                summary: "Import Aadhaar credential from Signzy"
+              CredentialToken:
+                summary: "Add a credential token (W3C VC)"
                 value:
                   context:
                     id: "api.token.add"
                     version: "1.0"
                     ts: "2025-01-28T10:15:00Z"
                     msgId: "550e8400-e29b-41d4-a716-446655440000"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                   payload:
                     tokenClass: "CREDENTIAL"
                     owner: "alice"
-                    provider: "signzy"
-                    providerDetails:
-                      flowId: "922e2a58-6afa-4a81-a13b-37aa76793641"
-                      journeyId: "YIRJ0UBX87"
-              SignzyPassport:
-                summary: "Import Passport credential from Signzy"
+                    metadata:
+                      name: "KYC Credential"
+                      tokenStandard: "UNITS-VC"
+                    credential:
+                      "@context":
+                        - "https://www.w3.org/ns/credentials/v2"
+                      type:
+                        - "VerifiableCredential"
+                        - "IdentityCredential"
+                      issuer:
+                        id: "did:web:issuer.example"
+                        name: "Example Issuer"
+                      validFrom: "2025-01-28T10:00:00Z"
+                      credentialSubject:
+                        id: "did:finternet:alice"
+                        documentType: "PAN"
+                        country: "IN"
+                        faceMatchVerified: true
+                        faceMatchPercentage: "98.5"
+              ProxyToken:
+                summary: "Add a proxy token (USDC on Base)"
                 value:
                   context:
                     id: "api.token.add"
                     version: "1.0"
                     ts: "2025-01-28T10:15:00Z"
                     msgId: "550e8400-e29b-41d4-a716-446655440001"
-                    developerToken: "dev_pk_..."
+                    developerToken: "fnt_..."
                   payload:
-                    tokenClass: "CREDENTIAL"
-                    owner: "bob"
-                    provider: "signzy"
-                    providerDetails:
-                      flowId: "922e2a58-6afa-4a81-a13b-37aa76793641"
-                      journeyId: "PJGR096ABC"
+                    tokenClass: "USDC"
+                    owner: "alice"
+                    chainId: "eip155:8453"
+                    contractAddress: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+                    walletAddress: "0x1111111111111111111111111111111111111111"
+                    value: "1000000"
       responses:
-        '202':
-          description: "Token processing accepted (async)"
+        '200':
+          description: "Token add transaction submitted (async). The txId tracks the workflow."
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse_AddCredentialAccepted'
+                $ref: '#/components/schemas/ApiResponse_AddTokenResult'
               example:
                 context:
                   id: "api.token.add"
                   version: "1.0"
                   ts: "2025-01-28T10:15:05Z"
                   msgId: "550e8400-e29b-41d4-a716-446655440002"
-                  status: "accepted"
+                  status: "successful"
                   transactionId: "urn:uuid:tx-credential-12345"
                 response:
                   txId: "urn:uuid:tx-credential-12345"
                   status: "submitted"
-                  message: "Credential processing submitted"
-                  journeyId: "PJGR095SLR"
-                  documentType: "PAN"
+                  message: "credential_add_transaction_submitted"
+                  estimatedCompletionTime: "2025-01-28T10:15:35Z"
         '400':
-          description: "Invalid request or journey not completed"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-              examples:
-                JourneyNotCompleted:
-                  summary: "Journey not in COMPLETED status"
-                  value:
-                    context:
-                      id: "api.token.credential.add"
-                      status: "failed"
-                      error:
-                        code: "JOURNEY_NOT_COMPLETED"
-                        message: "Journey PJGR095SLR is not in COMPLETED status"
-                    response: {}
-                VerificationFailed:
-                  summary: "Provider verification failed"
-                  value:
-                    context:
-                      id: "api.token.credential.add"
-                      status: "failed"
-                      error:
-                        code: "VERIFICATION_FAILED"
-                        message: "Document verification failed: Face match below threshold"
-                    response: {}
+          $ref: '#/components/responses/BadRequestError'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '404':
-          description: "Journey not found at provider"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-              example:
-                context:
-                  id: "api.token.credential.add"
-                  status: "failed"
-                  error:
-                    code: "JOURNEY_NOT_FOUND"
-                    message: "Journey PJGR095SLR not found at provider"
-                response: {}
+          $ref: '#/components/responses/NotFoundError'
         '409':
-          description: "Credential already exists for this journey"
+          $ref: '#/components/responses/ConflictError'
+
+  # -------------------- Proof APIs --------------------
+  /v1/transaction/proof:
+    post:
+      tags:
+        - "Proof"
+      summary: "Get Merkle proof for a transaction"
+      description: |
+        Retrieves the Merkle proof for a transaction, enabling independent verification
+        that the transaction was included in a state commitment / batched Merkle tree.
+
+        **Proof status:**
+        - `pending` — awaiting proof generation
+        - `proven` — Merkle proof generated
+        - `anchored` — proof anchored to a public ledger, fully verifiable
+
+        Requires Developer + User auth.
+      security:
+        - developerToken: []
+        - userToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_GetProofRequest'
+            example:
+              context:
+                id: "api.transaction.proof"
+                version: "1.0"
+                ts: "2025-01-04T10:00:02Z"
+                msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                developerToken: "fnt_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+      responses:
+        '200':
+          description: "Proof retrieved successfully"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiError'
+                $ref: '#/components/schemas/ApiResponse_ProofDetails'
+              examples:
+                Anchored:
+                  summary: "Fully anchored proof"
+                  value:
+                    context:
+                      id: "api.transaction.proof"
+                      version: "1.0"
+                      ts: "2025-01-04T10:00:02Z"
+                      msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                      status: "successful"
+                    response:
+                      txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+                      leafHash: "a1b2c3d4e5f6..."
+                      merkleRoot: "d4e5f6a7b8c9..."
+                      leafIndex: 42
+                      proofPath:
+                        - hash: "abc123..."
+                          direction: "left"
+                        - hash: "def456..."
+                          direction: "right"
+                      stateCommitment: "0xabcdef1234567890"
+                      proofStatus: "anchored"
+                      ledgerAnchors:
+                        - chain: "ethereum"
+                          network: "sepolia"
+                          txHash: "0x1234567890abcdef..."
+                          blockId: "12345678"
+                          timestamp: "2025-01-04T10:30:00Z"
+                      verificationEndpoints:
+                        leafDataEndpoint: "/v1/transaction/proof/leaf"
+                Pending:
+                  summary: "Proof pending (batch not yet full)"
+                  value:
+                    context:
+                      id: "api.transaction.proof"
+                      version: "1.0"
+                      ts: "2025-01-04T10:00:02Z"
+                      msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                      status: "successful"
+                    response:
+                      txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+                      proofStatus: "pending"
+                      message: "Transaction awaiting proof generation."
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
+
+  /v1/transaction/proof/leaf:
+    post:
+      tags:
+        - "Proof"
+      summary: "Get raw leaf data for a transaction proof"
+      description: |
+        Returns the raw data that was hashed to create the transaction's leaf in the
+        Merkle tree. Enables independent verification: fetch this data, hash it, and
+        confirm it matches the `leafHash` returned by `/v1/transaction/proof`.
+
+        Requires Developer + User auth.
+      security:
+        - developerToken: []
+        - userToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_GetProofLeafRequest'
+            example:
+              context:
+                id: "api.transaction.proof.leaf"
+                version: "1.0"
+                ts: "2025-01-04T10:00:02Z"
+                msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef"
+                developerToken: "fnt_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+      responses:
+        '200':
+          description: "Leaf data retrieved successfully"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_ProofLeafData'
               example:
                 context:
-                  id: "api.token.credential.add"
-                  status: "failed"
-                  error:
-                    code: "CREDENTIAL_EXISTS"
-                    message: "Credential already minted for journey PJGR095SLR"
-                response: {}
+                  id: "api.transaction.proof.leaf"
+                  version: "1.0"
+                  ts: "2025-01-04T10:00:02Z"
+                  msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef"
+                  status: "successful"
+                response:
+                  txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+                  leafHash: "a1b2c3d4e5f6..."
+                  stateCommitment: "0xabcdef1234567890"
+                  tokenId: "urn:uuid:token-abc123"
+                  tokenClass: "USDC"
+                  operation: "transfer"
+                  timestamp: "2025-01-04T09:55:00Z"
+                  rawData:
+                    operation: "transfer"
+                    amount: "1000000"
+                    from: "alice"
+                    to: "bob"
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
+
+  /v1/transaction/proof/verify:
+    post:
+      tags:
+        - "Proof"
+      summary: "Verify a transaction proof (server-side)"
+      description: |
+        Performs server-side verification of a transaction's Merkle proof:
+        1. Leaf hash matches the stored transaction data
+        2. Proof path correctly computes to the Merkle root
+        3. Anchor exists on the ledger (if anchored)
+
+        For trustless verification, clients should verify independently using the data
+        from `/v1/transaction/proof` and `/v1/transaction/proof/leaf`.
+
+        Requires Developer + User auth.
+      security:
+        - developerToken: []
+        - userToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_VerifyProofRequest'
+            example:
+              context:
+                id: "api.transaction.proof.verify"
+                version: "1.0"
+                ts: "2025-01-04T10:00:02Z"
+                msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
+                developerToken: "fnt_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+      responses:
+        '200':
+          description: "Verification result"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_ProofVerification'
+              examples:
+                Verified:
+                  summary: "All checks passed"
+                  value:
+                    context:
+                      id: "api.transaction.proof.verify"
+                      version: "1.0"
+                      ts: "2025-01-04T10:00:02Z"
+                      msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
+                      status: "successful"
+                    response:
+                      txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+                      valid: true
+                      leafHashValid: true
+                      proofPathValid: true
+                      anchorValid: true
+                PartiallyVerified:
+                  summary: "Proof valid but not yet anchored"
+                  value:
+                    context:
+                      id: "api.transaction.proof.verify"
+                      version: "1.0"
+                      ts: "2025-01-04T10:00:02Z"
+                      msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
+                      status: "successful"
+                    response:
+                      txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+                      valid: true
+                      leafHashValid: true
+                      proofPathValid: true
+                      anchorValid: null
+                      message: "Proof is valid but not yet anchored to a ledger."
+                Failed:
+                  summary: "Verification failed"
+                  value:
+                    context:
+                      id: "api.transaction.proof.verify"
+                      version: "1.0"
+                      ts: "2025-01-04T10:00:02Z"
+                      msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
+                      status: "successful"
+                    response:
+                      txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
+                      valid: false
+                      leafHashValid: false
+                      proofPathValid: true
+                      message: "Leaf hash mismatch — transaction data may have been modified."
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
 
 # ===============================================================
 #   COMPONENTS
@@ -1803,7 +2112,7 @@ components:
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
         transactionId: { type: string, format: uuid, nullable: true, description: "ID for async operations" }
-        developerToken: { type: string, example: "dev_pk_...", nullable: true, description: "B2B Developer API Key/Token" }
+        developerToken: { type: string, example: "fnt_...", nullable: true, description: "B2B Developer API Key/Token" }
         developerSignature: { type: string, example: "t=...,v1=...", nullable: true, description: "B2B Developer Signature" }
         authorization: { type: string, example: "Bearer eyJ...", nullable: true, description: "End-user's session token" }
         valueFormat:
@@ -1829,9 +2138,9 @@ components:
         error: { $ref: '#/components/schemas/ErrorPayload' }
     Signature:
       type: object
-      required: [type, jws]
+      required: [key_id, jws]
       properties:
-        type: { type: string, example: "JsonWebSignature2020" }
+        key_id: { type: string, format: uuid, example: "0f8fad5b-d9cb-469f-a165-70867728950e", description: "UUID of the registered key that produced the signature." }
         jws: { type: string, example: "eyJ...", description: "End-user's JWS of the payload object" }
     ErrorPayload:
       type: object
@@ -1907,9 +2216,12 @@ components:
 
     TokenClass:
       type: object
-      required: [tokenClass, tokenStandard, name, schema, status]
-      description: "Token class definition with schema and authorized identities"
+      required: [id, tokenClass, tokenStandard, name, schema, status, createdAt, updatedAt]
+      description: "Token class details (response)."
       properties:
+        id:
+          type: string
+          description: "Token class record identifier"
         tokenClass:
           type: string
           description: "Unique token class identifier (e.g., USDC, USDT)"
@@ -1922,89 +2234,26 @@ components:
         description:
           type: string
           description: "Detailed description"
-        status:
-          type: string
-          enum: [active, inactive, deprecated, test]
-          description: "Token class status"
-          example: "active"
         schema:
           type: object
+          additionalProperties: true
           description: "JSON Schema definition for token instances"
-          properties:
-            metadata:
-              type: object
-              description: "Metadata schema requirements"
-            data:
-              type: object
-              description: "Data schema requirements"
         identities:
-          type: array
-          items: { $ref: '#/components/schemas/Identity' }
           description: "Authorized identities who can mint tokens of this class"
-        chainDeployments:
-          type: array
-          description: |
-            On-chain contract deployments for this token class. Maps chain IDs to contract
-            addresses. Used for anti-spam filtering during proxy token import.
-          items:
-            $ref: '#/components/schemas/ChainDeployment'
         metadata:
           type: object
-          description: "Token class metadata including fungibility configuration"
-          properties:
-            fungible:
-              type: boolean
-              default: true
-              description: |
-                Defines whether tokens of this class are fungible:
-                - true: Fungible tokens (FT) - each owner has their own token with balance.
-                        Mint creates/updates token for the owner.
-                        Transfer debits sender's token, credits recipient's token.
-                - false: Non-fungible tokens (NFT) - unique assets.
-                         Mint creates the unique token.
-                         Transfer changes ownership of the token.
-            decimals:
-              type: integer
-              minimum: 0
-              maximum: 18
-              description: "Decimal places for fungible tokens (e.g., 6 for USDC, 18 for ETH)"
-            category:
-              type: string
-              description: "Category (e.g., stablecoin, security, utility)"
-            tags:
-              type: array
-              items: { type: string }
-            createdAt:
-              type: string
-              format: date-time
-            updatedAt:
-              type: string
-              format: date-time
-
-    ChainDeployment:
-      type: object
-      required: [chainId, contractAddress, assetType, decimals]
-      description: "On-chain contract deployment for a token class"
-      properties:
-        chainId:
+          additionalProperties: true
+          description: "Token class metadata (free-form; may include fungibility, decimals, category, tags, etc.)"
+        status:
           type: string
-          description: "CAIP-2 chain identifier"
-          example: "eip155:1"
-        contractAddress:
+          description: "Token class status (e.g., active, inactive, deprecated, test)"
+          example: "active"
+        createdAt:
           type: string
-          description: "Contract address on chain, or 'native' for native assets"
-          example: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-        assetType:
+          format: date-time
+        updatedAt:
           type: string
-          enum: [erc20, erc721, erc1155, native, spl]
-          description: "Asset standard on chain"
-          example: "erc20"
-        decimals:
-          type: integer
-          minimum: 0
-          maximum: 18
-          description: "Decimal precision on this specific chain deployment"
-          example: 6
+          format: date-time
 
     RegisterTokenClassRequest:
       type: object
@@ -2012,7 +2261,7 @@ components:
       description: "Request to register a new token class"
       properties:
         tokenClass: { type: string, example: "USDC" }
-        tokenStandard: { type: string, example: "ERC-3643" }
+        tokenStandard: { type: string, example: "UNITS-FT" }
         name: { type: string, example: "USD Coin" }
         description: { type: string }
         schema:
@@ -2025,13 +2274,6 @@ components:
         metadata:
           type: object
           description: "Token class metadata"
-        chainDeployments:
-          type: array
-          description: |
-            On-chain contract deployments for this token class. Used for anti-spam filtering
-            during proxy token import — only holdings matching a known deployment are imported.
-          items:
-            $ref: '#/components/schemas/ChainDeployment'
 
     UpdateTokenClassRequest:
       type: object
@@ -2039,6 +2281,8 @@ components:
       description: "Request to update token class properties"
       properties:
         tokenClass: { type: string, example: "USDC" }
+        tokenStandard: { type: string }
+        name: { type: string }
         description: { type: string }
         schema:
           type: object
@@ -2050,11 +2294,9 @@ components:
         metadata:
           type: object
           description: "Updated metadata"
-        chainDeployments:
-          type: array
-          description: "Updated on-chain contract deployments"
-          items:
-            $ref: '#/components/schemas/ChainDeployment'
+        status:
+          type: string
+          description: "Updated token class status"
 
     GetTokenClassRequest:
       type: object
@@ -2069,29 +2311,18 @@ components:
         filters:
           type: object
           description: |
-            Search filters for token classes.
-            Known fields: tokenStandard, status, name.
+            Search filters for token classes (free-form object).
+            Common fields: tokenStandard, status, name.
             Use explicit paths for JSONB fields (e.g., metadata.category).
-            Use chainDeployments filter for reverse lookup by chain/contract.
           properties:
             tokenStandard: { type: string, description: "Filter by protocol standard" }
             status: { type: string, description: "Filter by status" }
             "metadata.category": { type: string, description: "Filter by metadata.category" }
-            "chainDeployments.chainId": { type: string, description: "Filter by chain ID in deployments (e.g., eip155:1)" }
-            "chainDeployments.contractAddress": { type: string, description: "Filter by contract address in deployments" }
           additionalProperties: true
         pagination:
           $ref: '#/components/schemas/PaginationRequest'
         sortBy:
           $ref: '#/components/schemas/SortRequest'
-        groupBy:
-          type: string
-          description: |
-            Optional aggregation key. When supplied, results are grouped by the named
-            field rather than returned as a flat list. Supported values include
-            `tokenStandard`, `status`, and any top-level property of `TokenClass`.
-            JSONB paths (e.g. `metadata.category`) are also supported.
-          nullable: true
 
     TokenClassList:
       type: object
@@ -2231,12 +2462,35 @@ components:
             jws: { type: string }
         status: { type: string, enum: [asserted, verified, revoked, expired] }
 
+    ChainRegistryInfo:
+      type: object
+      description: "Chain registry info for the token. Always present in the response; an empty object when not applicable."
+      properties:
+        name: { type: string }
+        chainFamily: { type: string }
+        status: { type: string }
+        metadata: { type: object, additionalProperties: true }
+
+    TokenClassInfo:
+      type: object
+      description: "Token class info, built from the joined token_class record."
+      properties:
+        tokenStandard: { type: string }
+        name: { type: string }
+        description: { type: string }
+        metadata: { type: object, additionalProperties: true }
+
     # Token Details (full representation)
     Token:
       type: object
-      required: [id, metadata, state]
+      required: [id, tokenClass, metadata, state]
       properties:
         id: { type: string, format: uri-reference }
+        tokenClass: { type: string, description: "Token class identifier (e.g., USDC)" }
+        chainRegistryInfo:
+          $ref: '#/components/schemas/ChainRegistryInfo'
+        tokenClassInfo:
+          $ref: '#/components/schemas/TokenClassInfo'
         metadata: { $ref: '#/components/schemas/TokenMetadata' }
         data: { type: object, additionalProperties: true }
         claims: { type: array, items: { $ref: '#/components/schemas/Claim' } }
@@ -2281,6 +2535,10 @@ components:
         initialSupply:
           type: string
           description: "Initial token supply (for fungible tokens). Format depends on `context.valueFormat` (raw: integer string, display: decimal string)."
+        extensions:
+          type: object
+          additionalProperties: true
+          description: "Token-programme-specific fields under extensions.<program-id>"
 
     SearchTokensRequest:
       type: object
@@ -2316,50 +2574,69 @@ components:
         sortBy:
           $ref: '#/components/schemas/SortRequest'
         groupBy:
-          type: string
-          description: |
-            Optional aggregation key. When supplied, results are grouped by the named
-            field — typical values: `tokenClass`, `chainId`, `tokenStandard`. Useful
-            for portfolio/holdings rollups by chain or class.
-          nullable: true
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum: [tokenClass]
+          description: "Fields to group results by. Currently only `tokenClass` is supported. When present, the response is grouped (see GroupedTokenList)."
+        aggregateFields:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum: [totalSupply, circulatingSupply, maxSupply, availableSupply, balance]
+          description: "Supply fields to aggregate (SUM) within each group. Only used when groupBy is present. Defaults to all supply fields when omitted."
 
     TransactRequest:
       type: object
-      required: [operation]
+      required: [operation, tokenId]
       description: |
-        Request payload for token operations. The structure varies by operation:
+        Request payload for token write operations. The structure varies by operation:
 
         **For update:** `operation`, `tokenId`, `data` (optional), `metadata` (optional)
-        **For burn/freeze/transfer:** `operation`, `tokenId`, plus operation-specific params at root level
-        **For sign (proxy tokens):** `operation`, `tokenId`, `transactionId`, `signedTx`
+        **For burn/freeze/lock/transfer:** `operation`, `tokenId`, plus operation-specific params at root level
 
-        **Note:** `mint` operation is handled by separate `/v1/token/mint` endpoint.
+        `operation` is an open string — common lifecycle operations (burn, freeze,
+        transfer, …) as well as domain-specific operations (e.g. `loan_disbursed`,
+        `emi_due`) are accepted.
+
+        **Note:** `mint` operation is handled by the separate `/v1/token/mint` endpoint.
       properties:
         operation:
           type: string
-          enum: [burn, freeze, unfreeze, lock, unlock, redeem, transfer, update, sign]
+          description: "Token operation type (e.g. burn, freeze, unfreeze, lock, unlock, redeem, transfer, update; or domain-specific ops like loan_disbursed, emi_due)"
         tokenId:
           type: string
           format: uri-reference
-          description: "Required for all operations except mint"
+          description: "Token identifier in URN format (e.g., urn:uuid:...)"
+        value:
+          type: string
+          description: "Value (quantity) for burn/transfer operations"
+        category:
+          type: string
+          description: "Category selector for policy-bound semi-fungible voucher transfer splits"
         metadata:
           type: object
-          description: "Token metadata (for mint, update operations)"
+          description: "Token metadata (for update operation). Can include name, tags (key-value object), description, etc."
           additionalProperties: true
         data:
           type: object
-          description: "Token data section (for mint, update operations)"
+          description: "Token data section (for update operation)"
           additionalProperties: true
-        amount:
-          type: string
-          description: "Amount for burn/transfer operations"
         to:
           type: string
           format: uri-reference
-          description: "Recipient for transfer operation"
+          description: "Recipient DID for transfer operation"
+        toAddress:
+          type: string
+          description: |
+            Optional explicit on-chain wallet address for the recipient (proxy token
+            transfers only). Must be registered in the recipient's public key registry
+            for the token's chain. If omitted, the recipient's primary key is used.
         reason:
           type: string
-          description: "Reason for burn/freeze/lock operations"
+          description: "Reason for burn/freeze operations"
         frozenBy:
           type: string
           format: uri-reference
@@ -2372,55 +2649,114 @@ components:
           type: string
           format: date-time
           description: "Lock expiration timestamp (optional)"
-        initialSupply:
-          type: string
-          description: "Initial supply for mint operation (fungible tokens)"
-        transactionId:
-          type: string
-          format: uuid
-          description: "Reference to the original transaction in AWAITING_SIGNATURE state (for sign operation on proxy tokens)"
-        signedTx:
-          type: string
-          description: "Externally signed transaction payload (for sign operation on proxy tokens)"
+        extensions:
+          type: object
+          additionalProperties: true
+          description: "Token-programme-specific fields under extensions.<program-id>"
+        signed_lock_envelope:
+          description: "Signed Lock envelope; used when /v1/token/transact routes a federation transfer. Free-form: an object, a string, or null."
 
-    AddCredentialRequest:
+    AddTokenRequest:
       type: object
-      required: [tokenClass, owner, provider, providerDetails]
+      required: [tokenClass, owner]
       description: |
-        Request to import a token from an external provider journey.
-        Called by Finternet App Backend after successful provider callback.
+        Request to add a token. Supports two shapes (selected via `oneOf`):
+          - **Credential token** (W3C VC): requires `credential` + `metadata`.
+          - **Proxy token** (USDC, ETH, SOL, etc.): requires `chainId`,
+            `contractAddress`, `walletAddress`, `value`.
 
-        The owner address must be provided in the payload (no user JWT required).
-        This supports any token type - credential, asset, or other token classes.
+        Called backend-to-backend by the Finternet App Backend (no end-user JWT).
+        The token owner address must be provided in the payload.
+      oneOf:
+        - title: "Credential Token"
+          required: [credential, metadata]
+        - title: "Proxy Token"
+          required: [chainId, contractAddress, walletAddress, value]
       properties:
         tokenClass:
           type: string
-          description: "Token class to mint (e.g., CREDENTIAL)"
+          minLength: 1
+          description: "Token class identifier (e.g., CREDENTIAL, USDC, ETH, SOL)"
           example: "CREDENTIAL"
         owner:
           type: string
-          description: "Finternet address of the token owner (e.g., alice)"
+          minLength: 1
+          description: "Owner address to issue the token to"
           example: "alice"
-        provider:
-          type: string
-          description: "Provider identifier (signzy, digilocker, etc.)"
-          example: "signzy"
-        providerDetails:
+        credential:
           type: object
-          description: "Provider-specific details (structure varies by provider)"
+          description: "Pre-built W3C Verifiable Credential (for credential tokens)"
+          additionalProperties: false
           properties:
-            flowId:
-              type: string
-              format: uuid
-              description: "Flow ID from provider (Signzy)"
-            providerId:
-              type: string
-              format: uuid
-              description: "Provider ID from integration_providers table"
-            journeyId:
-              type: string
-              description: "Journey ID from provider"
-          required: [journeyId]
+            "@context":
+              type: array
+              items: { type: string }
+              minItems: 1
+            type:
+              type: array
+              items: { type: string }
+              minItems: 1
+            issuer:
+              oneOf:
+                - type: string
+                  minLength: 1
+                - type: object
+                  required: [id, name]
+                  additionalProperties: false
+                  properties:
+                    id: { type: string, minLength: 1 }
+                    name: { type: string, minLength: 1 }
+            validFrom: { type: string, format: date-time }
+            validUntil: { type: string, format: date-time }
+            credentialSubject:
+              type: object
+              required: [id, documentType, country, faceMatchVerified, faceMatchPercentage]
+              additionalProperties: false
+              properties:
+                id: { type: string }
+                givenName: { type: string }
+                familyName: { type: string }
+                documentNumber: { type: string }
+                documentType: { type: string }
+                documentExpired: { type: boolean }
+                country: { type: string }
+                dateOfBirth: { type: string }
+                address: { type: string }
+                gender: { type: string }
+                faceMatchVerified: { type: boolean }
+                faceMatchPercentage: { type: string }
+            evidence:
+              type: array
+              items:
+                type: object
+                properties:
+                  type:
+                    type: array
+                    items: { type: string }
+                  rawPayload: { type: object }
+        metadata:
+          type: object
+          description: "Token metadata (for credential tokens)"
+          additionalProperties: false
+          properties:
+            name: { type: string, minLength: 1 }
+            tokenStandard: { type: string, minLength: 1 }
+        chainId:
+          type: string
+          pattern: "^[a-z0-9]+:[a-zA-Z0-9._-]+$"
+          description: "Chain network ID for proxy tokens (e.g., solana:mainnet, eip155:8453)"
+        contractAddress:
+          type: string
+          minLength: 1
+          description: "On-chain contract address for proxy tokens"
+        walletAddress:
+          type: string
+          minLength: 1
+          description: "Wallet address holding the proxy token"
+        value:
+          type: string
+          pattern: "^[0-9]+$"
+          description: "Token value (quantity) in base units"
 
     # --- Response Payloads ---
     TokenDetails:
@@ -2429,6 +2765,7 @@ components:
 
     TokenList:
       type: object
+      description: "Flat token search result (returned when groupBy is absent)."
       properties:
         tokens:
           type: array
@@ -2437,9 +2774,67 @@ components:
         pagination:
           $ref: '#/components/schemas/PaginationResponse'
 
-    TransactAccepted:
+    TokenGroupAggregates:
       type: object
-      description: "Async transaction submission response"
+      description: |
+        SUM aggregates for supply fields in a group. All values are string big integers
+        in base units. A field is absent when no token in the group had that field.
+      properties:
+        totalSupply: { type: string }
+        circulatingSupply: { type: string }
+        maxSupply: { type: string }
+        availableSupply: { type: string }
+        balance: { type: string }
+
+    TokenGroup:
+      type: object
+      description: "One group in a grouped token search response."
+      required: [tokenClass, records]
+      properties:
+        tokenClass:
+          type: string
+        aggregates:
+          $ref: '#/components/schemas/TokenGroupAggregates'
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/Token'
+
+    GroupedTokenList:
+      type: object
+      description: "Grouped token search result (returned when groupBy is present)."
+      properties:
+        tokens:
+          type: array
+          items:
+            $ref: '#/components/schemas/TokenGroup'
+        pagination:
+          $ref: '#/components/schemas/PaginationResponse'
+
+    MintTokenResponse:
+      type: object
+      description: "Response returned by /v1/token/mint. The mint runs as an async workflow; the txId tracks it."
+      required: [txId, status, message, estimatedCompletionTime]
+      properties:
+        txId:
+          type: string
+          format: uri-reference
+          description: "Transaction ID for tracking"
+        status:
+          type: string
+          description: "Workflow status (e.g. submitted)"
+          example: "submitted"
+        message:
+          type: string
+          description: "Confirmation message"
+        estimatedCompletionTime:
+          type: string
+          format: date-time
+          description: "Estimated completion time"
+
+    TransactTokenResponse:
+      type: object
+      description: "Response returned by /v1/token/transact. Runs as an async transaction/workflow; the txId tracks it."
       required: [txId, status, message]
       properties:
         txId:
@@ -2448,8 +2843,8 @@ components:
           description: "Transaction ID for tracking"
         status:
           type: string
-          enum: [submitted, queued]
-          description: "Initial status"
+          description: "Workflow/transaction status (e.g. submitted)"
+          example: "submitted"
         message:
           type: string
           description: "Confirmation message"
@@ -2457,44 +2852,39 @@ components:
           type: string
           format: date-time
           description: "Estimated completion time (optional)"
+        workflowInstanceId:
+          type: string
+          description: "Federation workflow instance id (present when the operation routes a federation transfer)"
+        workflowUrl:
+          type: string
+          description: "Human-readable workflow URL (present when the operation routes a federation transfer)"
 
-    AddCredentialAccepted:
+    AddTokenResponse:
       type: object
-      description: "Credential processing accepted response"
-      required: [txId, status, message, journeyId]
+      description: "Response returned by /v1/token/add. Runs as an async transaction/workflow; the txId tracks it."
+      required: [txId, status, message, estimatedCompletionTime]
       properties:
         txId:
           type: string
           format: uri-reference
-          description: "Transaction ID for tracking credential minting"
+          description: "Transaction ID for tracking"
         status:
           type: string
-          enum: [submitted, queued]
-          description: "Processing status"
+          description: "Workflow status (e.g. submitted)"
+          example: "submitted"
         message:
           type: string
           description: "Confirmation message"
-        journeyId:
+        estimatedCompletionTime:
           type: string
-          description: "Provider journey ID being processed"
-        documentType:
-          type: string
-          description: "Document type detected from journey (PAN, AADHAAR, etc.)"
-        tokenId:
-          type: string
-          format: uuid
-          description: "Token ID (only present if sync processing completed)"
+          format: date-time
+          description: "Estimated completion time"
 
     # --- Transaction Schemas ---
 
-    ExecutionStatus:
-      type: string
-      description: "Transaction execution status"
-      enum: [submitted, pending, executing, awaiting_signature, completed, failed, rolled_back]
-
     ExecutionTimestamps:
       type: object
-      description: "Transaction lifecycle timestamps"
+      description: "Transaction lifecycle timestamps. Only `submitted` is typically always present; the rest appear as the transaction advances."
       properties:
         submitted:
           type: string
@@ -2517,144 +2907,101 @@ components:
           format: date-time
           description: "When transaction failed (if applicable)"
 
-    TransactionProgress:
-      type: object
-      description: "Progress information for in-flight transactions"
-      properties:
-        currentStep:
-          type: string
-          description: "Current step being executed"
-        completedSteps:
-          type: integer
-          description: "Number of completed steps"
-        totalSteps:
-          type: integer
-          description: "Total number of steps"
-
-    TransactionSummary:
-      type: object
-      description: "High-level transaction summary"
-      properties:
-        operation:
-          type: string
-          description: "Primary operation type"
-        tokenCount:
-          type: integer
-          description: "Number of tokens affected"
-        proofId:
-          type: string
-          format: uri-reference
-          description: "Reference to proof record"
-
-    TransactionError:
-      type: object
-      description: "Error details for failed transactions"
-      required: [code, message]
-      properties:
-        code:
-          type: string
-          description: "Error code"
-        message:
-          type: string
-          description: "Error message"
-        details:
-          type: object
-          description: "Additional error details"
-          additionalProperties: true
-
     TransactionStatus:
       type: object
-      description: "Transaction status response"
-      required: [txId, status, timestamps]
+      description: |
+        Transaction status response returned by `/v1/transaction/status`. Reflects the
+        transaction's stored lifecycle status. The base `status` defaults to `pending`
+        and advances through the transaction's own lifecycle (e.g. pending, processing,
+        awaiting_signature, completed, failed, cancelled). The richer federation
+        lifecycle view (with per-op detail) is exposed separately via
+        `/v1/transactions/status`.
+      required: [txId, status]
       properties:
         txId:
           type: string
           format: uri-reference
         status:
-          $ref: '#/components/schemas/ExecutionStatus'
-        progress:
-          $ref: '#/components/schemas/TransactionProgress'
+          type: string
+          default: pending
+          description: "Transaction lifecycle status. Defaults to `pending`."
+        error:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: "Error payload for failed transactions (free-form; typically includes code/message). Absent when there is no error."
         timestamps:
           $ref: '#/components/schemas/ExecutionTimestamps'
-        summary:
-          $ref: '#/components/schemas/TransactionSummary'
-        error:
-          $ref: '#/components/schemas/TransactionError'
-        responseData:
-          type: object
-          description: |
-            Operation-specific response data. For proxy transfers in AWAITING_SIGNATURE state,
-            contains the unsigned transaction payload for external signing.
-          additionalProperties: true
 
-    TransactionLog:
+    TransactionResponse:
       type: object
-      description: "Complete transaction log with all details"
-      required: [txId, initiator, tokenTransactions, status, timestamps]
+      description: "Transaction details (returned by /v1/transaction/get and as items of /v1/transaction/search)."
+      required: [txId, initiator, status, createdAt, updatedAt]
       properties:
         txId:
           type: string
           format: uri-reference
         correlationId:
           type: string
+          nullable: true
           description: "External correlation ID"
         initiator:
           type: string
           format: uri-reference
           description: "Account that initiated the transaction"
-        identities:
-          type: array
-          items: { $ref: '#/components/schemas/Identity' }
-          description: "Snapshot of all identities involved (captured at transaction time for auditability)"
-        tokenTransactions:
-          type: array
-          items:
-            $ref: '#/components/schemas/TokenTransactionReference'
-          description: "References to token transactions"
         workflowInstanceId:
           type: string
-          format: uri-reference
+          nullable: true
           description: "Workflow instance reference"
         status:
-          $ref: '#/components/schemas/ExecutionStatus'
+          type: string
+          description: "Transaction lifecycle status"
+        error:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: "Error payload for failed transactions (free-form). Absent when there is no error."
+        responseData:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: "Operation-specific response data (free-form)."
         timestamps:
           $ref: '#/components/schemas/ExecutionTimestamps'
         proofId:
           type: string
-          format: uri-reference
+          nullable: true
         proofProfile:
           type: string
-          enum: [zk-snark, zk-stark, merkle, tee-attestation, signature-bundle, none]
+          nullable: true
         batchId:
           type: string
-        ledgerAnchors:
-          type: array
-          items:
-            $ref: '#/components/schemas/LedgerAnchor'
+          nullable: true
+        operationName:
+          type: string
+          description: "Primary operation name for the transaction"
         metadata:
           type: object
           additionalProperties: true
+        identities:
+          type: array
+          items: { $ref: '#/components/schemas/Identity' }
+          description: "Snapshot of identities involved in the transaction"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
 
-    TokenTransactionReference:
+    TokenTransactionResponse:
       type: object
-      description: "Reference to a token transaction"
-      required: [tokenTxId, tokenId, operation]
+      description: |
+        Per-token state-change entry (row of the token_transactions table with
+        double-entry bookkeeping support).
+      required: [id, txId, tokenId, tokenClass, operation, timestamp, createdAt]
       properties:
-        tokenTxId:
-          type: string
-          format: uri-reference
-        tokenId:
-          type: string
-          format: uri-reference
-        operation:
-          type: string
-
-    TokenTransaction:
-      type: object
-      description: "Detailed token transaction record"
-      required: [tokenTxId, txId, tokenId, operation, stateAfter, timestamp]
-      properties:
-        tokenTxId:
+        id:
           type: string
           format: uri-reference
         txId:
@@ -2663,9 +3010,14 @@ components:
         tokenId:
           type: string
           format: uri-reference
+        tokenClass:
+          type: string
+          description: "Token class from the token_transactions table"
+        tokenClassInfo:
+          $ref: '#/components/schemas/TokenClassInfo'
         operation:
           type: string
-          enum: [mint, burn, transfer, freeze, unfreeze, lock, unlock, redeem, update]
+          description: "Operation type (e.g. mint, burn, transfer, freeze, unfreeze, lock, unlock, redeem, update; or domain-specific ops)"
         entryType:
           type: string
           enum: [debit, credit]
@@ -2685,98 +3037,34 @@ components:
         participants:
           type: array
           items:
-            $ref: '#/components/schemas/Participant'
-        fromAccount:
-          type: string
-          format: uri-reference
-        toAccount:
-          type: string
-          format: uri-reference
-        amount:
-          $ref: '#/components/schemas/AmountTransferred'
+            type: object
+            additionalProperties: true
+          description: "Participants involved in this token transaction (free-form)."
+        units:
+          description: "Units affected by this token transaction (free-form; may be null)."
         stateBefore:
-          $ref: '#/components/schemas/StateReference'
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: "Token state snapshot before this transaction (free-form)."
         stateAfter:
-          $ref: '#/components/schemas/StateReference'
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: "Token state snapshot after this transaction (free-form)."
         proofId:
           type: string
           format: uri-reference
+          nullable: true
         timestamp:
           type: string
           format: date-time
         metadata:
           type: object
           additionalProperties: true
-
-    Participant:
-      type: object
-      description: "Transaction participant"
-      required: [accountId, role]
-      properties:
-        accountId:
-          type: string
-          format: uri-reference
-        role:
-          type: string
-          enum: [sender, receiver, operator, approver]
-
-    AmountTransferred:
-      type: object
-      description: "Amount transferred/affected"
-      properties:
-        amount:
-          type: string
-          description: "Amount (string for big numbers)"
-        unit:
-          type: string
-          default: "token"
-        decimals:
-          type: integer
-
-    StateReference:
-      type: object
-      description: |
-        State reference with cryptographic commitment for verification.
-        State commitments form a chain where each commitment includes the previous one,
-        enabling tamper detection and full state history verification.
-      required: [stateCommitment]
-      properties:
-        stateCommitment:
-          type: string
-          description: |
-            SHA-256 hash of the token state computed from:
-            previousCommitment + lastTxId + timestamp + tokenId + owner +
-            identities + claims + state + stateVersion
-        previousCommitment:
-          type: string
-          description: "Previous state commitment hash (enables chain verification)"
-        lastTxId:
-          type: string
-          format: uri-reference
-          description: "Transaction ID that caused this state change"
-        stateVersion:
-          type: integer
-          description: "Monotonically increasing version number (optimistic locking)"
-        stateSnapshot:
-          type: object
-          additionalProperties: true
-          description: "Full state snapshot at this version"
-
-    LedgerAnchor:
-      type: object
-      description: "External blockchain anchor"
-      properties:
-        chain:
-          type: string
-          example: [ethereum, bitcoin, solana]
-        network:
-          type: string
-          example: [mainnet, sepolia]
-        txHash:
-          type: string
-        blockId:
-          type: string
-        timestamp:
+        signature:
+          description: "Signature payload for this token transaction (free-form; may be null)."
+        createdAt:
           type: string
           format: date-time
 
@@ -2810,7 +3098,8 @@ components:
             Use explicit paths for JSONB fields (e.g., metadata.field).
           properties:
             status:
-              $ref: '#/components/schemas/ExecutionStatus'
+              type: string
+              description: "Filter by transaction lifecycle status"
             correlationId:
               type: string
               description: "Filter by correlation ID"
@@ -2834,12 +3123,13 @@ components:
     TokenTransactionsRequest:
       type: object
       description: "Request for token transaction history with filters and pagination at payload level"
+      required: [filters]
       properties:
         filters:
           type: object
           description: |
             Transaction history filters.
-            Known fields: tokenId, operation, entryType, fromAccount, toAccount.
+            Known fields: tokenId, operation, entryType, dateRange.
             Use explicit paths for JSONB fields (e.g., metadata.field).
           properties:
             tokenId:
@@ -2848,8 +3138,7 @@ components:
               description: "Token ID to get history for"
             operation:
               type: string
-              enum: [mint, burn, transfer, freeze, unfreeze, lock, unlock, redeem, update]
-              description: "Filter by operation type"
+              description: "Filter by operation type (e.g. mint, burn, transfer; or domain-specific ops)"
             entryType:
               type: string
               enum: [debit, credit]
@@ -2879,7 +3168,7 @@ components:
 
     TransactionDetails:
       allOf:
-        - $ref: '#/components/schemas/TransactionLog'
+        - $ref: '#/components/schemas/TransactionResponse'
 
     TransactionList:
       type: object
@@ -2887,7 +3176,7 @@ components:
         transactions:
           type: array
           items:
-            $ref: '#/components/schemas/TransactionLog'
+            $ref: '#/components/schemas/TransactionResponse'
         pagination:
           $ref: '#/components/schemas/PaginationResponse'
 
@@ -2897,9 +3186,68 @@ components:
         tokenTransactions:
           type: array
           items:
-            $ref: '#/components/schemas/TokenTransaction'
+            $ref: '#/components/schemas/TokenTransactionResponse'
         pagination:
           $ref: '#/components/schemas/PaginationResponse'
+
+    # --- Federation Transaction Status (developer-facing) ---
+
+    FederationTransactionStatusRequest:
+      type: object
+      description: |
+        Payload of POST /v1/transactions/status. The endpoint has no dedicated JSON
+        schema; the payload carries the transaction id as `txn_id`.
+      required: [txn_id]
+      properties:
+        txn_id:
+          type: string
+          description: "Transaction id to query"
+
+    FederationWorkflowOp:
+      type: object
+      description: "One entry in the workflow-ops audit list."
+      required: [op_seq, op_type, created_at]
+      properties:
+        op_seq:
+          type: integer
+        op_type:
+          type: string
+        result:
+          description: "Operation result (free-form; may be null). Absent when not recorded."
+        details:
+          description: "Operation details (free-form; may be null). Absent when not recorded."
+        created_at:
+          type: string
+          format: date-time
+
+    FederationTransactionStatusResponse:
+      type: object
+      description: "Federation lifecycle view of a transaction, returned by POST /v1/transactions/status."
+      required: [txn_id, status, ops]
+      properties:
+        txn_id:
+          type: string
+        workflow_name:
+          type: string
+        status:
+          type: string
+          description: "Federation lifecycle status (e.g. SUBMITTED, COMMITTING, COMMITTED, ABORTED)."
+        ops:
+          type: array
+          items:
+            $ref: '#/components/schemas/FederationWorkflowOp'
+        retry_attempts:
+          type: integer
+        last_error:
+          type: string
+        outcome:
+          description: "Final outcome payload (free-form; may be null). Present when the workflow has produced an outcome."
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
 
     # --- Specific Request Envelopes ---
 
@@ -2967,11 +3315,11 @@ components:
             payload: { $ref: '#/components/schemas/TransactRequest' }
             signature: { $ref: '#/components/schemas/Signature' }
 
-    ApiRequest_AddCredentialRequest:
+    ApiRequest_AddTokenRequest:
       allOf:
         - $ref: '#/components/schemas/RequestContext'
         - properties:
-            payload: { $ref: '#/components/schemas/AddCredentialRequest' }
+            payload: { $ref: '#/components/schemas/AddTokenRequest' }
 
     # --- Specific Response Envelopes ---
     ApiResponse_TokenDetails:
@@ -2981,12 +3329,22 @@ components:
             response: { $ref: '#/components/schemas/TokenDetails' }
 
     ApiResponse_TokenList:
+      description: "Token search result envelope. `response` is a flat list (TokenList) or a grouped list (GroupedTokenList) when groupBy is set."
       allOf:
         - $ref: '#/components/schemas/ApiResponse'
         - properties:
-            response: { $ref: '#/components/schemas/TokenList' }
+            response:
+              oneOf:
+                - $ref: '#/components/schemas/TokenList'
+                - $ref: '#/components/schemas/GroupedTokenList'
 
-    ApiResponse_TransactAccepted:
+    ApiResponse_MintTokenResult:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/MintTokenResponse' }
+
+    ApiResponse_TransactTokenResult:
       allOf:
         - $ref: '#/components/schemas/ApiResponse'
         - properties:
@@ -3000,23 +3358,13 @@ components:
                     transactionId:
                       type: string
                       format: uri-reference
-            response: { $ref: '#/components/schemas/TransactAccepted' }
+            response: { $ref: '#/components/schemas/TransactTokenResponse' }
 
-    ApiResponse_AddCredentialAccepted:
+    ApiResponse_AddTokenResult:
       allOf:
         - $ref: '#/components/schemas/ApiResponse'
         - properties:
-            context:
-              allOf:
-                - $ref: '#/components/schemas/ResponseContext'
-                - properties:
-                    status:
-                      type: string
-                      enum: ["accepted"]
-                    transactionId:
-                      type: string
-                      format: uri-reference
-            response: { $ref: '#/components/schemas/AddCredentialAccepted' }
+            response: { $ref: '#/components/schemas/AddTokenResponse' }
 
     # --- Transaction API Request Envelopes ---
     ApiRequest_TransactionStatusRequest:
@@ -3068,6 +3416,18 @@ components:
         - properties:
             response: { $ref: '#/components/schemas/TokenTransactionList' }
 
+    ApiRequest_FederationTransactionStatusRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload: { $ref: '#/components/schemas/FederationTransactionStatusRequest' }
+
+    ApiResponse_FederationTransactionStatus:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/FederationTransactionStatusResponse' }
+
     # --- Proof Schemas ---
 
     ProofStatus:
@@ -3091,166 +3451,150 @@ components:
         direction:
           $ref: '#/components/schemas/ProofDirection'
 
-    BlockchainAnchor:
+    LedgerAnchor:
       type: object
-      description: "Blockchain anchoring details"
+      description: "Ledger anchor reference — where the Merkle root was committed on-chain."
+      required: [chain, network, txHash]
       properties:
+        chain:
+          type: string
+          description: "Ledger/chain name (e.g. ethereum, solana)."
+          example: "ethereum"
         network:
           type: string
-          description: "Blockchain network name"
-          example: "ethereum_sepolia"
+          description: "Network name (e.g. mainnet, sepolia, devnet)."
+          example: "sepolia"
         txHash:
           type: string
-          description: "Blockchain transaction hash containing the Merkle root"
+          description: "Hash of the anchoring transaction on the chain."
           example: "0x1234567890abcdef..."
-        blockNumber:
+        blockId:
+          type: string
+          nullable: true
+          description: "Block number/identifier (for block-based chains)."
+        slot:
           type: integer
           format: int64
-          description: "Block number where the anchor was confirmed"
-        blockTimestamp:
+          nullable: true
+          description: "Slot number (for Solana)."
+        timestamp:
           type: string
           format: date-time
-          description: "Block timestamp"
-        contractAddress:
-          type: string
-          description: "Smart contract address used for anchoring"
+          description: "Anchor timestamp."
 
-    VerificationInfo:
+    ProofVerificationEndpoints:
       type: object
-      description: "Information for independent verification"
+      description: "Links to endpoints for independent proof verification."
+      required: [leafDataEndpoint]
       properties:
-        algorithm:
-          type: string
-          description: "Hashing algorithm used"
-          default: "sha256"
         leafDataEndpoint:
           type: string
-          description: "Endpoint to retrieve raw leaf data for verification"
+          description: "Endpoint to retrieve the raw leaf data for verification."
           example: "/v1/transaction/proof/leaf"
 
     ProofDetails:
       type: object
-      description: "Complete Merkle proof details for a transaction"
+      description: "Complete Merkle proof details for a transaction."
       required: [txId, proofStatus]
       properties:
         txId:
           type: string
-          format: uri-reference
-          description: "Transaction ID"
-        leafHash:
-          type: string
-          description: "SHA-256 hash of the transaction leaf data (hex-encoded)"
+          description: "Transaction ID."
         merkleRoot:
           type: string
-          description: "Merkle tree root hash (hex-encoded)"
+          nullable: true
+          description: "Merkle tree root hash (hex-encoded)."
+        leafHash:
+          type: string
+          nullable: true
+          description: "Hash of the transaction leaf data (hex-encoded)."
+        leafIndex:
+          type: integer
+          nullable: true
+          description: "Position of this transaction's leaf in the Merkle tree."
         proofPath:
           type: array
           items:
             $ref: '#/components/schemas/ProofPathNode'
-          description: "Path from leaf to root for verification"
-        leafIndex:
-          type: integer
-          description: "Position of this transaction's leaf in the Merkle tree"
-        batchId:
+          description: "Sibling hashes from leaf to root, used to recompute the Merkle root."
+        stateCommitment:
           type: string
-          format: uri-reference
-          description: "Batch identifier grouping transactions in this Merkle tree"
+          nullable: true
+          description: "State commitment for the transaction."
         proofStatus:
           $ref: '#/components/schemas/ProofStatus'
-        anchor:
-          $ref: '#/components/schemas/BlockchainAnchor'
-        verification:
-          $ref: '#/components/schemas/VerificationInfo'
+        ledgerAnchors:
+          type: array
+          items:
+            $ref: '#/components/schemas/LedgerAnchor'
+          description: "Ledger anchors referencing where the Merkle root was committed on-chain."
         message:
           type: string
-          description: "Additional status message (e.g., for pending proofs)"
-
-    TokenTransactionSummary:
-      type: object
-      description: "Summary of a token transaction for Merkle leaf data"
-      required: [id, tokenId]
-      properties:
-        id:
-          type: string
-          format: uri-reference
-          description: "Token transaction ID"
-        tokenId:
-          type: string
-          format: uri-reference
-          description: "Token ID"
-        entryType:
-          type: string
-          enum: [debit, credit]
           nullable: true
-          description: "Double-entry bookkeeping type (for transfers)"
-        amount:
-          type: string
-          description: "Amount (as string for precision)"
-        identities:
-          type: array
-          items:
-            $ref: '#/components/schemas/Identity'
-        participants:
-          type: array
-          items:
-            $ref: '#/components/schemas/Participant'
+          description: "Additional status message (e.g. for pending proofs)."
+        verificationEndpoints:
+          $ref: '#/components/schemas/ProofVerificationEndpoints'
 
     ProofLeafData:
       type: object
-      description: "Raw transaction leaf data used in Merkle tree"
-      required: [txId, operation, tokenClass, status, createdAt, tokenTransactions]
+      description: "Raw leaf data for a transaction, used to independently recompute the leaf hash."
+      required: [txId, leafHash, stateCommitment, timestamp]
       properties:
         txId:
           type: string
-          format: uri-reference
-          description: "Transaction ID"
-        operation:
+          description: "Transaction ID."
+        leafHash:
           type: string
-          description: "Operation type (mint, transfer, burn, etc.)"
+          description: "Hash of the leaf data (hex-encoded)."
+        stateCommitment:
+          type: string
+          description: "State commitment for the transaction."
+        tokenId:
+          type: string
+          nullable: true
+          description: "Token ID associated with the transaction (if applicable)."
         tokenClass:
           type: string
-          description: "Token class identifier"
-        status:
+          nullable: true
+          description: "Token class identifier (if applicable)."
+        operation:
           type: string
-          description: "Transaction status"
-        createdAt:
+          nullable: true
+          description: "Operation type (mint, transfer, burn, etc.)."
+        timestamp:
           type: string
           format: date-time
-          description: "Transaction creation timestamp"
-        tokenTransactions:
-          type: array
-          items:
-            $ref: '#/components/schemas/TokenTransactionSummary'
-          description: "All token transactions included in this transaction"
+          description: "Transaction timestamp."
+        rawData:
+          type: object
+          additionalProperties: true
+          description: "Full data map that was hashed to produce the leaf hash."
 
     ProofVerificationResult:
       type: object
-      description: "Result of server-side proof verification"
-      required: [verified, verifiedAt]
+      description: "Result of server-side proof verification."
+      required: [txId, valid, leafHashValid, proofPathValid]
       properties:
-        verified:
+        txId:
+          type: string
+          description: "Transaction ID."
+        valid:
           type: boolean
-          description: "Overall verification result"
+          description: "Overall verification result."
         leafHashValid:
           type: boolean
-          description: "Whether the leaf hash matches the transaction data"
+          description: "Whether the leaf hash matches the stored transaction data."
         proofPathValid:
           type: boolean
-          description: "Whether the proof path correctly computes to the Merkle root"
+          description: "Whether the proof path correctly computes to the Merkle root."
         anchorValid:
           type: boolean
           nullable: true
-          description: "Whether the Merkle root exists on the blockchain (null if not yet anchored)"
-        error:
-          type: string
-          description: "Error message if verification failed"
+          description: "Whether the anchor exists on-chain (null if not yet anchored)."
         message:
           type: string
-          description: "Additional information about verification status"
-        verifiedAt:
-          type: string
-          format: date-time
-          description: "Timestamp of verification"
+          nullable: true
+          description: "Additional information about the verification result."
 
     # --- Proof API Request Payloads ---
 
