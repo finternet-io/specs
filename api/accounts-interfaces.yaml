@@ -279,7 +279,10 @@ paths:
       tags:
         - "Address"
       summary: "Check address availability"
-      description: "Checks if a given human-readable address is available for registration."
+      description: |
+        Checks if a given human-readable address is available for registration.
+        Availability now consults the **federation registry**: an address already
+        registered at another federated instance is reported as unavailable.
       security:
         - developerToken: []
         - developerSignature: []
@@ -760,8 +763,10 @@ paths:
       tags: [Account Keys]
       summary: "Register an additional public key for the calling account"
       description: |
-        Register an additional public key (or wallet address) for the authenticated
-        account on a given chain. Supply the raw `publicKey` and/or the `walletAddress`.
+        Register a key reference for the authenticated account in the unified
+        `key_references` store. Supply `type` plus **exactly one** of
+        `public_key_hex` (standard keys) or `address` (the MetaMask/EVM exception,
+        used when only the on-chain wallet address is available, not the raw key).
       security:
         - developerToken: []
         - developerSignature: []
@@ -780,12 +785,14 @@ paths:
                 developerToken: "fnt_..."
                 authorization: "Bearer eyJ..."
               payload:
-                chainId: "eip155:1"
-                publicKey: "0x04a1b2c3d4e5f6..."
-                isPrimary: true
+                type: "ed25519"
+                public_key_hex: "3f8a1c9d2b7e0f4a6c5d8e9b0a1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c"
+                name: "Ledger Nano"
+                is_primary: false
+                is_default: false
       responses:
         '201':
-          description: "Key registered."
+          description: "Key registered in the unified key_references store."
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ApiResponse_AccountKeyInfo' }
@@ -800,7 +807,8 @@ paths:
       tags: [Account Keys]
       summary: "Remove a public key from the calling account"
       description: |
-        Revoke an account-bound public key. The primary key (the one initially provisioned
+        Revoke a key reference from the account's unified `key_references` store,
+        identified by its `address`. The primary key (the one initially provisioned
         at registration) cannot be removed via this endpoint.
       security:
         - developerToken: []
@@ -827,6 +835,9 @@ paths:
     post:
       tags: [Account Keys]
       summary: "Get a single public key for the calling account"
+      description: |
+        Fetch a single key reference from the account's unified `key_references`
+        store, identified by its `address`.
       security:
         - developerToken: []
         - developerSignature: []
@@ -852,8 +863,9 @@ paths:
       tags: [Account Keys]
       summary: "List/search public keys for an account"
       description: |
-        Returns the keys bound to the calling account, optionally filtered by
-        `chainId`/`isPrimary` and paginated with `limit`/`offset`.
+        Returns the key references bound to the calling account from the unified
+        `key_references` store, optionally filtered by `type`/`status` and paginated
+        with `limit`/`offset`.
       security:
         - developerToken: []
         - developerSignature: []
@@ -872,9 +884,8 @@ paths:
                 developerToken: "fnt_..."
                 authorization: "Bearer eyJ..."
               payload:
-                filters:
-                  chainId: "eip155:1"
-                  isPrimary: true
+                type: "ed25519"
+                status: "active"
                 pagination: { limit: 20, offset: 0 }
       responses:
         '200':
@@ -980,48 +991,52 @@ components:
 
     ApiResponse_Success: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { type: object, properties: { message: { type: string, example: "Signout successful" } } } } } ] }
 
-    # --- Account Keys (Public Key Registry) ---
-    PublicKeyRegistryEntry:
+    # --- Account Keys (unified key_references store) ---
+    KeyRegistrationEntry:
       type: object
-      required: [id, chainId, address, isPrimary, createdAt, updatedAt]
+      required: [id, type, address, isPrimary, isDefault, status, createdAt, updatedAt]
+      description: "A key reference from the account's unified `key_references` store."
       properties:
-        id: { type: string, format: uuid }
-        chainId: { type: string, example: "eip155:1", description: "Chain identifier the key is registered against." }
-        publicKey: { type: string, example: "0x04a1b2c3d4e5f6...", description: "Raw chain-specific public key. Omitted when only a wallet address was registered." }
-        address: { type: string, example: "0xAbC1230000000000000000000000000000000000", description: "On-chain wallet address derived from / supplied with the key." }
+        id: { type: string }
+        name: { type: string, nullable: true }
+        type: { type: string, example: "ed25519", description: "Key type/algorithm." }
+        publicKeyHex: { type: string, nullable: true, example: "3f8a1c9d...", description: "Hex-encoded raw public key. Null when only a wallet address was registered." }
+        address: { type: string, example: "0xAbC1230000000000000000000000000000000000" }
         isPrimary: { type: boolean, example: true }
+        isDefault: { type: boolean, example: false }
+        did: { type: string, nullable: true, example: "did:key:z..." }
+        status: { type: string, example: "active" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
     RegisterKeyRequest:
       type: object
-      required: [chainId]
-      description: "At least one of `publicKey` or `walletAddress` must be supplied."
+      required: [type]
+      description: |
+        Supply `type` plus **exactly one** of `public_key_hex` (standard keys) or
+        `address` (the MetaMask/EVM exception, used when only the on-chain wallet
+        address is available, not the raw public key).
       properties:
-        chainId: { type: string, minLength: 1, example: "eip155:1", description: "Chain identifier." }
-        publicKey: { type: string, minLength: 10, description: "Raw chain-specific public key (e.g. secp256k1 for EVM)." }
-        walletAddress: { type: string, minLength: 1, description: "On-chain address; used when the raw key is unavailable." }
-        isPrimary: { type: boolean }
-      anyOf:
-        - required: [publicKey]
-        - required: [walletAddress]
+        type: { type: string, example: "ed25519", description: "Key type/algorithm (e.g. ed25519)." }
+        public_key_hex: { type: string, description: "Hex-encoded raw public key. Supply for standard keys." }
+        address: { type: string, description: "On-chain wallet address. MetaMask/EVM exception, used when the raw public key is unavailable." }
+        name: { type: string, description: "Human-readable label for the key." }
+        is_primary: { type: boolean }
+        is_default: { type: boolean }
     RemoveKeyRequest:
       type: object
-      required: [id]
+      required: [address]
       properties:
-        id: { type: string, format: uuid }
+        address: { type: string, description: "Address of the key reference to remove." }
     GetKeyRequest:
       type: object
-      required: [id]
+      required: [address]
       properties:
-        id: { type: string, format: uuid }
+        address: { type: string, description: "Address of the key reference to fetch." }
     SearchKeysRequest:
       type: object
       properties:
-        filters:
-          type: object
-          properties:
-            chainId: { type: string }
-            isPrimary: { type: boolean }
+        type: { type: string, description: "Filter by key type/algorithm." }
+        status: { type: string, description: "Filter by key status." }
         pagination:
           type: object
           properties:
@@ -1033,7 +1048,7 @@ components:
       properties:
         keys:
           type: array
-          items: { $ref: '#/components/schemas/PublicKeyRegistryEntry' }
+          items: { $ref: '#/components/schemas/KeyRegistrationEntry' }
         pagination:
           type: object
           properties:
@@ -1046,7 +1061,7 @@ components:
     ApiRequest_GetKeyRequest:      { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/GetKeyRequest' } } } ] }
     ApiRequest_SearchKeysRequest:  { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/SearchKeysRequest' } } } ] }
 
-    ApiResponse_AccountKeyInfo: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/PublicKeyRegistryEntry' } } } ] }
+    ApiResponse_AccountKeyInfo: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/KeyRegistrationEntry' } } } ] }
     ApiResponse_AccountKeyList: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/AccountKeyList' } } } ] }
 
     # --- Core Data Schemas (Payloads) ---

@@ -1139,7 +1139,9 @@ paths:
 
         **Note:** `mint` operation has a dedicated `/v1/token/mint` endpoint with separate ACL controls.
 
-        Critical operations (burn, transfer, etc.) require end-user signature.
+        **Signature required:** a top-level end-user payload `signature` is mandatory for
+        every transact operation. units-api enforces this via a `RequireSignature`
+        middleware on this route; a request without a valid `signature` is rejected.
       security:
         - developerToken: []
         - developerSignature: []
@@ -3315,7 +3317,8 @@ components:
     ApiRequest_TransactRequest:
       allOf:
         - $ref: '#/components/schemas/RequestContext'
-        - properties:
+        - required: [signature]
+          properties:
             payload: { $ref: '#/components/schemas/TransactRequest' }
             signature: { $ref: '#/components/schemas/Signature' }
 
