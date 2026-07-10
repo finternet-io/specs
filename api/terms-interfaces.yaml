@@ -65,7 +65,7 @@ info:
     | `POST /v1/terms/accept` | `terms:create` |
     | `POST /v1/terms/publish` | `terms:manage` *(protected — admin-only; granted via the scope-approval workflow at client registration)* |
 
-    Calls failing the scope check return `403 PERMISSION_DENIED`.
+    Calls failing the scope check return `403 FORBIDDEN`.
 
     ### Rate limiting
 
@@ -218,7 +218,7 @@ paths:
                   msgId: "d1b2c3d4-e5f6-7890-1234-567890abcdef"
                   status: "failed"
                   error:
-                    code: "RESOURCE_CONFLICT"
+                    code: "CONFLICT"
                     message: "A newer version of this document has been published. Please review it before accepting."
                 response: {}
         '429': { $ref: '#/components/responses/RateLimitedError' }
@@ -425,7 +425,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "AUTHENTICATION_FAILED", message: "Token invalid or expired." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "UNAUTHORIZED", message: "Token invalid or expired." } }
             response: {}
     ForbiddenError:
       description: "Forbidden. Insufficient permissions (missing required scope)."
@@ -433,7 +433,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "PERMISSION_DENIED", message: "Insufficient permissions to perform this action." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "FORBIDDEN", message: "Insufficient permissions to perform this action." } }
             response: {}
     NotFoundError:
       description: "Resource not found."
@@ -449,7 +449,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "INVALID_REQUEST", message: "Invalid request parameters." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "INVALID_INPUT", message: "Invalid request parameters." } }
             response: {}
     RateLimitedError:
       description: |
@@ -462,7 +462,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "RATE_LIMITED", message: "Too many requests. Retry after 30s." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "TOO_MANY_REQUESTS", message: "Too many requests. Retry after 30s." } }
             response: {}
 
   # -------------------- Security --------------------

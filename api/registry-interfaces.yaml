@@ -62,6 +62,9 @@ info:
     | `POST /v1/adapter/update` | `registry-adapters:manage` |
     | `POST /v1/adapter/get` | `registry-adapters:view` |
     | `POST /v1/adapter/search` | `registry-adapters:view` |
+    | `POST /v1/registry/capability/publish` | *(operator — developer token; no user scope)* |
+    | `GET /v1/registry/forwarding/{did}` | *(developer token)* |
+    | `GET /v1/instance/capabilities` | *(developer token)* |
 
     ### Rate limiting
 
@@ -88,6 +91,12 @@ tags:
     description: |
       Federation address resolution. Resolves an on-chain (chain_id, address) pair to the
       owning UNITS account, its DID, and home instance. Developer-token gated.
+  - name: "Instance"
+    description: |
+      Instance capability publishing and discovery. The signed capability document
+      advertises the programs an instance supports (asset models, primitive methods,
+      templates, operation plans), its signing keys, and when it was generated.
+      Operator / federation-infra endpoints, documented for completeness.
 
 # ===============================================================
 #   PATHS
@@ -771,6 +780,159 @@ paths:
         '404':
           $ref: '#/components/responses/NotFoundError'
 
+  /v1/registry/forwarding/{did}:
+    get:
+      tags:
+        - "Federation"
+      summary: "Get the forwarding pointer for a migrated DID"
+      description: |
+        Return the forwarding pointer for an account DID whose home instance has changed
+        (federation home migration). Callers holding a stale home reference use this to
+        discover the account's new home instance and the signed forwarding record.
+        Developer-token gated.
+      security:
+        - developerToken: []
+      parameters:
+        - name: did
+          in: path
+          required: true
+          description: "Decentralized identifier of the account to resolve a forwarding pointer for."
+          schema:
+            type: string
+            example: "did:units:acct:550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: "Forwarding pointer found."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_ForwardingPointer'
+              example:
+                context:
+                  id: "api.registry.forwarding.get"
+                  version: "1.0"
+                  ts: "2026-02-17T10:00:00Z"
+                  msgId: "f8a9b0c1-d2e3-4567-8901-567890123456"
+                  status: "successful"
+                response:
+                  did: "did:units:acct:550e8400-e29b-41d4-a716-446655440000"
+                  new_home_id: "990e8400-e29b-41d4-a716-446655440099"
+                  installed_at: "2026-02-15T09:30:00Z"
+                  grace_until: "2026-05-15T09:30:00Z"
+                  signed_record:
+                    payload: "eyJ..."
+                    signature: "z58DAdFfa9SkqZMVPxAQp..."
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          description: "No forwarding pointer exists for the given DID."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+
+  # -------------------- Instance --------------------
+  /v1/registry/capability/publish:
+    post:
+      tags:
+        - "Instance"
+      summary: "Publish this instance's signed capability document"
+      description: |
+        Operator endpoint. Re-computes and publishes the instance's signed capability
+        document to the federation registry, returning the published instance identifier,
+        the new document version, and the signature. No request payload — the operator
+        trigger carries only the standard envelope context. Developer-token gated (no
+        end-user token) and rate limited.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: false
+        description: "No business payload; the envelope carries only the standard context."
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestContext'
+            example:
+              context:
+                id: "api.registry.capability.publish"
+                version: "1.0"
+                ts: "2026-02-17T10:00:00Z"
+                msgId: "a9b0c1d2-e3f4-5678-9012-678901234567"
+                developerToken: "fnt_..."
+              payload: {}
+      responses:
+        '200':
+          description: "Capability document published."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_CapabilityPublish'
+              example:
+                context:
+                  id: "api.registry.capability.publish"
+                  version: "1.0"
+                  ts: "2026-02-17T10:00:01Z"
+                  msgId: "a9b0c1d2-e3f4-5678-9012-678901234567"
+                  status: "successful"
+                response:
+                  instance: "https://foundry.finternetlab.io"
+                  version: 7
+                  signature: "z58DAdFfa9SkqZMVPxAQp..."
+                  published_at: "2026-02-17T10:00:01Z"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
+
+  /v1/instance/capabilities:
+    get:
+      tags:
+        - "Instance"
+      summary: "Get this instance's signed capability document"
+      description: |
+        Return the instance's current signed capability document — the free-form, signed
+        descriptor advertising the programs this instance supports (per-program asset
+        models, primitive methods, templates, and operation plans), its signing keys, and
+        the point in time it was generated. Developer-token gated.
+      security:
+        - developerToken: []
+      responses:
+        '200':
+          description: "Signed capability document."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_CapabilityDocument'
+              example:
+                context:
+                  id: "api.instance.capabilities.get"
+                  version: "1.0"
+                  ts: "2026-02-17T10:00:00Z"
+                  msgId: "b0c1d2e3-f4a5-6789-0123-789012345678"
+                  status: "successful"
+                response:
+                  instance: "https://foundry.finternetlab.io"
+                  as_of: "2026-02-17T09:59:00Z"
+                  signing_keys:
+                    - kid: "key-1"
+                      kty: "OKP"
+                      crv: "Ed25519"
+                      x: "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
+                  programs:
+                    token:
+                      asset_models: ["fungible", "nft"]
+                      primitive_methods: ["mint", "transfer", "burn"]
+                      templates: ["erc20", "erc721"]
+                      operation_plans: ["transfer", "atomic_swap"]
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
   # -------------------- Adapter Registry --------------------
   /v1/adapter/register:
     post:
@@ -1299,6 +1461,67 @@ components:
           type: string
           description: "Internal UNITS account ID"
 
+    ForwardingPointerResponse:
+      type: object
+      required: [did, new_home_id, installed_at, grace_until, signed_record]
+      description: "Forwarding pointer for an account whose home instance has migrated."
+      properties:
+        did:
+          type: string
+          description: "Decentralized identifier of the migrated account."
+          example: "did:units:acct:550e8400-e29b-41d4-a716-446655440000"
+        new_home_id:
+          type: string
+          description: "Identifier of the account's new home instance."
+          example: "990e8400-e29b-41d4-a716-446655440099"
+        installed_at:
+          type: string
+          format: date-time
+          description: "When the forwarding pointer was installed."
+        grace_until:
+          type: string
+          format: date-time
+          description: "End of the grace period during which the pointer is honoured."
+        signed_record:
+          type: object
+          additionalProperties: true
+          description: "The signed forwarding record proving the home migration."
+
+    # --- Instance Capability Schemas ---
+
+    CapabilityPublishResponse:
+      type: object
+      required: [instance, version, signature, published_at]
+      description: "Result of publishing the instance's signed capability document."
+      properties:
+        instance:
+          type: string
+          description: "Identifier of the instance whose capability document was published."
+          example: "https://foundry.finternetlab.io"
+        version:
+          type: integer
+          description: "Version number assigned to the published capability document."
+          example: 7
+        signature:
+          type: string
+          description: "Signature over the published capability document."
+          example: "z58DAdFfa9SkqZMVPxAQp..."
+        published_at:
+          type: string
+          description: "Timestamp at which the document was published (RFC 3339)."
+          example: "2026-02-17T10:00:01Z"
+
+    CapabilityDocument:
+      type: object
+      additionalProperties: true
+      description: |
+        Signed capability document for an instance. A free-form, signed descriptor whose
+        shape is intentionally open (`additionalProperties: true`) and NOT constrained by
+        this API. Top-level fields include `instance`, `as_of`, and `signing_keys`, plus
+        one section per supported program — each advertising its asset models, primitive
+        methods, templates, and operation plans. Consumers must treat unknown fields as
+        forward-compatible additions.
+
     # --- Adapter Registry Schemas ---
 
     Adapter:
@@ -1502,6 +1725,24 @@ components:
         - properties:
             response: { $ref: '#/components/schemas/LookupAddress' }
 
+    ApiResponse_ForwardingPointer:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/ForwardingPointerResponse' }
+
+    ApiResponse_CapabilityPublish:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/CapabilityPublishResponse' }
+
+    ApiResponse_CapabilityDocument:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/CapabilityDocument' }
+
     ApiRequest_RegisterAdapterRequest:
       allOf:
         - $ref: '#/components/schemas/RequestContext'
@@ -1546,7 +1787,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "AUTHENTICATION_FAILED", message: "Token invalid or expired." } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "UNAUTHORIZED", message: "Token invalid or expired." } }
             response: {}
     ForbiddenError:
       description: "Forbidden. Insufficient permissions."
@@ -1554,7 +1795,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "PERMISSION_DENIED", message: "Insufficient permissions." } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "FORBIDDEN", message: "Insufficient permissions." } }
             response: {}
     NotFoundError:
       description: "Resource not found."
@@ -1570,7 +1811,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "INVALID_REQUEST", message: "Invalid request parameters." } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "INVALID_INPUT", message: "Invalid request parameters." } }
             response: {}
     RateLimitedError:
       description: |
@@ -1583,7 +1824,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "RATE_LIMITED", message: "Too many requests. Retry after 30s." } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "TOO_MANY_REQUESTS", message: "Too many requests. Retry after 30s." } }
             response: {}
 
   # -------------------- Security --------------------

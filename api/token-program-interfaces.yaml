@@ -63,7 +63,7 @@ info:
     | `POST /v1/tokenprogram/search` | `registry-programs:view` |
 
     Scope keys are resolved from the server-side `scope_api` mapping table. Calls
-    failing the scope check return `403 PERMISSION_DENIED`.
+    failing the scope check return `403 FORBIDDEN`.
 
     ### Rate limiting
 
@@ -490,7 +490,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "AUTHENTICATION_FAILED", message: "Token invalid or expired." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "UNAUTHORIZED", message: "Token invalid or expired." } }
             response: {}
     ForbiddenError:
       description: "Forbidden. Insufficient permissions (scope check failed)."
@@ -498,7 +498,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "PERMISSION_DENIED", message: "Insufficient permissions to perform this action." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "FORBIDDEN", message: "Insufficient permissions to perform this action." } }
             response: {}
     NotFoundError:
       description: "Resource not found."
@@ -514,7 +514,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "INVALID_REQUEST", message: "Invalid request parameters." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "INVALID_INPUT", message: "Invalid request parameters." } }
             response: {}
     ConflictError:
       description: "Conflict with existing resource."
@@ -522,7 +522,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "RESOURCE_CONFLICT", message: "A token program with this programId already exists." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "CONFLICT", message: "A token program with this programId already exists." } }
             response: {}
     RateLimitedError:
       description: |
@@ -535,7 +535,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "RATE_LIMITED", message: "Too many requests. Retry after 30s." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "TOO_MANY_REQUESTS", message: "Too many requests. Retry after 30s." } }
             response: {}
 
   # -------------------- Security --------------------

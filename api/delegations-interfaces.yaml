@@ -272,7 +272,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "AUTHENTICATION_FAILED", message: "Token invalid or expired." } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "UNAUTHORIZED", message: "Token invalid or expired." } }
             response: {}
     ForbiddenError:
       description: "Scope check failed — the caller's developer token does not carry a scope required by this endpoint."
@@ -280,7 +280,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "PERMISSION_DENIED", message: "Missing required scope: delegations:view" } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "FORBIDDEN", message: "Missing required scope: delegations:view" } }
             response: {}
     BadRequestError:
       description: "Invalid request (e.g. missing or invalid `filter` for `list`, or missing `tokenId` for `check`)."
@@ -288,7 +288,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "INVALID_REQUEST", message: "filter must be one of granted_by_me, granted_to_me, pending." } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "INVALID_INPUT", message: "filter must be one of granted_by_me, granted_to_me, pending." } }
             response: {}
     RateLimitedError:
       description: |
@@ -301,7 +301,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "RATE_LIMITED", message: "Too many requests. Retry after 30s." } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "TOO_MANY_REQUESTS", message: "Too many requests. Retry after 30s." } }
             response: {}
 
   # -------------------- Security --------------------

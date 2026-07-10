@@ -586,7 +586,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "AUTHENTICATION_FAILED", message: "Token invalid or expired." } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "UNAUTHORIZED", message: "Token invalid or expired." } }
             response: {}
     ForbiddenError:
       description: "Forbidden. Insufficient permissions."
@@ -594,7 +594,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "PERMISSION_DENIED", message: "Insufficient permissions." } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "FORBIDDEN", message: "Insufficient permissions." } }
             response: {}
     NotFoundError:
       description: "Resource not found."
@@ -610,7 +610,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "INVALID_REQUEST", message: "Invalid request parameters." } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "INVALID_INPUT", message: "Invalid request parameters." } }
             response: {}
     RateLimitedError:
       description: |
@@ -623,7 +623,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "RATE_LIMITED", message: "Too many requests. Retry after 30s." } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "TOO_MANY_REQUESTS", message: "Too many requests. Retry after 30s." } }
             response: {}
 
   # -------------------- Security --------------------

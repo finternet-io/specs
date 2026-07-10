@@ -2363,7 +2363,7 @@ components:
               msgId: "..."
               status: "failed"
               error:
-                code: "INVALID_REQUEST"
+                code: "INVALID_INPUT"
                 message: "Invalid address format for this chain"
             response: {}
 

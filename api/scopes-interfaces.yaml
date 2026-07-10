@@ -65,7 +65,7 @@ info:
     | `POST /v1/scope-approvals/` | *(scope check applies; specific scope key not fixed in source — see note)* |
 
     Scope keys are resolved from the server-side `scope_api` mapping table. Calls
-    failing the scope check return `403 PERMISSION_DENIED`. The scope-approvals
+    failing the scope check return `403 FORBIDDEN`. The scope-approvals
     list is additionally narrowed server-side by caller role: super admins see
     all clients, owners see their clients' entries, and other callers see only
     their own.
@@ -473,7 +473,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "AUTHENTICATION_FAILED", message: "Token invalid or expired." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "UNAUTHORIZED", message: "Token invalid or expired." } }
             response: {}
     ForbiddenError:
       description: "Forbidden. Insufficient permissions (scope check failed)."
@@ -481,7 +481,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "PERMISSION_DENIED", message: "Insufficient permissions to perform this action." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "FORBIDDEN", message: "Insufficient permissions to perform this action." } }
             response: {}
     BadRequestError:
       description: "Invalid request."
@@ -489,7 +489,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "INVALID_REQUEST", message: "Invalid request parameters." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "INVALID_INPUT", message: "Invalid request parameters." } }
             response: {}
     RateLimitedError:
       description: |
@@ -502,7 +502,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "RATE_LIMITED", message: "Too many requests. Retry after 30s." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "TOO_MANY_REQUESTS", message: "Too many requests. Retry after 30s." } }
             response: {}
 
   # -------------------- Security --------------------

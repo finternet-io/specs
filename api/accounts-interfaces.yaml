@@ -59,13 +59,13 @@ info:
     | `POST /v1/account/login` | *(public — OTP/SSO bootstrap)* |
     | `POST /v1/account/logout` | *(public)* |
     | `POST /v1/address/checkAvailability` | *(public)* |
-    | `POST /v1/address/resolve` | `addresses:view` |
-    | `POST /v1/account/keys/register` | `keys:manage` |
+    | `POST /v1/address/resolve` | `accounts:view` |
+    | `POST /v1/account/keys/register` | `keys:create` |
     | `POST /v1/account/keys/remove` | `keys:manage` |
     | `POST /v1/account/keys/get` | `keys:view` |
     | `POST /v1/account/keys/search` | `keys:view` |
 
-    Calls failing the scope check return `403 PERMISSION_DENIED`.
+    Calls failing the scope check return `403 FORBIDDEN`.
 
     ### Rate limiting
 
@@ -156,7 +156,7 @@ paths:
                 response:
                   accountId: "018f2c3d-4e5f-7890-abcd-1234567890ab"
                   did: "did:key:z..."
-                  status: "COMMITTED"
+                  status: "active"
         '400':
           description: "Bad request, such as a missing required field."
           content:
@@ -765,7 +765,7 @@ paths:
       security:
         - developerToken: []
         - developerSignature: []
-      x-scopes: [keys:manage]
+      x-scopes: [keys:create]
       requestBody:
         required: true
         content:
@@ -1092,7 +1092,7 @@ components:
         txnId: { type: string, description: "Deprecated — no longer populated; registration completes synchronously." }
         accountId: { type: string, example: "018f2c3d-4e5f-7890-abcd-1234567890ab" }
         did: { type: string, example: "did:key:z..." }
-        status: { type: string, example: "COMMITTED" }
+        status: { type: string, example: "active" }
     AvailabilityCheckRequest:
       type: object
       required: [address]
@@ -1243,7 +1243,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "AUTHENTICATION_FAILED", message: "Token invalid or expired." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "UNAUTHORIZED", message: "Token invalid or expired." } }
             response: {}
     UnauthorizedDeveloperError:
       description: "Developer authentication failed (HTTP 401)."
@@ -1251,7 +1251,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "DEVELOPER_AUTH_FAILED", message: "Invalid developer token." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "UNAUTHORIZED", message: "Invalid developer token." } }
             response: {}
     ForbiddenError:
       description: "Forbidden. Insufficient permissions."
@@ -1259,7 +1259,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "PERMISSION_DENIED", message: "Insufficient permissions to perform this action." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "FORBIDDEN", message: "Insufficient permissions to perform this action." } }
             response: {}
     NotFoundError:
       description: "Resource not found."
@@ -1275,7 +1275,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "INVALID_REQUEST", message: "Invalid request parameters." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "INVALID_INPUT", message: "Invalid request parameters." } }
             response: {}
     ConflictError:
       description: "Conflict with existing resource."
@@ -1283,7 +1283,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "RESOURCE_CONFLICT", message: "An account with this identifier already exists." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "CONFLICT", message: "An account with this identifier already exists." } }
             response: {}
     RateLimitedError:
       description: |
@@ -1296,7 +1296,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "RATE_LIMITED", message: "Too many requests. Retry after 30s." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "TOO_MANY_REQUESTS", message: "Too many requests. Retry after 30s." } }
             response: {}
 
   # -------------------- Security --------------------

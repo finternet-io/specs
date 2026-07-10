@@ -12,7 +12,7 @@ info:
       captured by the caller.
     - Is granted a set of **scopes** (see the RBAC vocabulary under
       `#/components/schemas/Scope`). Scopes are enforced on every endpoint; calls with
-      an insufficient scope return `403 PERMISSION_DENIED`.
+      an insufficient scope return `403 FORBIDDEN`.
     - May have `allowedOperations` restricting which operations the client can
       perform, keyed by scope.
 
@@ -73,7 +73,7 @@ paths:
                   "tokens:transact":
                     "payload.operation": ["transfer", "burn"]
       responses:
-        '200':
+        '201':
           description: "Client registered."
           content:
             application/json:
@@ -110,7 +110,7 @@ paths:
   /v1/clients/list:
     post:
       tags: [API Clients]
-      summary: "List API clients with filters, pagination, and sortBy"
+      summary: "List API clients (scoped to the caller's account)"
       security:
         - developerToken: []
         - developerSignature: []
@@ -133,7 +133,7 @@ paths:
   /v1/clients/update:
     post:
       tags: [API Clients]
-      summary: "Update an API client (name, description, scopes, allowed operations)"
+      summary: "Update an API client (name, description, scopes)"
       description: |
         Covers the previous `update-scopes` operation — any subset of fields may be
         supplied in `payload`. Absent fields are left unchanged.
@@ -215,7 +215,7 @@ paths:
                 name: "Production — Acme Wallet, primary"
                 expiresInDays: 365
       responses:
-        '200':
+        '201':
           description: "Key created. `key` is returned **only on this response**."
           content:
             application/json:
@@ -636,7 +636,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "AUTHENTICATION_FAILED", message: "Token invalid or expired." } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "UNAUTHORIZED", message: "Token invalid or expired." } }
             response: {}
     ForbiddenError:
       description: "Scope check failed — the caller's developer token does not carry a scope required by this endpoint."
@@ -644,7 +644,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "PERMISSION_DENIED", message: "Missing required scope: clients:create" } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "FORBIDDEN", message: "Missing required scope: clients:create" } }
             response: {}
     NotFoundError:
       description: "Resource not found."
@@ -660,7 +660,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "INVALID_REQUEST", message: "Invalid request parameters." } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "INVALID_INPUT", message: "Invalid request parameters." } }
             response: {}
     RateLimitedError:
       description: |
@@ -673,7 +673,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "RATE_LIMITED", message: "Too many requests. Retry after 30s." } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "TOO_MANY_REQUESTS", message: "Too many requests. Retry after 30s." } }
             response: {}
 
   # -------------------- Security --------------------
