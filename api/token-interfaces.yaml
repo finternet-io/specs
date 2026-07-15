@@ -1727,8 +1727,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse_TokenTransactionList'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
 
