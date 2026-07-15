@@ -112,7 +112,7 @@ paths:
                 value:
                   context:
                     id: "api.account.create"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-09-08T12:00:00Z"
                     msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
                     developerToken: "fnt_..."
@@ -126,7 +126,7 @@ paths:
                 value:
                   context:
                     id: "api.account.create"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-09-08T12:01:00Z"
                     msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
                     developerToken: "fnt_..."
@@ -149,7 +149,7 @@ paths:
               example:
                 context:
                   id: "api.account.create"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2025-09-08T12:00:01Z"
                   msgId: "c1b2c3d4-e5f6-7890-1234-567890abcdef"
                   status: "successful"
@@ -169,7 +169,7 @@ paths:
                   value:
                     context:
                       id: "api.account.create"
-                      version: "1.0"
+                      version: "v1"
                       ts: "2025-09-08T12:00:00Z"
                       msgId: "a1b2c3d4..."
                       status: "failed"
@@ -189,7 +189,7 @@ paths:
                   value:
                     context:
                       id: "api.account.create"
-                      version: "1.0"
+                      version: "v1"
                       ts: "2025-09-08T12:00:00Z"
                       msgId: "a1b2c3d4..."
                       status: "failed"
@@ -219,7 +219,7 @@ paths:
                 value:
                   context:
                     id: "api.account.update"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-09-09T10:00:00Z"
                     msgId: "d1e2f3a4-b5c6-7890-1234-567890abcdef"
                     developerToken: "fnt_..."
@@ -232,7 +232,7 @@ paths:
                 value:
                   context:
                     id: "api.account.update"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-09-09T10:05:00Z"
                     msgId: "d2e3f4a5-b6c7-8901-2345-67890abcdef1"
                     developerToken: "fnt_..."
@@ -258,7 +258,7 @@ paths:
                   value:
                     context:
                       id: "api.account.update"
-                      version: "1.0"
+                      version: "v1"
                       ts: "2025-09-09T10:05:01Z"
                       msgId: "d2e3f4a5-b6c7-8901-2345-67890abcdef1"
                       status: "successful"
@@ -295,7 +295,7 @@ paths:
             example:
               context:
                 id: "api.address.checkAvailability"
-                version: "1.0"
+                version: "v1"
                 ts: "2025-09-08T11:00:00Z"
                 msgId: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
                 developerToken: "fnt_..."
@@ -311,7 +311,7 @@ paths:
               example:
                 context:
                   id: "api.address.checkAvailability"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2025-09-08T11:00:01Z"
                   msgId: "f1a2b3c4-d5e6-7890-1234-567890abcdef"
                   status: "successful"
@@ -345,7 +345,7 @@ paths:
                 value:
                   context:
                     id: "api.account.login"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-09-09T09:00:00Z"
                     msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
                     developerToken: "fnt_..."
@@ -356,7 +356,7 @@ paths:
                 value:
                   context:
                     id: "api.account.login"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-09-09T09:00:00Z"
                     msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
                     developerToken: "fnt_..."
@@ -367,7 +367,7 @@ paths:
                 value:
                   context:
                     id: "api.account.login"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-09-09T09:00:30Z"
                     msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
                     developerToken: "fnt_..."
@@ -379,7 +379,7 @@ paths:
                 value:
                   context:
                     id: "api.account.login"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-09-09T09:00:00Z"
                     msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef23"
                     developerToken: "fnt_..."
@@ -402,7 +402,7 @@ paths:
                   value:
                     context:
                       id: "api.account.login"
-                      version: "1.0"
+                      version: "v1"
                       ts: "2025-09-09T09:00:01Z"
                       msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
                       status: "successful"
@@ -414,7 +414,7 @@ paths:
                   value:
                     context:
                       id: "api.account.login"
-                      version: "1.0"
+                      version: "v1"
                       ts: "2025-11-25T12:05:01Z"
                       msgId: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
                       status: "successful"
@@ -428,7 +428,7 @@ paths:
                   value:
                     context:
                       id: "api.account.login"
-                      version: "1.0"
+                      version: "v1"
                       ts: "2025-11-25T12:05:01Z"
                       msgId: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
                       status: "successful"
@@ -464,7 +464,7 @@ paths:
             example:
               context:
                 id: "api.account.logout"
-                version: "1.0"
+                version: "v1"
                 ts: "2025-09-09T10:30:00Z"
                 msgId: "c1d2e3f4-a5b6-7890-1234-567890abcdef"
                 developerToken: "fnt_..."
@@ -499,7 +499,7 @@ paths:
             example:
               context:
                 id: "api.account.get"
-                version: "1.0"
+                version: "v1"
                 ts: "2025-09-09T09:05:00Z"
                 msgId: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
                 developerToken: "fnt_..."
@@ -536,7 +536,7 @@ paths:
             example:
               context:
                 id: "api.account.otp.generate"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-04-07T10:00:00Z"
                 msgId: "aa11bb22-cc33-dd44-ee55-ff6677889900"
                 developerToken: "fnt_..."
@@ -552,7 +552,7 @@ paths:
               example:
                 context:
                   id: "api.account.otp.generate"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-04-07T10:00:01Z"
                   msgId: "aa11bb22-cc33-dd44-ee55-ff6677889900"
                   status: "successful"
@@ -593,7 +593,7 @@ paths:
             example:
               context:
                 id: "api.account.otp.verify"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-04-07T10:01:00Z"
                 msgId: "bb22cc33-dd44-ee55-ff66-778899001122"
                 developerToken: "fnt_..."
@@ -610,7 +610,7 @@ paths:
               example:
                 context:
                   id: "api.account.otp.verify"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-04-07T10:01:01Z"
                   msgId: "bb22cc33-dd44-ee55-ff66-778899001122"
                   status: "successful"
@@ -652,7 +652,7 @@ paths:
             example:
               context:
                 id: "api.account.pii.decrypt"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-04-07T10:02:00Z"
                 msgId: "cc33dd44-ee55-ff66-7788-990011223344"
                 developerToken: "fnt_..."
@@ -669,7 +669,7 @@ paths:
               example:
                 context:
                   id: "api.account.pii.decrypt"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-04-07T10:02:01Z"
                   msgId: "cc33dd44-ee55-ff66-7788-990011223344"
                   status: "successful"
@@ -702,7 +702,7 @@ paths:
   #           example:
   #             context:
   #               id: "api.account.lookup"
-  #               version: "1.0"
+  #               version: "v1"
   #               ts: "2025-09-09T09:06:00Z"
   #               msgId: "e2f3a4b5-c6d7-8901-2345-67890abcdef"
   #               developerToken: "fnt_..."
@@ -739,7 +739,7 @@ paths:
             example:
               context:
                 id: "api.address.resolve"
-                version: "1.0"
+                version: "v1"
                 ts: "2025-09-09T11:05:00Z"
                 msgId: "f1a2b3c4-d5e6-7890-1234-567890abcdef"
                 developerToken: "fnt_..."
@@ -779,7 +779,7 @@ paths:
             example:
               context:
                 id: "api.account.keys.register"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-04-07T10:00:00Z"
                 msgId: "11111111-2222-3333-4444-555555555555"
                 developerToken: "fnt_..."
@@ -878,7 +878,7 @@ paths:
             example:
               context:
                 id: "api.account.keys.search"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-04-07T10:00:00Z"
                 msgId: "22222222-3333-4444-5555-666666666666"
                 developerToken: "fnt_..."
@@ -911,7 +911,7 @@ components:
       required: [id, version, ts, msgId]
       properties:
         id: { type: string, example: "api.account.create" }
-        version: { type: string, example: "1.0" }
+        version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
         transactionId: { type: string, format: uuid, nullable: true, description: "ID for async operations" }
@@ -923,7 +923,7 @@ components:
       required: [id, version, ts, msgId, status]
       properties:
         id: { type: string, example: "api.account.create" }
-        version: { type: string, example: "1.0" }
+        version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
         transactionId: { type: string, format: uuid, nullable: true }
@@ -1192,7 +1192,6 @@ components:
     # --- OTP & PII (authenticated user) ---
     OTPVerifyRequest:
       type: object
-      required: [code]
       properties:
         code:
           type: string

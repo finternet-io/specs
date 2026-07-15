@@ -114,7 +114,7 @@ paths:
             example:
               context:
                 id: "api.workflow.execute"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-07-09T12:00:00Z"
                 msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
                 developerToken: "fnt_..."
@@ -134,7 +134,7 @@ paths:
               example:
                 context:
                   id: "api.workflow.execute"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-07-09T12:00:01Z"
                   msgId: "b1b2c3d4-e5f6-7890-1234-567890abcdef"
                   status: "successful"
@@ -151,7 +151,7 @@ paths:
               example:
                 context:
                   id: "api.workflow.execute"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-07-09T12:00:01Z"
                   msgId: "c1b2c3d4-e5f6-7890-1234-567890abcdef"
                   status: "accepted"
@@ -167,7 +167,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ApiError' }
               example:
-                context: { id: "api.workflow.execute", version: "1.0", ts: "...", msgId: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "workflow not found: profile-update" } }
+                context: { id: "api.workflow.execute", version: "v1", ts: "...", msgId: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "workflow not found: profile-update" } }
                 response: {}
         '429': { $ref: '#/components/responses/RateLimitedError' }
 
@@ -195,7 +195,7 @@ paths:
             example:
               context:
                 id: "api.workflow.status"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-07-09T12:10:00Z"
                 msgId: "d1b2c3d4-e5f6-7890-1234-567890abcdef"
                 developerToken: "fnt_..."
@@ -212,7 +212,7 @@ paths:
               example:
                 context:
                   id: "api.workflow.status"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-07-09T12:10:01Z"
                   msgId: "e1b2c3d4-e5f6-7890-1234-567890abcdef"
                   status: "successful"
@@ -229,7 +229,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ApiError' }
               example:
-                context: { id: "api.workflow.status", version: "1.0", ts: "...", msgId: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "workflow not found: profile-update" } }
+                context: { id: "api.workflow.status", version: "v1", ts: "...", msgId: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "workflow not found: profile-update" } }
                 response: {}
         '429': { $ref: '#/components/responses/RateLimitedError' }
 
@@ -258,7 +258,7 @@ paths:
             example:
               context:
                 id: "api.workflow.cancel"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-07-09T12:20:00Z"
                 msgId: "f1b2c3d4-e5f6-7890-1234-567890abcdef"
                 developerToken: "fnt_..."
@@ -276,7 +276,7 @@ paths:
               example:
                 context:
                   id: "api.workflow.cancel"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-07-09T12:20:01Z"
                   msgId: "a2b2c3d4-e5f6-7890-1234-567890abcdef"
                   status: "successful"
@@ -292,7 +292,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ApiError' }
               example:
-                context: { id: "api.workflow.cancel", version: "1.0", ts: "...", msgId: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "workflow not found: profile-update" } }
+                context: { id: "api.workflow.cancel", version: "v1", ts: "...", msgId: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "workflow not found: profile-update" } }
                 response: {}
         '429': { $ref: '#/components/responses/RateLimitedError' }
 
@@ -309,7 +309,7 @@ components:
       required: [id, version, ts, msgId]
       properties:
         id: { type: string, example: "api.workflow.execute" }
-        version: { type: string, example: "1.0" }
+        version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
         transactionId: { type: string, format: uuid, nullable: true, description: "ID for async operations" }
@@ -321,7 +321,7 @@ components:
       required: [id, version, ts, msgId, status]
       properties:
         id: { type: string, example: "api.workflow.execute" }
-        version: { type: string, example: "1.0" }
+        version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
         transactionId: { type: string, format: uuid, nullable: true }

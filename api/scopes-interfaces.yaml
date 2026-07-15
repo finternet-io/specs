@@ -113,7 +113,7 @@ paths:
             example:
               context:
                 id: "api.scopes.search"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-07-09T12:00:00Z"
                 msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
                 developerToken: "fnt_..."
@@ -130,7 +130,7 @@ paths:
               example:
                 context:
                   id: "api.scopes.search"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-07-09T12:00:01Z"
                   msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
                   status: "successful"
@@ -168,7 +168,7 @@ paths:
             example:
               context:
                 id: "api.scopes.apis.search"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-07-09T12:05:00Z"
                 msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef23"
                 developerToken: "fnt_..."
@@ -185,7 +185,7 @@ paths:
               example:
                 context:
                   id: "api.scopes.apis.search"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-07-09T12:05:01Z"
                   msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef234"
                   status: "successful"
@@ -224,7 +224,7 @@ paths:
             example:
               context:
                 id: "api.scope-approvals.list"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-07-09T12:10:00Z"
                 msgId: "e5f6a7b8-c9d0-1234-5678-90abcdef2345"
                 developerToken: "fnt_..."
@@ -240,7 +240,7 @@ paths:
               example:
                 context:
                   id: "api.scope-approvals.list"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-07-09T12:10:01Z"
                   msgId: "f6a7b8c9-d0e1-2345-6789-0abcdef23456"
                   status: "successful"
@@ -273,7 +273,7 @@ components:
       required: [id, version, ts, msgId]
       properties:
         id: { type: string, example: "api.scopes.search" }
-        version: { type: string, example: "1.0" }
+        version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
         transactionId: { type: string, format: uuid, nullable: true, description: "ID for async operations" }
@@ -285,7 +285,7 @@ components:
       required: [id, version, ts, msgId, status]
       properties:
         id: { type: string, example: "api.scopes.search" }
-        version: { type: string, example: "1.0" }
+        version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
         transactionId: { type: string, format: uuid, nullable: true }

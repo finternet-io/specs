@@ -110,7 +110,7 @@ paths:
             example:
               context:
                 id: "api.terms.get"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-07-09T12:00:00Z"
                 msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
                 developerToken: "fnt_..."
@@ -126,7 +126,7 @@ paths:
               example:
                 context:
                   id: "api.terms.get"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-07-09T12:00:01Z"
                   msgId: "b1b2c3d4-e5f6-7890-1234-567890abcdef"
                   status: "successful"
@@ -174,7 +174,7 @@ paths:
             example:
               context:
                 id: "api.terms.accept"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-07-09T12:05:00Z"
                 msgId: "c1b2c3d4-e5f6-7890-1234-567890abcdef"
                 developerToken: "fnt_..."
@@ -192,7 +192,7 @@ paths:
               example:
                 context:
                   id: "api.terms.accept"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-07-09T12:05:01Z"
                   msgId: "d1b2c3d4-e5f6-7890-1234-567890abcdef"
                   status: "successful"
@@ -213,7 +213,7 @@ paths:
               example:
                 context:
                   id: "api.terms.accept"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-07-09T12:05:01Z"
                   msgId: "d1b2c3d4-e5f6-7890-1234-567890abcdef"
                   status: "failed"
@@ -248,7 +248,7 @@ paths:
             example:
               context:
                 id: "api.terms.publish"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-07-09T09:00:00Z"
                 msgId: "e1b2c3d4-e5f6-7890-1234-567890abcdef"
                 developerToken: "fnt_..."
@@ -268,7 +268,7 @@ paths:
               example:
                 context:
                   id: "api.terms.publish"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-07-09T09:00:01Z"
                   msgId: "f1b2c3d4-e5f6-7890-1234-567890abcdef"
                   status: "successful"
@@ -302,7 +302,7 @@ components:
       required: [id, version, ts, msgId]
       properties:
         id: { type: string, example: "api.terms.get" }
-        version: { type: string, example: "1.0" }
+        version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
         transactionId: { type: string, format: uuid, nullable: true, description: "ID for async operations" }
@@ -314,7 +314,7 @@ components:
       required: [id, version, ts, msgId, status]
       properties:
         id: { type: string, example: "api.terms.get" }
-        version: { type: string, example: "1.0" }
+        version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
         transactionId: { type: string, format: uuid, nullable: true }

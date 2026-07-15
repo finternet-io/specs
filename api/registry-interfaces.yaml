@@ -127,7 +127,7 @@ paths:
                 value:
                   context:
                     id: "api.registry.chains.register"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2026-02-17T10:00:00Z"
                     msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                     developerToken: "fnt_..."
@@ -152,7 +152,7 @@ paths:
                 value:
                   context:
                     id: "api.registry.chains.register"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2026-02-17T10:00:00Z"
                     msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef0"
                     developerToken: "fnt_..."
@@ -177,7 +177,7 @@ paths:
                 value:
                   context:
                     id: "api.registry.chains.register"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2026-02-17T10:00:00Z"
                     msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef01"
                     developerToken: "fnt_..."
@@ -206,7 +206,7 @@ paths:
               example:
                 context:
                   id: "api.registry.chains.register"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-02-17T10:00:00Z"
                   msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                   status: "successful"
@@ -262,7 +262,7 @@ paths:
                 value:
                   context:
                     id: "api.registry.chains.update"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2026-02-17T11:00:00Z"
                     msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef012"
                     developerToken: "fnt_..."
@@ -277,7 +277,7 @@ paths:
                 value:
                   context:
                     id: "api.registry.chains.update"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2026-02-17T11:00:00Z"
                     msgId: "e5f6a7b8-c9d0-1234-5678-90abcdef0123"
                     developerToken: "fnt_..."
@@ -317,7 +317,7 @@ paths:
             example:
               context:
                 id: "api.registry.chains.get"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-02-17T10:00:00Z"
                 msgId: "f6a7b8c9-d0e1-2345-6789-0abcdef01234"
                 developerToken: "fnt_..."
@@ -355,7 +355,7 @@ paths:
                 value:
                   context:
                     id: "api.registry.chains.search"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2026-02-17T10:00:00Z"
                     msgId: "a7b8c9d0-e1f2-3456-7890-abcdef012345"
                     developerToken: "fnt_..."
@@ -374,7 +374,7 @@ paths:
                 value:
                   context:
                     id: "api.registry.chains.search"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2026-02-17T10:00:00Z"
                     msgId: "b8c9d0e1-f2a3-4567-8901-bcdef0123456"
                     developerToken: "fnt_..."
@@ -394,7 +394,7 @@ paths:
               example:
                 context:
                   id: "api.registry.chains.search"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-02-17T10:00:00Z"
                   msgId: "a7b8c9d0-e1f2-3456-7890-abcdef012345"
                   status: "successful"
@@ -454,7 +454,7 @@ paths:
                 value:
                   context:
                     id: "api.registry.wallets.register"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2026-02-17T10:00:00Z"
                     msgId: "c9d0e1f2-a3b4-5678-9012-cdef01234567"
                     developerToken: "fnt_..."
@@ -474,7 +474,7 @@ paths:
                 value:
                   context:
                     id: "api.registry.wallets.register"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2026-02-17T10:00:00Z"
                     msgId: "d0e1f2a3-b4c5-6789-0123-def012345678"
                     developerToken: "fnt_..."
@@ -493,7 +493,7 @@ paths:
                 value:
                   context:
                     id: "api.registry.wallets.register"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2026-02-17T10:00:00Z"
                     msgId: "e1f2a3b4-c5d6-7890-1234-ef0123456789"
                     developerToken: "fnt_..."
@@ -517,7 +517,7 @@ paths:
               example:
                 context:
                   id: "api.registry.wallets.register"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-02-17T10:00:00Z"
                   msgId: "c9d0e1f2-a3b4-5678-9012-cdef01234567"
                   status: "successful"
@@ -566,7 +566,7 @@ paths:
                 value:
                   context:
                     id: "api.registry.wallets.update"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2026-02-17T11:00:00Z"
                     msgId: "f2a3b4c5-d6e7-8901-2345-f01234567890"
                     developerToken: "fnt_..."
@@ -578,7 +578,7 @@ paths:
                 value:
                   context:
                     id: "api.registry.wallets.update"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2026-02-17T11:00:00Z"
                     msgId: "a3b4c5d6-e7f8-9012-3456-012345678901"
                     developerToken: "fnt_..."
@@ -618,7 +618,7 @@ paths:
             example:
               context:
                 id: "api.registry.wallets.get"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-02-17T10:00:00Z"
                 msgId: "b4c5d6e7-f8a9-0123-4567-123456789012"
                 developerToken: "fnt_..."
@@ -656,7 +656,7 @@ paths:
                 value:
                   context:
                     id: "api.registry.wallets.search"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2026-02-17T10:00:00Z"
                     msgId: "c5d6e7f8-a9b0-1234-5678-234567890123"
                     developerToken: "fnt_..."
@@ -671,7 +671,7 @@ paths:
                 value:
                   context:
                     id: "api.registry.wallets.search"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2026-02-17T10:00:00Z"
                     msgId: "d6e7f8a9-b0c1-2345-6789-345678901234"
                     developerToken: "fnt_..."
@@ -691,7 +691,7 @@ paths:
               example:
                 context:
                   id: "api.registry.wallets.search"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-02-17T10:00:00Z"
                   msgId: "c5d6e7f8-a9b0-1234-5678-234567890123"
                   status: "successful"
@@ -746,7 +746,7 @@ paths:
             example:
               context:
                 id: "api.registry.lookup.address"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-02-17T10:00:00Z"
                 msgId: "e7f8a9b0-c1d2-3456-7890-456789012345"
                 developerToken: "fnt_..."
@@ -763,7 +763,7 @@ paths:
               example:
                 context:
                   id: "api.registry.lookup.address"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-02-17T10:00:00Z"
                   msgId: "e7f8a9b0-c1d2-3456-7890-456789012345"
                   status: "successful"
@@ -810,7 +810,7 @@ paths:
               example:
                 context:
                   id: "api.registry.forwarding.get"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-02-17T10:00:00Z"
                   msgId: "f8a9b0c1-d2e3-4567-8901-567890123456"
                   status: "successful"
@@ -857,7 +857,7 @@ paths:
             example:
               context:
                 id: "api.registry.capability.publish"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-02-17T10:00:00Z"
                 msgId: "a9b0c1d2-e3f4-5678-9012-678901234567"
                 developerToken: "fnt_..."
@@ -872,7 +872,7 @@ paths:
               example:
                 context:
                   id: "api.registry.capability.publish"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-02-17T10:00:01Z"
                   msgId: "a9b0c1d2-e3f4-5678-9012-678901234567"
                   status: "successful"
@@ -910,7 +910,7 @@ paths:
               example:
                 context:
                   id: "api.instance.capabilities.get"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-02-17T10:00:00Z"
                   msgId: "b0c1d2e3-f4a5-6789-0123-789012345678"
                   status: "successful"
@@ -955,7 +955,7 @@ paths:
             example:
               context:
                 id: "api.adapter.register"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-03-05T10:00:00Z"
                 msgId: "f5a6b7c8-d9e0-1234-f012-567890abcdef"
                 developerToken: "fnt_..."
@@ -980,7 +980,7 @@ paths:
               example:
                 context:
                   id: "api.adapter.register"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-03-05T10:00:00Z"
                   msgId: "f5a6b7c8-d9e0-1234-f012-567890abcdef"
                   status: "successful"
@@ -1026,7 +1026,7 @@ paths:
             example:
               context:
                 id: "api.adapter.update"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-03-05T11:00:00Z"
                 msgId: "a6b7c8d9-e0f1-2345-0123-67890abcdef0"
                 developerToken: "fnt_..."
@@ -1069,7 +1069,7 @@ paths:
             example:
               context:
                 id: "api.adapter.get"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-03-05T10:00:00Z"
                 msgId: "b7c8d9e0-f1a2-3456-1234-7890abcdef01"
                 developerToken: "fnt_..."
@@ -1106,7 +1106,7 @@ paths:
             example:
               context:
                 id: "api.adapter.search"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-03-05T10:00:00Z"
                 msgId: "c8d9e0f1-a2b3-4567-2345-890abcdef012"
                 developerToken: "fnt_..."
@@ -1131,7 +1131,7 @@ paths:
               example:
                 context:
                   id: "api.adapter.search"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-03-05T10:00:00Z"
                   msgId: "c8d9e0f1-a2b3-4567-2345-890abcdef012"
                   status: "successful"
@@ -1167,7 +1167,7 @@ components:
       required: [id, version, ts, msgId]
       properties:
         id: { type: string, example: "api.registry.chains.get" }
-        version: { type: string, example: "1.0" }
+        version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
         developerToken: { type: string, nullable: true, description: "B2B Developer API Key/Token" }

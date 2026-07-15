@@ -131,7 +131,7 @@ paths:
                 value:
                   context:
                     id: "api.registry.tokenclasses.register"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                     developerToken: "fnt_..."
@@ -141,7 +141,6 @@ paths:
                     tokenStandard: "UNITS-FT"
                     name: "USD Coin"
                     description: "Circle USD stablecoin pegged 1:1 to USD"
-                    status: "active"
                     schema:
                       type: "object"
                       properties:
@@ -166,7 +165,7 @@ paths:
                 value:
                   context:
                     id: "api.registry.tokenclasses.register"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef"
                     developerToken: "fnt_..."
@@ -200,7 +199,7 @@ paths:
                 value:
                   context:
                     id: "api.registry.tokenclasses.register"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
                     developerToken: "fnt_..."
@@ -234,7 +233,7 @@ paths:
                 value:
                   context:
                     id: "api.registry.tokenclasses.register"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef"
                     developerToken: "fnt_..."
@@ -268,7 +267,7 @@ paths:
                 value:
                   context:
                     id: "api.registry.tokenclasses.register"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "e5f6a7b8-c9d0-1234-5678-90abcdef1"
                     developerToken: "fnt_..."
@@ -302,7 +301,7 @@ paths:
                 value:
                   context:
                     id: "api.registry.tokenclasses.register"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "f6a7b8c9-d0e1-2345-6789-0abcdef12"
                     developerToken: "fnt_..."
@@ -337,7 +336,7 @@ paths:
                 value:
                   context:
                     id: "api.registry.tokenclasses.register"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "a7b8c9d0-e1f2-3456-7890-abcdef123"
                     developerToken: "fnt_..."
@@ -375,7 +374,7 @@ paths:
                 value:
                   context:
                     id: "api.registry.tokenclasses.register"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "b8c9d0e1-f2a3-4567-8901-bcdef1234"
                     developerToken: "fnt_..."
@@ -413,7 +412,7 @@ paths:
               example:
                 context:
                   id: "api.registry.tokenclasses.register"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2025-01-04T10:00:00Z"
                   msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                   status: "successful"
@@ -474,7 +473,7 @@ paths:
             example:
               context:
                 id: "api.registry.tokenclasses.update"
-                version: "1.0"
+                version: "v1"
                 ts: "2025-01-04T11:00:00Z"
                 msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef"
                 developerToken: "fnt_..."
@@ -521,7 +520,7 @@ paths:
             example:
               context:
                 id: "api.registry.tokenclasses.get"
-                version: "1.0"
+                version: "v1"
                 ts: "2025-01-04T10:00:00Z"
                 msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef12"
                 developerToken: "fnt_..."
@@ -538,7 +537,7 @@ paths:
               example:
                 context:
                   id: "api.registry.tokenclasses.get"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2025-01-04T10:00:00Z"
                   msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
                   status: "successful"
@@ -593,7 +592,7 @@ paths:
             example:
               context:
                 id: "api.registry.tokenclasses.search"
-                version: "1.0"
+                version: "v1"
                 ts: "2025-01-04T10:00:00Z"
                 msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef123"
                 developerToken: "fnt_..."
@@ -618,7 +617,7 @@ paths:
               example:
                 context:
                   id: "api.registry.tokenclasses.search"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2025-01-04T10:00:00Z"
                   msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef"
                   status: "successful"
@@ -707,7 +706,7 @@ paths:
                 value:
                   context:
                     id: "api.token.get"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
                     developerToken: "fnt_..."
@@ -719,7 +718,7 @@ paths:
                 value:
                   context:
                     id: "api.token.get"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdf0"
                     developerToken: "fnt_..."
@@ -740,7 +739,7 @@ paths:
                   value:
                     context:
                       id: "api.token.get"
-                      version: "1.0"
+                      version: "v1"
                       ts: "2025-01-04T10:00:01Z"
                       msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
                       status: "successful"
@@ -772,7 +771,7 @@ paths:
                   value:
                     context:
                       id: "api.token.get"
-                      version: "1.0"
+                      version: "v1"
                       ts: "2025-01-04T10:00:01Z"
                       msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdf0"
                       status: "successful"
@@ -829,7 +828,7 @@ paths:
                 value:
                   context:
                     id: "api.token.mint"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "c1d2e3f4-a5b6-7890-1234-567890abcdef"
                     developerToken: "fnt_..."
@@ -852,7 +851,7 @@ paths:
                 value:
                   context:
                     id: "api.token.mint"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "d2e3f4a5-b6c7-8901-2345-67890abcdef"
                     developerToken: "fnt_..."
@@ -875,7 +874,7 @@ paths:
                 value:
                   context:
                     id: "api.token.mint"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "e3f4a5b6-c7d8-9012-3456-7890abcdef1"
                     developerToken: "fnt_..."
@@ -898,7 +897,7 @@ paths:
                 value:
                   context:
                     id: "api.token.mint"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "f4a5b6c7-d8e9-0123-4567-890abcdef12"
                     developerToken: "fnt_..."
@@ -937,7 +936,7 @@ paths:
                 value:
                   context:
                     id: "api.token.mint"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "a5b6c7d8-e9f0-1234-5678-90abcdef123"
                     developerToken: "fnt_..."
@@ -974,7 +973,7 @@ paths:
               example:
                 context:
                   id: "api.token.mint"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2025-01-04T10:00:00Z"
                   msgId: "c1d2e3f4-a5b6-7890-1234-567890abcdef"
                   status: "successful"
@@ -1012,7 +1011,7 @@ paths:
                 value:
                   context:
                     id: "api.token.search"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
                     developerToken: "fnt_..."
@@ -1035,7 +1034,7 @@ paths:
                 value:
                   context:
                     id: "api.token.search"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef2"
                     developerToken: "fnt_..."
@@ -1061,7 +1060,7 @@ paths:
                   value:
                     context:
                       id: "api.token.search"
-                      version: "1.0"
+                      version: "v1"
                       ts: "2025-01-04T10:00:01Z"
                       msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
                       status: "successful"
@@ -1091,7 +1090,7 @@ paths:
                   value:
                     context:
                       id: "api.token.search"
-                      version: "1.0"
+                      version: "v1"
                       ts: "2025-01-04T10:00:01Z"
                       msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef2"
                       status: "successful"
@@ -1157,7 +1156,7 @@ paths:
                 value:
                   context:
                     id: "api.token.transact"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:15:00Z"
                     msgId: "f1a2b3c4-d5e6-7890-1234-567890abcdef"
                     developerToken: "fnt_..."
@@ -1175,7 +1174,7 @@ paths:
                 value:
                   context:
                     id: "api.token.transact"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:15:00Z"
                     msgId: "g2b3c4d5-e6f7-8901-2345-67890abcdef"
                     developerToken: "fnt_..."
@@ -1193,7 +1192,7 @@ paths:
                 value:
                   context:
                     id: "api.token.transact"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:15:00Z"
                     msgId: "h3c4d5e6-f7a8-9012-3456-7890abcdef1"
                     developerToken: "fnt_..."
@@ -1211,7 +1210,7 @@ paths:
                 value:
                   context:
                     id: "api.token.transact"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:15:00Z"
                     msgId: "i4d5e6f7-a8b9-0123-4567-890abcdef12"
                     developerToken: "fnt_..."
@@ -1234,7 +1233,7 @@ paths:
                 value:
                   context:
                     id: "api.token.transact"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:05:00Z"
                     msgId: "d1e2f3a4-b5c6-7890-1234-567890abcdef"
                     developerToken: "fnt_..."
@@ -1252,7 +1251,7 @@ paths:
                 value:
                   context:
                     id: "api.token.transact"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:05:00Z"
                     msgId: "d2e3f4a5-b6c7-8901-2345-67890abcdef"
                     developerToken: "fnt_..."
@@ -1270,7 +1269,7 @@ paths:
                 value:
                   context:
                     id: "api.token.transact"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:10:00Z"
                     msgId: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
                     developerToken: "fnt_..."
@@ -1288,7 +1287,7 @@ paths:
                 value:
                   context:
                     id: "api.token.transact"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:10:00Z"
                     msgId: "e2f3a4b5-c6d7-8901-2345-67890abcdef"
                     developerToken: "fnt_..."
@@ -1305,7 +1304,7 @@ paths:
                 value:
                   context:
                     id: "api.token.transact"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:20:00Z"
                     msgId: "f3a4b5c6-d7e8-9012-3456-7890abcdef1"
                     developerToken: "fnt_..."
@@ -1324,7 +1323,7 @@ paths:
                 value:
                   context:
                     id: "api.token.transact"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:20:00Z"
                     msgId: "f4a5b6c7-d8e9-0123-4567-890abcdef12"
                     developerToken: "fnt_..."
@@ -1343,7 +1342,7 @@ paths:
                 value:
                   context:
                     id: "api.token.transact"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:20:00Z"
                     msgId: "f5a6b7c8-d9e0-1234-5678-90abcdef123"
                     developerToken: "fnt_..."
@@ -1361,7 +1360,7 @@ paths:
                 value:
                   context:
                     id: "api.token.transact"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-04T10:20:00Z"
                     msgId: "a2b3c4d5-e6f7-8901-2345-67890abcdef"
                     developerToken: "fnt_..."
@@ -1385,7 +1384,7 @@ paths:
                   value:
                     context:
                       id: "api.token.transact"
-                      version: "1.0"
+                      version: "v1"
                       ts: "2025-01-04T10:15:00Z"
                       msgId: "f1a2b3c4-d5e6-7890-1234-567890abcdef"
                       status: "accepted"
@@ -1401,7 +1400,7 @@ paths:
                   value:
                     context:
                       id: "api.token.transact"
-                      version: "1.0"
+                      version: "v1"
                       ts: "2025-01-04T10:05:00Z"
                       msgId: "d1e2f3a4-b5c6-7890-1234-567890abcdef"
                       status: "accepted"
@@ -1453,7 +1452,7 @@ paths:
             example:
               context:
                 id: "api.transaction.status"
-                version: "1.0"
+                version: "v1"
                 ts: "2025-01-04T10:00:02Z"
                 msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
                 developerToken: "fnt_..."
@@ -1473,7 +1472,7 @@ paths:
                   value:
                     context:
                       id: "api.transaction.status"
-                      version: "1.0"
+                      version: "v1"
                       ts: "2025-01-04T10:00:02Z"
                       msgId: "..."
                       status: "successful"
@@ -1487,7 +1486,7 @@ paths:
                   value:
                     context:
                       id: "api.transaction.status"
-                      version: "1.0"
+                      version: "v1"
                       ts: "2025-01-04T10:00:05Z"
                       msgId: "..."
                       status: "successful"
@@ -1504,7 +1503,7 @@ paths:
                   value:
                     context:
                       id: "api.transaction.status"
-                      version: "1.0"
+                      version: "v1"
                       ts: "2025-01-04T10:00:02Z"
                       msgId: "..."
                       status: "successful"
@@ -1545,7 +1544,7 @@ paths:
             example:
               context:
                 id: "api.transaction.get"
-                version: "1.0"
+                version: "v1"
                 ts: "2025-01-04T10:00:10Z"
                 msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef"
                 developerToken: "fnt_..."
@@ -1584,7 +1583,7 @@ paths:
             example:
               context:
                 id: "api.transaction.search"
-                version: "1.0"
+                version: "v1"
                 ts: "2025-01-04T10:00:00Z"
                 msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
                 developerToken: "fnt_..."
@@ -1641,7 +1640,7 @@ paths:
             example:
               context:
                 id: "api.transactions.status"
-                version: "1.0"
+                version: "v1"
                 ts: "2025-01-04T10:00:02Z"
                 msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
                 developerToken: "fnt_..."
@@ -1658,7 +1657,7 @@ paths:
               example:
                 context:
                   id: "api.transactions.status"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2025-01-04T10:00:05Z"
                   msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
                   status: "successful"
@@ -1705,7 +1704,7 @@ paths:
             example:
               context:
                 id: "api.token.transactions"
-                version: "1.0"
+                version: "v1"
                 ts: "2025-01-04T10:00:00Z"
                 msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef"
                 developerToken: "fnt_..."
@@ -1768,7 +1767,7 @@ paths:
                 value:
                   context:
                     id: "api.token.add"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-28T10:15:00Z"
                     msgId: "550e8400-e29b-41d4-a716-446655440000"
                     developerToken: "fnt_..."
@@ -1799,7 +1798,7 @@ paths:
                 value:
                   context:
                     id: "api.token.add"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2025-01-28T10:15:00Z"
                     msgId: "550e8400-e29b-41d4-a716-446655440001"
                     developerToken: "fnt_..."
@@ -1820,7 +1819,7 @@ paths:
               example:
                 context:
                   id: "api.token.add"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2025-01-28T10:15:05Z"
                   msgId: "550e8400-e29b-41d4-a716-446655440002"
                   status: "successful"
@@ -1867,7 +1866,7 @@ paths:
             example:
               context:
                 id: "api.transaction.proof"
-                version: "1.0"
+                version: "v1"
                 ts: "2025-01-04T10:00:02Z"
                 msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
                 developerToken: "fnt_..."
@@ -1887,7 +1886,7 @@ paths:
                   value:
                     context:
                       id: "api.transaction.proof"
-                      version: "1.0"
+                      version: "v1"
                       ts: "2025-01-04T10:00:02Z"
                       msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
                       status: "successful"
@@ -1916,7 +1915,7 @@ paths:
                   value:
                     context:
                       id: "api.transaction.proof"
-                      version: "1.0"
+                      version: "v1"
                       ts: "2025-01-04T10:00:02Z"
                       msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
                       status: "successful"
@@ -1958,7 +1957,7 @@ paths:
             example:
               context:
                 id: "api.transaction.proof.leaf"
-                version: "1.0"
+                version: "v1"
                 ts: "2025-01-04T10:00:02Z"
                 msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef"
                 developerToken: "fnt_..."
@@ -1975,7 +1974,7 @@ paths:
               example:
                 context:
                   id: "api.transaction.proof.leaf"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2025-01-04T10:00:02Z"
                   msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef"
                   status: "successful"
@@ -2030,7 +2029,7 @@ paths:
             example:
               context:
                 id: "api.transaction.proof.verify"
-                version: "1.0"
+                version: "v1"
                 ts: "2025-01-04T10:00:02Z"
                 msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
                 developerToken: "fnt_..."
@@ -2050,7 +2049,7 @@ paths:
                   value:
                     context:
                       id: "api.transaction.proof.verify"
-                      version: "1.0"
+                      version: "v1"
                       ts: "2025-01-04T10:00:02Z"
                       msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
                       status: "successful"
@@ -2065,7 +2064,7 @@ paths:
                   value:
                     context:
                       id: "api.transaction.proof.verify"
-                      version: "1.0"
+                      version: "v1"
                       ts: "2025-01-04T10:00:02Z"
                       msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
                       status: "successful"
@@ -2081,7 +2080,7 @@ paths:
                   value:
                     context:
                       id: "api.transaction.proof.verify"
-                      version: "1.0"
+                      version: "v1"
                       ts: "2025-01-04T10:00:02Z"
                       msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
                       status: "successful"
@@ -2115,7 +2114,7 @@ components:
       required: [id, version, ts, msgId]
       properties:
         id: { type: string, example: "api.token.get" }
-        version: { type: string, example: "1.0" }
+        version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
         transactionId: { type: string, format: uuid, nullable: true, description: "ID for async operations" }
@@ -2137,7 +2136,7 @@ components:
       required: [id, version, ts, msgId, status]
       properties:
         id: { type: string, example: "api.token.get" }
-        version: { type: string, example: "1.0" }
+        version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
         transactionId: { type: string, format: uuid, nullable: true }
@@ -2515,7 +2514,7 @@ components:
 
     MintTokenRequest:
       type: object
-      required: [tokenClass, initialSupply]
+      required: [tokenClass, initialSupply, identities]
       description: "Request to mint a new token instance"
       properties:
         tokenClass:
@@ -2534,10 +2533,6 @@ components:
           type: array
           items: { $ref: '#/components/schemas/Identity' }
           description: "Identity relationships for this token"
-        claims:
-          type: array
-          items: { $ref: '#/components/schemas/Claim' }
-          description: "Initial verifiable claims (optional)"
         initialSupply:
           type: string
           description: "Initial token supply (for fungible tokens). Format depends on `context.valueFormat` (raw: integer string, display: decimal string)."
@@ -2664,20 +2659,20 @@ components:
 
     AddTokenRequest:
       type: object
-      required: [tokenClass, owner]
+      required: [tokenClass]
       description: |
         Request to add a token. Supports two shapes (selected via `oneOf`):
           - **Credential token** (W3C VC): requires `credential` + `metadata`.
           - **Proxy token** (USDC, ETH, SOL, etc.): requires `chainId`,
-            `contractAddress`, `walletAddress`, `value`.
+            `contractAddress`, `walletAddress`; `value` is required only when creating (a duplicate add from the owner is a balance refresh and omits it).
 
         Called backend-to-backend by the Finternet App Backend (no end-user JWT).
-        The token owner address must be provided in the payload.
+        The token owner address is optional: when omitted, the server resolves it from the forwarded end-user session.
       oneOf:
         - title: "Credential Token"
           required: [credential, metadata]
         - title: "Proxy Token"
-          required: [chainId, contractAddress, walletAddress, value]
+          required: [chainId, contractAddress, walletAddress]
       properties:
         tokenClass:
           type: string
@@ -3129,7 +3124,6 @@ components:
     TokenTransactionsRequest:
       type: object
       description: "Request for token transaction history with filters and pagination at payload level"
-      required: [filters]
       properties:
         filters:
           type: object

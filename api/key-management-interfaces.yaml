@@ -100,7 +100,7 @@ paths:
             example:
               context:
                 id: "api.account.keys.create"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-04-07T12:00:00Z"
                 msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
                 developerToken: "fnt_..."
@@ -115,7 +115,7 @@ paths:
               example:
                 context:
                   id: "api.account.keys.create"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-04-07T12:00:01Z"
                   msgId: "c1b2c3d4-e5f6-7890-1234-567890abcdef"
                   status: "successful"
@@ -156,7 +156,7 @@ paths:
               example:
                 context:
                   id: "api.account.keys.list"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-04-07T12:05:01Z"
                   msgId: "d1e2f3a4-b5c6-7890-1234-567890abcdef"
                   status: "successful"
@@ -200,7 +200,7 @@ paths:
             example:
               context:
                 id: "api.account.keys.rotate"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-04-07T12:10:00Z"
                 msgId: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
                 developerToken: "fnt_..."
@@ -227,7 +227,10 @@ paths:
         **Request shape (special).** The body is NOT the plain envelope:
         - `context` carries the standard fields **plus** required `method` and
           `account_did`.
-        - `payload` is the method-specific body to be wrapped and signed.
+        - `payload` is the operation body to be wrapped and signed. **It MUST be
+          byte-identical to the `payload` you then submit to `POST /v1/token/transact`**
+          — the signature is computed over exactly this object, so any mismatch
+          invalidates it.
         - `username` and `otp` are **top-level** fields (siblings of `context`
           and `payload`), NOT inside `payload`.
 
@@ -254,30 +257,34 @@ paths:
                 value:
                   context:
                     id: "api.account.sign"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2026-04-07T12:15:00Z"
                     msgId: "f1a2b3c4-d5e6-7890-1234-567890abcdef"
                     developerToken: "fnt_..."
                     method: "lock.request"
                     account_did: "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH"
                   payload:
-                    amount: "100.00"
-                    token_class: "USD"
+                    operation: "transfer"
+                    tokenId: "a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                    to: "bob"
+                    value: "100000000"
                   username: "alice@example.com"
               Phase2_CompleteSigning:
                 summary: "Phase 2 — resubmit with the received otp to sign"
                 value:
                   context:
                     id: "api.account.sign"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2026-04-07T12:15:30Z"
                     msgId: "a2b3c4d5-e6f7-8901-2345-67890abcdef1"
                     developerToken: "fnt_..."
                     method: "lock.request"
                     account_did: "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH"
                   payload:
-                    amount: "100.00"
-                    token_class: "USD"
+                    operation: "transfer"
+                    tokenId: "a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                    to: "bob"
+                    value: "100000000"
                   username: "alice@example.com"
                   otp: "123456"
       responses:
@@ -298,7 +305,7 @@ paths:
                   value:
                     context:
                       id: "api.account.sign"
-                      version: "1.0"
+                      version: "v1"
                       ts: "2026-04-07T12:15:01Z"
                       msgId: "f1a2b3c4-d5e6-7890-1234-567890abcdef"
                       status: "successful"
@@ -310,7 +317,7 @@ paths:
                   value:
                     context:
                       id: "api.account.sign"
-                      version: "1.0"
+                      version: "v1"
                       ts: "2026-04-07T12:15:31Z"
                       msgId: "a2b3c4d5-e6f7-8901-2345-67890abcdef1"
                       status: "successful"
@@ -327,8 +334,10 @@ paths:
                         payload:
                           type_url: ""
                           value:
-                            amount: "100.00"
-                            token_class: "USD"
+                            operation: "transfer"
+                            tokenId: "a1b2c3d4-e5f6-7890-abcd-1234567890ab"
+                            to: "bob"
+                            value: "100000000"
                         signature:
                           signer_instance: "019ab8e9-0636-74fd-b5c4-192fc68b71e3"
                           key_name: "units-signing-019ab8e9-0636-74fd-b5c4-192fc68b71e3"
@@ -348,7 +357,7 @@ paths:
               example:
                 context:
                   id: "api.account.sign"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-04-07T12:15:30Z"
                   msgId: "a2b3c4d5-e6f7-8901-2345-67890abcdef1"
                   status: "failed"
@@ -374,7 +383,7 @@ components:
       required: [id, version, ts, msgId]
       properties:
         id: { type: string, example: "api.account.keys.create" }
-        version: { type: string, example: "1.0" }
+        version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
         transactionId: { type: string, format: uuid, nullable: true }
@@ -387,7 +396,7 @@ components:
       required: [id, version, ts, msgId, status]
       properties:
         id: { type: string, example: "api.account.keys.create" }
-        version: { type: string, example: "1.0" }
+        version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
         transactionId: { type: string, format: uuid, nullable: true }
@@ -444,11 +453,11 @@ components:
     # context carries extra routing fields and username/otp are top-level.
     SignContext:
       type: object
-      required: [id, version, ts, msgId, method, account_did]
-      description: "Standard envelope context PLUS the required routing fields method and account_did."
+      required: [method, account_did]
+      description: "Standard envelope context PLUS the required routing fields method and account_did. Only method and account_did are enforced by the sign handler; id/version/ts/msgId are optional here."
       properties:
         id: { type: string, example: "api.account.sign" }
-        version: { type: string, example: "1.0" }
+        version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
         developerToken: { type: string, example: "fnt_...", nullable: true }
@@ -622,7 +631,7 @@ components:
           example:
             context:
               id: "api.account.keys.create"
-              version: "1.0"
+              version: "v1"
               ts: "2026-04-07T12:00:00Z"
               msgId: "..."
               status: "failed"
@@ -639,7 +648,7 @@ components:
           example:
             context:
               id: "api.account.sign"
-              version: "1.0"
+              version: "v1"
               ts: "2026-04-07T12:15:00Z"
               msgId: "..."
               status: "failed"
@@ -656,7 +665,7 @@ components:
           example:
             context:
               id: "api.account.keys.rotate"
-              version: "1.0"
+              version: "v1"
               ts: "2026-04-07T12:10:00Z"
               msgId: "..."
               status: "failed"
@@ -687,7 +696,7 @@ components:
           example:
             context:
               id: "api.account.keys.create"
-              version: "1.0"
+              version: "v1"
               ts: "2026-04-07T12:00:00Z"
               msgId: "..."
               status: "failed"

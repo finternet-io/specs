@@ -49,7 +49,7 @@ paths:
             example:
               context:
                 id: "api.delegations.list"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-04-07T10:00:00Z"
                 msgId: "11111111-2222-3333-4444-555555555555"
                 developerToken: "fnt_..."
@@ -87,7 +87,7 @@ paths:
             example:
               context:
                 id: "api.delegations.check"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-04-07T10:00:00Z"
                 msgId: "22222222-3333-4444-5555-666666666666"
                 developerToken: "fnt_..."
@@ -139,7 +139,7 @@ components:
           allOf:
             - $ref: '#/components/schemas/Context'
             - properties:
-                status: { type: string, enum: [success, failed] }
+                status: { type: string, enum: [successful, failed] }
 
     ApiResponse:
       allOf:

@@ -109,7 +109,7 @@ paths:
                 value:
                   context:
                     id: "api.tokenclassconfig.register"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2026-03-05T10:00:00Z"
                     msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                     developerToken: "fnt_..."
@@ -140,7 +140,7 @@ paths:
                 value:
                   context:
                     id: "api.tokenclassconfig.register"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2026-03-05T10:05:00Z"
                     msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
                     developerToken: "fnt_..."
@@ -166,7 +166,7 @@ paths:
               example:
                 context:
                   id: "api.tokenclassconfig.register"
-                  version: "1.0"
+                  version: "v1"
                   ts: "2026-03-05T10:00:00Z"
                   msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                   status: "successful"
@@ -230,7 +230,7 @@ paths:
                 value:
                   context:
                     id: "api.tokenclassconfig.update"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2026-03-05T11:00:00Z"
                     msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef012"
                     developerToken: "fnt_..."
@@ -250,7 +250,7 @@ paths:
                 value:
                   context:
                     id: "api.tokenclassconfig.update"
-                    version: "1.0"
+                    version: "v1"
                     ts: "2026-03-05T11:30:00Z"
                     msgId: "e5f6a7b8-c9d0-1234-5678-90abcdef0123"
                     developerToken: "fnt_..."
@@ -293,7 +293,7 @@ paths:
             example:
               context:
                 id: "api.tokenclassconfig.get"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-03-05T10:00:00Z"
                 msgId: "f6a7b8c9-d0e1-2345-6789-0abcdef01234"
                 developerToken: "fnt_..."
@@ -331,7 +331,7 @@ paths:
             example:
               context:
                 id: "api.tokenclassconfig.search"
-                version: "1.0"
+                version: "v1"
                 ts: "2026-03-05T10:00:00Z"
                 msgId: "a7b8c9d0-e1f2-3456-7890-abcdef012345"
                 developerToken: "fnt_..."
@@ -370,7 +370,7 @@ components:
       required: [id, version, ts, msgId]
       properties:
         id: { type: string, example: "api.tokenclassconfig.get" }
-        version: { type: string, example: "1.0" }
+        version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
         developerToken: { type: string, nullable: true, description: "B2B Developer API Key/Token" }
@@ -384,7 +384,7 @@ components:
         version: { type: string }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
-        status: { type: string, enum: [successful, failed] }
+        status: { type: string, enum: [successful, failed, pending] }
         error: { $ref: '#/components/schemas/ErrorPayload' }
     ErrorPayload:
       type: object
