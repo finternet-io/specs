@@ -1394,7 +1394,6 @@ paths:
                       status: "submitted"
                       message: "Transfer workflow submitted for primitive orchestration"
                       workflowInstanceId: "urn:uuid:tx-d8e5f6a7-b8c9-0123-4567-890abcdef123"
-                      workflowUrl: "https://restate.example/PrimitiveOperationWorkflow/urn:uuid:tx-d8e5f6a7-b8c9-0123-4567-890abcdef123"
                 BurnAccepted:
                   summary: "Burn submitted (no workflow fields)"
                   value:
@@ -2854,9 +2853,6 @@ components:
         workflowInstanceId:
           type: string
           description: "Federation workflow instance id (present when the operation routes a federation transfer)"
-        workflowUrl:
-          type: string
-          description: "Human-readable workflow URL (present when the operation routes a federation transfer)"
 
     AddTokenResponse:
       type: object
