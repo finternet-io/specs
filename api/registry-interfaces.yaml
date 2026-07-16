@@ -89,7 +89,7 @@ tags:
       require both Developer and end-user authentication.
   - name: "Federation"
     description: |
-      Federation address resolution. Resolves an on-chain (chain_id, address) pair to the
+      Federation address resolution. Resolves an on-chain (chainId, address) pair to the
       owning UNITS account, its DID, and home instance. Developer-token gated.
   - name: "Instance"
     description: |
@@ -733,7 +733,7 @@ paths:
         - "Federation"
       summary: "Resolve an on-chain address to a UNITS account"
       description: |
-        Resolve an on-chain `(chain_id, address)` pair to the owning UNITS account —
+        Resolve an on-chain `(chainId, address)` pair to the owning UNITS account —
         returning its DID, home instance, and account ID. Developer-token gated.
       security:
         - developerToken: []
@@ -751,7 +751,7 @@ paths:
                 msgId: "e7f8a9b0-c1d2-3456-7890-456789012345"
                 developerToken: "fnt_..."
               payload:
-                chain_id: "eip155:1"
+                chainId: "eip155:1"
                 address: "0x1111111111111111111111111111111111111111"
       responses:
         '200':
@@ -1432,10 +1432,10 @@ components:
 
     LookupAddressRequest:
       type: object
-      required: [chain_id, address]
+      required: [chainId, address]
       additionalProperties: false
       properties:
-        chain_id:
+        chainId:
           type: string
           minLength: 1
           description: "CAIP-2 chain identifier"
