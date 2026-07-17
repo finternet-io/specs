@@ -140,8 +140,9 @@ paths:
           description: |
             Account registered successfully. Both federation branches (reservation-proof
             and signed-envelope) run the signup workflow synchronously to its COMMITTED
-            verdict before returning, so the call always answers 200. No token is minted
-            (`accessToken` is empty) — the client calls `/v1/account/login` next.
+            verdict, then mint a Keycloak session token via token exchange. The response
+            carries that token, so the client is logged in immediately — no follow-up
+            `/v1/account/login` is required.
           content:
             application/json:
               schema:
@@ -154,9 +155,9 @@ paths:
                   msgId: "c1b2c3d4-e5f6-7890-1234-567890abcdef"
                   status: "successful"
                 response:
-                  accountId: "018f2c3d-4e5f-7890-abcd-1234567890ab"
-                  did: "did:key:z..."
-                  status: "active"
+                  accessToken: "eyJ..."
+                  tokenType: "Bearer"
+                  expiresIn: 3600
         '400':
           description: "Bad request, such as a missing required field."
           content:
@@ -1096,18 +1097,15 @@ components:
           description: "For workflow steps: action-specific data validated dynamically against the workflow registry schema. For `cancel`: must include `workflowId`."
     CreateAccountResponse:
       type: object
+      required: [accessToken, tokenType, expiresIn]
       description: |
-        Registration completes synchronously to its COMMITTED verdict. Per R3 the workflow
-        does NOT mint a token — `accessToken` is empty and the client calls `/v1/account/login`
-        next. `txnId` is no longer populated (retained for back-compat). All fields are optional.
+        Registration completes synchronously to its COMMITTED verdict and mints a Keycloak
+        session token via token exchange. The response carries that token, so the client is
+        logged in immediately — no follow-up `/v1/account/login` is required.
       properties:
-        accessToken: { type: string, example: "" }
+        accessToken: { type: string, example: "eyJ..." }
         tokenType: { type: string, example: "Bearer" }
         expiresIn: { type: integer, example: 3600 }
-        txnId: { type: string, description: "Deprecated — no longer populated; registration completes synchronously." }
-        accountId: { type: string, example: "018f2c3d-4e5f-7890-abcd-1234567890ab" }
-        did: { type: string, example: "did:key:z..." }
-        status: { type: string, example: "active" }
     AvailabilityCheckRequest:
       type: object
       required: [address]
