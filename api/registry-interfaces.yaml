@@ -727,59 +727,6 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
 
   # -------------------- Federation --------------------
-  /v1/registry/lookup-address:
-    post:
-      tags:
-        - "Federation"
-      summary: "Resolve an on-chain address to a UNITS account"
-      description: |
-        Resolve an on-chain `(chainId, address)` pair to the owning UNITS account —
-        returning its DID, home instance, and account ID. Developer-token gated.
-      security:
-        - developerToken: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ApiRequest_LookupAddressRequest'
-            example:
-              context:
-                id: "api.registry.lookup.address"
-                version: "v1"
-                ts: "2026-02-17T10:00:00Z"
-                msgId: "e7f8a9b0-c1d2-3456-7890-456789012345"
-                developerToken: "fnt_..."
-              payload:
-                chainId: "eip155:1"
-                address: "0x1111111111111111111111111111111111111111"
-      responses:
-        '200':
-          description: "Address resolved"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse_LookupAddress'
-              example:
-                context:
-                  id: "api.registry.lookup.address"
-                  version: "v1"
-                  ts: "2026-02-17T10:00:00Z"
-                  msgId: "e7f8a9b0-c1d2-3456-7890-456789012345"
-                  status: "successful"
-                response:
-                  did: "did:units:acct:550e8400-e29b-41d4-a716-446655440000"
-                  home_instance: "https://foundry.finternetlab.io"
-                  account_id: "550e8400-e29b-41d4-a716-446655440000"
-        '400':
-          $ref: '#/components/responses/BadRequestError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-
   /v1/registry/forwarding/{did}:
     get:
       tags:
@@ -1430,37 +1377,6 @@ components:
 
     # --- Federation Schemas ---
 
-    LookupAddressRequest:
-      type: object
-      required: [chainId, address]
-      additionalProperties: false
-      properties:
-        chainId:
-          type: string
-          minLength: 1
-          description: "CAIP-2 chain identifier"
-          example: "eip155:1"
-        address:
-          type: string
-          minLength: 1
-          description: "On-chain address to resolve"
-          example: "0x1111111111111111111111111111111111111111"
-
-    LookupAddress:
-      type: object
-      required: [did, home_instance, account_id]
-      description: "Resolved UNITS account for an on-chain address"
-      properties:
-        did:
-          type: string
-          description: "Decentralized identifier of the owning account"
-        home_instance:
-          type: string
-          description: "Home UNITS instance URL for the account"
-        account_id:
-          type: string
-          description: "Internal UNITS account ID"
-
     ForwardingPointerResponse:
       type: object
       required: [did, new_home_id, installed_at, grace_until, signed_record]
@@ -1712,18 +1628,6 @@ components:
         - $ref: '#/components/schemas/ApiResponse'
         - properties:
             response: { $ref: '#/components/schemas/WalletProviderList' }
-
-    ApiRequest_LookupAddressRequest:
-      allOf:
-        - $ref: '#/components/schemas/RequestContext'
-        - properties:
-            payload: { $ref: '#/components/schemas/LookupAddressRequest' }
-
-    ApiResponse_LookupAddress:
-      allOf:
-        - $ref: '#/components/schemas/ApiResponse'
-        - properties:
-            response: { $ref: '#/components/schemas/LookupAddress' }
 
     ApiResponse_ForwardingPointer:
       allOf:
