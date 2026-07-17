@@ -2656,20 +2656,20 @@ components:
 
     AddTokenRequest:
       type: object
-      required: [tokenClass]
+      required: [tokenClass, owner]
       description: |
         Request to add a token. Supports two shapes (selected via `oneOf`):
           - **Credential token** (W3C VC): requires `credential` + `metadata`.
           - **Proxy token** (USDC, ETH, SOL, etc.): requires `chainId`,
-            `contractAddress`, `walletAddress`; `value` is required only when creating (a duplicate add from the owner is a balance refresh and omits it).
+            `contractAddress`, `walletAddress`, `value`.
 
         Called backend-to-backend by the Finternet App Backend (no end-user JWT).
-        The token owner address is optional: when omitted, the server resolves it from the forwarded end-user session.
+        The token owner address must be provided in the payload.
       oneOf:
         - title: "Credential Token"
           required: [credential, metadata]
         - title: "Proxy Token"
-          required: [chainId, contractAddress, walletAddress]
+          required: [chainId, contractAddress, walletAddress, value]
       properties:
         tokenClass:
           type: string

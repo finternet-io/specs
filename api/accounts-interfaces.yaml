@@ -328,7 +328,7 @@ paths:
         Login with one of two flows (see `LoginRequest` for details):
 
         - **OTP** (default): step 1 sends OTP, step 2 verifies and returns JWT.
-        - **SSO** (`ssoLogin: true`): bypasses OTP; caller's app backend owns final JWT signing.
+        - **SSO** (`authToken`): bypasses OTP; the app backend supplies a signed authToken.
 
         Password-based login was removed in release 2026.04.07. Requires developer auth.
       security:
@@ -376,7 +376,7 @@ paths:
                     username: "alice@example.com"
                     otp: "1234"
               SSOLogin:
-                summary: "SSO: bypass OTP — app backend owns final JWT"
+                summary: "SSO: bypass OTP with a BFF-signed authToken"
                 value:
                   context:
                     id: "api.account.login"
@@ -386,7 +386,7 @@ paths:
                     developerToken: "fnt_..."
                   payload:
                     username: "alice@example.com"
-                    ssoLogin: true
+                    authToken: "eyJhbGciOiJFZERTQSJ9..."
       responses:
         '200':
           description: |
@@ -765,8 +765,8 @@ paths:
       summary: "Register an additional public key for the calling account"
       description: |
         Register a key reference for the authenticated account in the unified
-        `key_references` store. Supply `type` plus **exactly one** of
-        `public_key_hex` (standard keys) or `address` (the MetaMask/EVM exception,
+        `key_references` store. Supply `chainId` plus **exactly one** of
+        `publicKey` (standard keys) or `walletAddress` (the MetaMask/EVM exception,
         used when only the on-chain wallet address is available, not the raw key).
       security:
         - developerToken: []
@@ -786,11 +786,9 @@ paths:
                 developerToken: "fnt_..."
                 authorization: "Bearer eyJ..."
               payload:
-                type: "ed25519"
-                public_key_hex: "3f8a1c9d2b7e0f4a6c5d8e9b0a1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c"
-                name: "Ledger Nano"
-                is_primary: false
-                is_default: false
+                chainId: "eip155:1"
+                publicKey: "3f8a1c9d2b7e0f4a6c5d8e9b0a1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c"
+                isPrimary: false
       responses:
         '201':
           description: "Key registered in the unified key_references store."
@@ -809,7 +807,7 @@ paths:
       summary: "Remove a public key from the calling account"
       description: |
         Revoke a key reference from the account's unified `key_references` store,
-        identified by its `address`. The primary key (the one initially provisioned
+        identified by its `id`. The primary key (the one initially provisioned
         at registration) cannot be removed via this endpoint.
       security:
         - developerToken: []
@@ -838,7 +836,7 @@ paths:
       summary: "Get a single public key for the calling account"
       description: |
         Fetch a single key reference from the account's unified `key_references`
-        store, identified by its `address`.
+        store, identified by its `id`.
       security:
         - developerToken: []
         - developerSignature: []
@@ -865,8 +863,8 @@ paths:
       summary: "List/search public keys for an account"
       description: |
         Returns the key references bound to the calling account from the unified
-        `key_references` store, optionally filtered by `type`/`status` and paginated
-        with `limit`/`offset`.
+        `key_references` store, optionally filtered by `filters.chainId`/`filters.isPrimary`
+        and paginated with `limit`/`offset`.
       security:
         - developerToken: []
         - developerSignature: []
@@ -885,8 +883,7 @@ paths:
                 developerToken: "fnt_..."
                 authorization: "Bearer eyJ..."
               payload:
-                type: "ed25519"
-                status: "active"
+                filters: { chainId: "eip155:1", isPrimary: true }
                 pagination: { limit: 20, offset: 0 }
       responses:
         '200':
@@ -995,49 +992,52 @@ components:
     # --- Account Keys (unified key_references store) ---
     KeyRegistrationEntry:
       type: object
-      required: [id, type, address, isPrimary, isDefault, status, createdAt, updatedAt]
+      required: [id, chainId, address, isPrimary, createdAt, updatedAt]
       description: "A key reference from the account's unified `key_references` store."
       properties:
-        id: { type: string }
-        name: { type: string, nullable: true }
-        type: { type: string, example: "ed25519", description: "Key type/algorithm." }
-        publicKeyHex: { type: string, nullable: true, example: "3f8a1c9d...", description: "Hex-encoded raw public key. Null when only a wallet address was registered." }
+        id: { type: string, format: uuid }
+        chainId: { type: string, example: "eip155:1", description: "Chain the key/address belongs to." }
+        publicKey: { type: string, nullable: true, example: "3f8a1c9d...", description: "Hex-encoded raw public key. Null when only a wallet address was registered." }
         address: { type: string, example: "0xAbC1230000000000000000000000000000000000" }
         isPrimary: { type: boolean, example: true }
-        isDefault: { type: boolean, example: false }
-        did: { type: string, nullable: true, example: "did:key:z..." }
-        status: { type: string, example: "active" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
     RegisterKeyRequest:
       type: object
-      required: [type]
+      required: [chainId]
+      additionalProperties: false
       description: |
-        Supply `type` plus **exactly one** of `public_key_hex` (standard keys) or
-        `address` (the MetaMask/EVM exception, used when only the on-chain wallet
-        address is available, not the raw public key).
+        Supply `chainId` plus **exactly one** of `publicKey` (standard keys) or
+        `walletAddress` (the MetaMask/EVM exception, used when only the on-chain
+        wallet address is available, not the raw public key).
+      anyOf:
+        - required: [publicKey]
+        - required: [walletAddress]
       properties:
-        type: { type: string, example: "ed25519", description: "Key type/algorithm (e.g. ed25519)." }
-        public_key_hex: { type: string, description: "Hex-encoded raw public key. Supply for standard keys." }
-        address: { type: string, description: "On-chain wallet address. MetaMask/EVM exception, used when the raw public key is unavailable." }
-        name: { type: string, description: "Human-readable label for the key." }
-        is_primary: { type: boolean }
-        is_default: { type: boolean }
+        chainId: { type: string, example: "eip155:1", description: "Chain the key/address belongs to." }
+        publicKey: { type: string, description: "Hex-encoded raw public key. Supply for standard keys." }
+        walletAddress: { type: string, description: "On-chain wallet address. MetaMask/EVM exception, used when the raw public key is unavailable." }
+        isPrimary: { type: boolean }
     RemoveKeyRequest:
       type: object
-      required: [address]
+      required: [id]
+      additionalProperties: false
       properties:
-        address: { type: string, description: "Address of the key reference to remove." }
+        id: { type: string, format: uuid, description: "ID of the key reference to remove." }
     GetKeyRequest:
       type: object
-      required: [address]
+      required: [id]
+      additionalProperties: false
       properties:
-        address: { type: string, description: "Address of the key reference to fetch." }
+        id: { type: string, format: uuid, description: "ID of the key reference to fetch." }
     SearchKeysRequest:
       type: object
       properties:
-        type: { type: string, description: "Filter by key type/algorithm." }
-        status: { type: string, description: "Filter by key status." }
+        filters:
+          type: object
+          properties:
+            chainId: { type: string, description: "Filter by chain." }
+            isPrimary: { type: boolean, description: "Filter by primary flag." }
         pagination:
           type: object
           properties:
@@ -1122,22 +1122,22 @@ components:
       description: |
         Login payload. Two supported flows:
 
-        1. **OTP login** — omit `ssoLogin` (or set false). Send request without `otp` to
+        1. **OTP login** — omit `authToken`. Send request without `otp` to
            receive an OTP on the registered email/mobile. Send again with `otp` populated
            to receive a JWT access token.
 
-        2. **SSO login** — set `ssoLogin: true`. UNITS does not call the OTP service. The
-           caller is expected to obtain a Keycloak token via its own identity provider
-           (Google, Microsoft, etc.) and the **application backend** signs and returns
-           the final JWT to the end user. On the first SSO call for a brand-new user,
-           UNITS returns HTTP 404 — the app backend is responsible for driving the
+        2. **SSO login** — supply `authToken` (a BFF-signed Ed25519 JWT). UNITS does not
+           call the OTP service; it verifies the BFF's signature. The app backend/BFF
+           verifies the external IdP (NextAuth — Google, Microsoft, etc.), signs the
+           authToken, and returns the final session JWT to the end user. On the first SSO
+           call for a brand-new user, UNITS returns HTTP 404 — the app backend drives the
            registration flow before issuing a JWT.
 
         Password-based login has been removed as of release 2026.04.07.
       properties:
         username: { type: string, example: "alice", description: "Finternet address, email, or mobile number" }
         otp: { type: string, example: "1234", nullable: true, description: "One-time password for verification. Only used for OTP flow." }
-        ssoLogin: { type: boolean, default: false, description: "Set true to select the SSO (external IdP) flow and bypass OTP." }
+        authToken: { type: string, minLength: 1, description: "BFF-signed Ed25519 authToken JWT. Supply (instead of otp) to complete an SSO login without OTP; UNITS verifies the BFF key." }
     AvailabilityResponse:
       type: object
       properties:
