@@ -715,8 +715,7 @@ components:
       bearerFormat: "JWT or Opaque"
       description: |
         A JWT or Opaque token that identifies the calling B2B developer/backend service.
-        Passed in the standard `Authorization: Bearer <token>` header, or as a fallback in
-        `context.developerToken`. The operating account is resolved from the token owner.
+        The operating account is resolved from the token owner.
 
     developerSignature:
       type: apiKey
