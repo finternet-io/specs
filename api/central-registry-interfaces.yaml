@@ -1,0 +1,312 @@
+openapi: 3.1.0
+
+info:
+  title: UNITS Federation — Central Registry API (Public Surface)
+  version: 1.0.0
+  description: |
+    The externally-facing surface of the UNITS Federation Central Registry:
+    trust-anchor distribution and read-only discovery (name/DID/instance
+    lookups). These are the only Central Registry endpoints intended for
+    consumers outside the federation internals.
+
+    **Scope — intentionally excluded (internal):** the signed ULIP
+    instance-to-registry federation surface (`/ulip/v1/*` — name register/
+    resolve, account get/update, capabilities, and all credential/scope/
+    delegation/client/key operations) and the admin surface (`/v1/internal/*`).
+    Those are federation/operator machinery and are NOT documented here.
+
+    Reconciled field-for-field against the deployed registry service at
+    units-services tag `2026.07.13_RC`.
+
+servers:
+  - url: http://registry.units-services.svc.cluster.local:3000
+    description: In-cluster public surface
+
+tags:
+  - { name: trust,     description: Trust-anchor and signing-key distribution }
+  - { name: names,     description: Name / DID / contact resolution (signed records) }
+  - { name: instances, description: Instance capability and public-key discovery }
+
+security:
+  - devToken: []
+
+paths:
+  /v1/.well-known/registrar-pubkey:
+    get:
+      tags: [trust]
+      summary: Registrar signing key (trust anchor)
+      description: |
+        The registrar's current Ed25519 signing key. Unauthenticated by design
+        (TOFU) — clients SHOULD pin/validate this value out of band.
+      security: []
+      responses:
+        "200":
+          description: Registrar public key
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RegistrarPublicKey" }
+
+  /.well-known/ulip.json:
+    get:
+      tags: [trust]
+      summary: Registry signing keys (JWKS-style)
+      description: |
+        The registry's active signing keys in a JWKS-style document (ADR-005).
+        Cacheable and unauthenticated; peers use it to verify registry-signed
+        name records, capability mirrors, and registry-issued login JWTs.
+      security: []
+      responses:
+        "200":
+          description: Signing-key set
+          headers:
+            Cache-Control:
+              schema: { type: string, example: "public, max-age=3600" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WellKnownDocument" }
+
+  /v1/names/{name}:
+    get:
+      tags: [names]
+      summary: Resolve a name (address) to its signed record
+      description: |
+        Returns the signed `NameRecord` for the given handle. The path segment
+        is the PLAINTEXT address; the registry hashes it server-side.
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Plaintext address/handle to resolve.
+          schema: { type: string }
+      responses:
+        "200":
+          description: Signed name record
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NameRecord" }
+        "400": { description: Invalid address format }
+        "404": { description: Not registered (no body) }
+
+  /v1/accounts/{did}:
+    get:
+      tags: [names]
+      summary: Resolve a DID to its signed record
+      parameters:
+        - name: did
+          in: path
+          required: true
+          schema: { type: string, example: "did:units:0x…" }
+      responses:
+        "200":
+          description: Signed name record
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NameRecord" }
+        "400": { description: did is required }
+        "404": { description: Unknown DID (no body) }
+
+  /v1/resolve:
+    post:
+      tags: [names]
+      summary: Resolve a contact (email/phone) to a home instance
+      description: |
+        Email/phone-first login routing. Minimal-disclosure by design: on a hit
+        returns ONLY `{did, home, home_endpoints, home_instance_name?}` — never
+        the address, contact hashes, or registrar signature. On a miss, `404`
+        with no body (the status code is the only existence signal). Behind a
+        per-contact-hash rate limiter.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ContactResolveRequest" }
+      responses:
+        "200":
+          description: Home-instance routing pointer
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ContactResolveResponse" }
+        "404": { description: Unknown / withheld / no contact supplied (no body) }
+        "429": { description: Rate limited (per contact hash) }
+
+  /v1/instances:
+    get:
+      tags: [instances]
+      summary: List the instance catalog
+      description: The full instance catalog the app instance-picker reads.
+      responses:
+        "200":
+          description: Instance catalog
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InstanceList" }
+
+  /v1/instances/{id}:
+    get:
+      tags: [instances]
+      summary: Get an instance capability document
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Instance UUID.
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Signed capability document
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CapabilityDocument" }
+        "400": { description: instance id is required }
+        "404": { description: Unknown instance (no body) }
+
+  /v1/instances/{id}/public-key:
+    get:
+      tags: [instances]
+      summary: Get an instance's signing public key
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Instance public key
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InstancePublicKey" }
+        "400": { description: instance id is required }
+        "404": { description: Unknown instance / no active key (no body) }
+
+components:
+  securitySchemes:
+    devToken:
+      type: apiKey
+      in: header
+      name: X-Developer-Token
+      description: Trusted-BFF shared secret for the REST discovery surface.
+
+  schemas:
+    RegistrarPublicKey:
+      type: object
+      required: [key_id, algorithm, public_key]
+      properties:
+        key_id:     { type: string }
+        algorithm:  { type: string, example: "ed25519" }
+        public_key: { type: string, description: "Base64-encoded Ed25519 public key." }
+
+    WellKnownDocument:
+      type: object
+      required: [instance, keys, as_of]
+      properties:
+        instance: { type: string, example: "registry" }
+        as_of:    { type: string, format: date-time }
+        keys:
+          type: array
+          items:
+            type: object
+            required: [key_id, algorithm, public_key, status]
+            properties:
+              key_id:     { type: string }
+              algorithm:  { type: string, example: "ed25519" }
+              public_key: { type: string, description: "Base64-encoded public key." }
+              status:     { type: string, example: "active" }
+
+    NameRecord:
+      type: object
+      description: |
+        The signed name record. `address` is the plaintext handle attested by
+        the signature (the registry keys uniqueness on a server-side hash).
+        `name` is an optional human-readable display label.
+      required: [address, did, home, version, as_of, signed_by]
+      properties:
+        address:        { type: string, description: "Plaintext handle (JCS body field 'address')." }
+        did:            { type: string, example: "did:units:0x…" }
+        home:           { type: string, description: "UUID id of the home instance.", format: uuid }
+        home_endpoints: { type: object, additionalProperties: { type: string } }
+        name:           { type: string, description: "Optional display name." }
+        user_public_key: { type: string }
+        email_hash:     { type: string }
+        phone_hash:     { type: string }
+        version:        { type: integer }
+        as_of:          { type: string, format: date-time }
+        signed_by:      { type: string, description: "Signer key id / instance." }
+        key_id:         { type: string, description: "Omitted on legacy unsigned records." }
+        signature:      { type: string, description: "Omitted on legacy unsigned records." }
+
+    ContactResolveRequest:
+      type: object
+      description: Supply email or phone (plaintext; hashed server-side).
+      properties:
+        email: { type: string }
+        phone: { type: string }
+
+    ContactResolveResponse:
+      type: object
+      required: [did, home]
+      properties:
+        did:                { type: string }
+        home:               { type: string, description: "Home instance UUID id.", format: uuid }
+        home_endpoints:     { type: object, additionalProperties: { type: string } }
+        home_instance_name: { type: string, description: "Display label (best-effort; omitted if unavailable)." }
+
+    InstanceList:
+      type: object
+      required: [instances]
+      properties:
+        instances:
+          type: array
+          items: { $ref: "#/components/schemas/InstanceSummary" }
+
+    InstanceSummary:
+      type: object
+      required: [id, name, api_url, ulip_url, public_key, accepts_new_signups, updated_at]
+      properties:
+        id:                  { type: string, format: uuid }
+        name:                { type: string }
+        api_url:             { type: string }
+        ulip_url:            { type: string }
+        public_key:          { type: string }
+        accepts_new_signups: { type: boolean }
+        updated_at:          { type: string, format: date-time }
+
+    CapabilityDocument:
+      type: object
+      required: [id, ulip_versions, accepts_new_signups, endpoints, signing_keys, as_of, version, signed_by, signature]
+      properties:
+        id:                     { type: string, format: uuid }
+        name:                   { type: string }
+        lifecycle_state:        { type: string }
+        ulip_versions:          { type: array, items: { type: string } }
+        token_classes_accepted: { type: array, items: { type: string } }
+        token_classes_issued:   { type: array, items: { type: string } }
+        chains_supported:       { type: array, items: { type: string } }
+        accepts_new_signups:    { type: boolean }
+        peering:                { type: object, additionalProperties: true }
+        endpoints:              { type: object, additionalProperties: true }
+        primitive_capabilities: { type: object, additionalProperties: true }
+        signing_keys:
+          type: array
+          items: { $ref: "#/components/schemas/SigningKey" }
+        as_of:     { type: string, format: date-time }
+        version:   { type: integer }
+        signed_by: { type: string }
+        signature: { type: string }
+
+    SigningKey:
+      type: object
+      required: [key_id, algorithm, public_key, valid_from]
+      properties:
+        key_id:      { type: string }
+        algorithm:   { type: string, example: "ed25519" }
+        public_key:  { type: string }
+        valid_from:  { type: string, format: date-time }
+        valid_until: { type: string, format: date-time }
+
+    InstancePublicKey:
+      type: object
+      required: [id, algorithm, public_key]
+      properties:
+        id:         { type: string, format: uuid }
+        algorithm:  { type: string, example: "ed25519" }
+        public_key: { type: string }
