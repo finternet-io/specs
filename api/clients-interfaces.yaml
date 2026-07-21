@@ -7,12 +7,13 @@ info:
     An **API client** represents a developer or application that integrates with the
     Finternet platform. Each client:
 
-    - Owns one or more **API keys** (developer tokens). Keys are hashed with SHA-256
-      before storage; the plaintext is returned **once** at creation time and must be
-      captured by the caller.
+    - Is backed by a Keycloak client. Registration returns the `clientSecret` and an
+      initial `developerToken` **once** — the plaintext secret is not recoverable and
+      must be captured by the caller. Use `/v1/clients/rotate-secret` to roll it.
     - Is granted a set of **scopes** (see the RBAC vocabulary under
       `#/components/schemas/Scope`). Scopes are enforced on every endpoint; calls with
-      an insufficient scope return `403 FORBIDDEN`.
+      an insufficient scope return `403 FORBIDDEN`. Scopes are managed via
+      `/v1/clients/scopes/update`.
     - May have `allowedOperations` restricting which operations the client can
       perform, keyed by scope.
 
@@ -34,9 +35,7 @@ servers:
 
 tags:
   - name: "API Clients"
-    description: "Register, list, update, and deactivate API clients."
-  - name: "Client Keys"
-    description: "Create, list, and revoke developer tokens (API keys) for a client."
+    description: "Register, list, update, deactivate, reactivate, rotate the secret of, and manage scopes for API clients."
 
 paths:
 
@@ -47,8 +46,9 @@ paths:
       tags: [API Clients]
       summary: "Register a new API client"
       description: |
-        Create a new API client. Returns the client profile (without a key —
-        call `/v1/clients/keys/create` to mint one).
+        Create a new API client backed by a Keycloak client. Returns the
+        `clientSecret` and an initial `developerToken` **once** — capture them now,
+        the plaintext secret cannot be recovered.
       security:
         - developerToken: []
         - developerSignature: []
@@ -72,12 +72,15 @@ paths:
                 allowedOperations:
                   "tokens:transact":
                     "payload.operation": ["transfer", "burn"]
+                identities:
+                  - type: "email"
+                    address: "dev@acme.example"
       responses:
         '201':
-          description: "Client registered."
+          description: "Client registered. `clientSecret` and `developerToken` are returned **only on this response**."
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ApiResponse_ClientProfile' }
+              schema: { $ref: '#/components/schemas/ApiResponse_RegisterClient' }
         '400': { $ref: '#/components/responses/BadRequestError' }
         '401': { $ref: '#/components/responses/UnauthorizedError' }
         '403': { $ref: '#/components/responses/ForbiddenError' }
@@ -125,7 +128,7 @@ paths:
           description: "Client list."
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ApiResponse_ClientList' }
+              schema: { $ref: '#/components/schemas/ApiResponse_ListClients' }
         '401': { $ref: '#/components/responses/UnauthorizedError' }
         '403': { $ref: '#/components/responses/ForbiddenError' }
         '429': { $ref: '#/components/responses/RateLimitedError' }
@@ -133,10 +136,11 @@ paths:
   /v1/clients/update:
     post:
       tags: [API Clients]
-      summary: "Update an API client (name, description, scopes)"
+      summary: "Update an API client (name, description)"
       description: |
-        Covers the previous `update-scopes` operation — any subset of fields may be
-        supplied in `payload`. Absent fields are left unchanged.
+        Partial update of client metadata. Any subset of `name` / `description` may be
+        supplied in `payload`; absent fields are left unchanged. Scopes are managed
+        separately via `/v1/clients/scopes/update`.
       security:
         - developerToken: []
         - developerSignature: []
@@ -158,12 +162,81 @@ paths:
         '404': { $ref: '#/components/responses/NotFoundError' }
         '429': { $ref: '#/components/responses/RateLimitedError' }
 
+  /v1/clients/scopes/update:
+    post:
+      tags: [API Clients]
+      summary: "Update the scope set of an API client"
+      description: |
+        Replace the scope set granted to the client. Supplying `scopes` replaces the
+        full set (replace semantics): scopes absent from the array are dropped, scopes
+        present are added / preserved / re-requested.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      x-scopes: [clients:manage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApiRequest_UpdateClientScopes' }
+      responses:
+        '200':
+          description: "Updated client profile."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse_ClientProfile' }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+  /v1/clients/rotate-secret:
+    post:
+      tags: [API Clients]
+      summary: "Rotate an API client's secret"
+      description: |
+        Issue a new `clientSecret` and `developerToken` for the client. The previous
+        secret may remain valid for a grace period (`graceSeconds`); the effective
+        cutover time is returned as `oldSecretValidUntil`. The new plaintext secret is
+        returned **only on this response**.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      x-scopes: [clients:manage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApiRequest_RotateSecret' }
+            example:
+              context:
+                id: "api.clients.rotate-secret"
+                version: "v1"
+                ts: "2026-04-07T10:00:00Z"
+                msgId: "33333333-4444-5555-6666-777777777777"
+                developerToken: "fnt_..."
+              payload:
+                clientId: "c1a0f00d-aaaa-bbbb-cccc-000000000001"
+                graceSeconds: 3600
+      responses:
+        '200':
+          description: "Secret rotated. `clientSecret` and `developerToken` are returned **only on this response**."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse_RotateSecret' }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
   /v1/clients/deactivate:
     post:
       tags: [API Clients]
       summary: "Deactivate an API client"
       description: |
-        Deactivating a client immediately invalidates every key it owns. Part of the
+        Deactivating a client immediately invalidates its credentials. Part of the
         client lifecycle; requires the same scope as `register` by design.
       security:
         - developerToken: []
@@ -185,89 +258,28 @@ paths:
         '404': { $ref: '#/components/responses/NotFoundError' }
         '429': { $ref: '#/components/responses/RateLimitedError' }
 
-  # -------------------- Key Lifecycle --------------------
-
-  /v1/clients/keys/create:
+  /v1/clients/reactivate:
     post:
-      tags: [Client Keys]
-      summary: "Create (mint) a new developer token for a client"
+      tags: [API Clients]
+      summary: "Reactivate a deactivated API client"
       description: |
-        Returns the plaintext key **once**. The server stores only a SHA-256 hash —
-        lost keys cannot be recovered and must be rotated.
+        Restore a previously deactivated client. Part of the client lifecycle.
       security:
         - developerToken: []
         - developerSignature: []
-      x-scopes: [keys:create]
+      x-scopes: [clients:create]
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/ApiRequest_CreateKey' }
-            example:
-              context:
-                id: "api.clients.keys.create"
-                version: "v1"
-                ts: "2026-04-07T10:00:00Z"
-                msgId: "22222222-3333-4444-5555-666666666666"
-                developerToken: "fnt_..."
-              payload:
-                clientId: "c1a0f00d-aaaa-bbbb-cccc-000000000001"
-                name: "Production — Acme Wallet, primary"
-                expiresInDays: 365
+            schema: { $ref: '#/components/schemas/ApiRequest_ReactivateClient' }
       responses:
-        '201':
-          description: "Key created. `key` is returned **only on this response**."
+        '200':
+          description: "Client reactivated."
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ApiResponse_CreateKey' }
+              schema: { $ref: '#/components/schemas/ApiResponse_ClientProfile' }
         '400': { $ref: '#/components/responses/BadRequestError' }
-        '401': { $ref: '#/components/responses/UnauthorizedError' }
-        '403': { $ref: '#/components/responses/ForbiddenError' }
-        '404': { $ref: '#/components/responses/NotFoundError' }
-        '429': { $ref: '#/components/responses/RateLimitedError' }
-
-  /v1/clients/keys/list:
-    post:
-      tags: [Client Keys]
-      summary: "List keys for a client"
-      security:
-        - developerToken: []
-        - developerSignature: []
-      x-scopes: [keys:view]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/ApiRequest_ListKeys' }
-      responses:
-        '200':
-          description: "Key list (metadata only — plaintext keys are never returned)."
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/ApiResponse_KeyList' }
-        '401': { $ref: '#/components/responses/UnauthorizedError' }
-        '403': { $ref: '#/components/responses/ForbiddenError' }
-        '429': { $ref: '#/components/responses/RateLimitedError' }
-
-  /v1/clients/keys/revoke:
-    post:
-      tags: [Client Keys]
-      summary: "Revoke a developer token"
-      security:
-        - developerToken: []
-        - developerSignature: []
-      x-scopes: [keys:manage]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/ApiRequest_RevokeKey' }
-      responses:
-        '200':
-          description: "Key revoked."
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/ApiResponse_KeyInfo' }
         '401': { $ref: '#/components/responses/UnauthorizedError' }
         '403': { $ref: '#/components/responses/ForbiddenError' }
         '404': { $ref: '#/components/responses/NotFoundError' }
@@ -419,9 +431,32 @@ components:
         workflow_id: { type: string, nullable: true }
         expires_at: { type: string, format: date-time, nullable: true }
 
+    RegisterIdentityRef:
+      type: object
+      required: [type, address]
+      description: "An identity reference attached to a client at registration time."
+      properties:
+        type: { type: string }
+        address: { type: string }
+
+    ClientPartyRef:
+      type: object
+      required: [accountId]
+      description: "A party (creator or owner) associated with a client."
+      properties:
+        accountId: { type: string, format: uuid }
+        address: { type: string, nullable: true }
+
+    ClientCreatorRef:
+      type: object
+      required: [address]
+      description: "Minimal creator reference exposed on a client profile."
+      properties:
+        address: { type: string }
+
     ClientProfile:
       type: object
-      required: [id, name, scopes, status, isSuperAdmin, createdAt, updatedAt]
+      required: [id, name, scopes, status, isSuperAdmin, keycloakClientId, createdAt, updatedAt]
       properties:
         id: { type: string, format: uuid }
         name: { type: string, example: "Acme Wallet" }
@@ -433,7 +468,7 @@ components:
         allowedOperations:
           type: object
           nullable: true
-          description: "Per-client operation restrictions. Structure is service-defined."
+          description: "Per-client operation restrictions, keyed by action. Structure is service-defined."
           additionalProperties:
             type: array
             items: { type: string }
@@ -441,10 +476,41 @@ components:
           description: "Free-form identity metadata associated with the client (structure is service-defined)."
         status: { $ref: '#/components/schemas/ClientStatus' }
         isSuperAdmin: { type: boolean }
+        keycloakClientId: { type: string, description: "The backing Keycloak client identifier." }
+        creator:
+          allOf:
+            - $ref: '#/components/schemas/ClientCreatorRef'
+          nullable: true
+          description: "The client's creator (address only)."
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
-    ClientList:
+    RegisterClientResponse:
+      type: object
+      required: [clientId, keycloakClientId, clientSecret, developerToken, name, status, creator, owner, scopes, createdAt]
+      description: |
+        Result of registering a client. `clientSecret` and `developerToken` are the
+        plaintext credentials, returned **only on this response**.
+      properties:
+        clientId: { type: string, format: uuid }
+        keycloakClientId: { type: string, description: "The backing Keycloak client identifier." }
+        clientSecret:
+          type: string
+          description: "Plaintext client secret. Returned **only on creation** and unrecoverable thereafter."
+        developerToken:
+          type: string
+          description: "Initial developer token minted for the client."
+          example: "fnt_AbCdEf..."
+        name: { type: string }
+        status: { type: string }
+        creator: { $ref: '#/components/schemas/ClientPartyRef' }
+        owner: { $ref: '#/components/schemas/ClientPartyRef' }
+        scopes:
+          type: array
+          items: { $ref: '#/components/schemas/ScopeEntry' }
+        createdAt: { type: string, format: date-time }
+
+    ListClientsResponse:
       type: object
       required: [clients]
       properties:
@@ -473,6 +539,10 @@ components:
             additionalProperties:
               type: array
               items: { type: string }
+        identities:
+          type: array
+          description: "Identity references to attach to the client."
+          items: { $ref: '#/components/schemas/RegisterIdentityRef' }
 
     GetClientRequest:
       type: object
@@ -489,13 +559,21 @@ components:
       type: object
       required: [clientId]
       description: |
-        Partial update. Supplying `scopes` replaces the full scope set (replace
-        semantics): scopes absent from the array are dropped, scopes present are
-        added / preserved / re-requested. Omit `scopes` to leave them untouched.
+        Partial update of client metadata. Absent fields are left unchanged. Scopes are
+        managed separately via `/v1/clients/scopes/update`.
       properties:
         clientId: { type: string, format: uuid }
         name: { type: string, minLength: 1, maxLength: 255 }
         description: { type: string, maxLength: 1000 }
+
+    UpdateClientScopesRequest:
+      type: object
+      required: [clientId, scopes]
+      description: |
+        Replace the client's scope set (replace semantics). Scopes absent from the array
+        are dropped; scopes present are added / preserved / re-requested.
+      properties:
+        clientId: { type: string, format: uuid }
         scopes:
           type: array
           items: { $ref: '#/components/schemas/Scope' }
@@ -507,69 +585,45 @@ components:
       properties:
         clientId: { type: string, format: uuid }
 
-    # -------------------- Keys --------------------
-
-    KeyStatus:
-      type: string
-      description: "Key lifecycle status as reported by the registry (e.g. `active`, `revoked`)."
-
-    KeyInfo:
-      type: object
-      required: [id, status]
-      description: "Key metadata. Plaintext is returned only at creation time."
-      properties:
-        id: { type: string, format: uuid }
-        name: { type: string, description: "Human-readable name for the key." }
-        status: { $ref: '#/components/schemas/KeyStatus' }
-        identities:
-          description: "Free-form identity metadata associated with the key (structure is service-defined)."
-        expiresAt: { type: string, format: date-time, nullable: true }
-        lastUsedAt: { type: string, format: date-time, nullable: true }
-        createdAt: { type: string, format: date-time, nullable: true }
-
-    CreateKeyRequest:
-      type: object
-      required: [clientId, name]
-      properties:
-        clientId: { type: string, format: uuid }
-        name: { type: string, minLength: 1, maxLength: 255, description: "Name for the API key." }
-        expiresInDays:
-          type: integer
-          minimum: 1
-          maximum: 365
-          description: "Number of days until the key expires (default: 90)."
-
-    CreateKeyResponse:
-      type: object
-      required: [key, keyInfo]
-      properties:
-        key:
-          type: string
-          description: |
-            Plaintext developer token. Returned **only on creation**. The server stores a
-            SHA-256 hash; the plaintext is unrecoverable.
-          example: "fnt_AbCdEf..."
-        keyInfo: { $ref: '#/components/schemas/KeyInfo' }
-
-    ListKeysRequest:
+    ReactivateClientRequest:
       type: object
       required: [clientId]
       properties:
         clientId: { type: string, format: uuid }
 
-    KeyList:
-      type: object
-      required: [keys]
-      properties:
-        keys:
-          type: array
-          items: { $ref: '#/components/schemas/KeyInfo' }
+    # -------------------- Secret rotation --------------------
 
-    RevokeKeyRequest:
+    RotateSecretRequest:
       type: object
-      required: [keyId]
+      required: [clientId]
       properties:
-        keyId: { type: string, format: uuid }
+        clientId: { type: string, format: uuid }
+        graceSeconds:
+          type: integer
+          description: "Seconds the previous secret remains valid after rotation. Omit for an immediate cutover."
+
+    RotateSecretResponse:
+      type: object
+      required: [clientId, keycloakClientId, clientSecret, developerToken, rotatedAt]
+      description: |
+        Result of rotating a client's secret. `clientSecret` and `developerToken` are the
+        new plaintext credentials, returned **only on this response**.
+      properties:
+        clientId: { type: string, format: uuid }
+        keycloakClientId: { type: string, description: "The backing Keycloak client identifier." }
+        clientSecret:
+          type: string
+          description: "New plaintext client secret. Returned **only on this response** and unrecoverable thereafter."
+        developerToken:
+          type: string
+          description: "New developer token minted for the client."
+          example: "fnt_AbCdEf..."
+        oldSecretValidUntil:
+          type: string
+          format: date-time
+          nullable: true
+          description: "Time until which the previous secret remains valid (present when `graceSeconds` was supplied)."
+        rotatedAt: { type: string, format: date-time }
 
     # -------------------- Envelopes --------------------
 
@@ -589,43 +643,39 @@ components:
       allOf:
         - $ref: '#/components/schemas/RequestContext'
         - properties: { payload: { $ref: '#/components/schemas/UpdateClientRequest' } }
+    ApiRequest_UpdateClientScopes:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties: { payload: { $ref: '#/components/schemas/UpdateClientScopesRequest' } }
+    ApiRequest_RotateSecret:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties: { payload: { $ref: '#/components/schemas/RotateSecretRequest' } }
     ApiRequest_DeactivateClient:
       allOf:
         - $ref: '#/components/schemas/RequestContext'
         - properties: { payload: { $ref: '#/components/schemas/DeactivateClientRequest' } }
-    ApiRequest_CreateKey:
+    ApiRequest_ReactivateClient:
       allOf:
         - $ref: '#/components/schemas/RequestContext'
-        - properties: { payload: { $ref: '#/components/schemas/CreateKeyRequest' } }
-    ApiRequest_ListKeys:
-      allOf:
-        - $ref: '#/components/schemas/RequestContext'
-        - properties: { payload: { $ref: '#/components/schemas/ListKeysRequest' } }
-    ApiRequest_RevokeKey:
-      allOf:
-        - $ref: '#/components/schemas/RequestContext'
-        - properties: { payload: { $ref: '#/components/schemas/RevokeKeyRequest' } }
+        - properties: { payload: { $ref: '#/components/schemas/ReactivateClientRequest' } }
 
+    ApiResponse_RegisterClient:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties: { response: { $ref: '#/components/schemas/RegisterClientResponse' } }
     ApiResponse_ClientProfile:
       allOf:
         - $ref: '#/components/schemas/ApiResponse'
         - properties: { response: { $ref: '#/components/schemas/ClientProfile' } }
-    ApiResponse_ClientList:
+    ApiResponse_ListClients:
       allOf:
         - $ref: '#/components/schemas/ApiResponse'
-        - properties: { response: { $ref: '#/components/schemas/ClientList' } }
-    ApiResponse_CreateKey:
+        - properties: { response: { $ref: '#/components/schemas/ListClientsResponse' } }
+    ApiResponse_RotateSecret:
       allOf:
         - $ref: '#/components/schemas/ApiResponse'
-        - properties: { response: { $ref: '#/components/schemas/CreateKeyResponse' } }
-    ApiResponse_KeyInfo:
-      allOf:
-        - $ref: '#/components/schemas/ApiResponse'
-        - properties: { response: { $ref: '#/components/schemas/KeyInfo' } }
-    ApiResponse_KeyList:
-      allOf:
-        - $ref: '#/components/schemas/ApiResponse'
-        - properties: { response: { $ref: '#/components/schemas/KeyList' } }
+        - properties: { response: { $ref: '#/components/schemas/RotateSecretResponse' } }
 
   # -------------------- Responses --------------------
 
