@@ -85,6 +85,8 @@ tags:
     description: "Read-only catalogue of RBAC scopes and api-to-scope mappings."
   - name: "Scope Approval"
     description: "Admin-facing listing of scope-approval entries grouped by client."
+  - name: "User Scopes"
+    description: "Read and replace the scopes granted to a user account."
 
 # ===============================================================
 #   PATHS
@@ -255,6 +257,67 @@ paths:
                           requestedByName: "Alice Smith"
                           requestedAt: "2026-07-08T15:00:00Z"
                           expiresAt: "2026-07-15T15:00:00Z"
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+  /v1/users/scopes/get:
+    post:
+      tags: ["User Scopes"]
+      summary: "Get a user account's granted scopes"
+      description: |
+        Returns the scopes currently granted to the given user account. Requires the
+        `users:view` scope.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApiRequest_GetUserScopesRequest' }
+            example:
+              context: { id: "api.users.scopes.get", version: "v1", ts: "2026-04-07T10:00:00Z", msgId: "11111111-2222-3333-4444-555555555555", developerToken: "fnt_..." }
+              payload:
+                account: { accountId: "018f2c3d-4e5f-7890-abcd-1234567890ab" }
+      responses:
+        '200':
+          description: "The account's granted scopes."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse_UserScopes' }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+  /v1/users/scopes/update:
+    post:
+      tags: ["User Scopes"]
+      summary: "Replace a user account's scopes"
+      description: |
+        Replaces (not merges) the scopes granted to the given user account. Requires
+        the `users:manage` scope.
+      security:
+        - developerToken: []
+        - developerSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApiRequest_UpdateUserScopesRequest' }
+            example:
+              context: { id: "api.users.scopes.update", version: "v1", ts: "2026-04-07T10:00:00Z", msgId: "22222222-3333-4444-5555-666666666666", developerToken: "fnt_..." }
+              payload:
+                account: { accountId: "018f2c3d-4e5f-7890-abcd-1234567890ab" }
+                scopes: ["tokens:read", "tokens:write"]
+      responses:
+        '200':
+          description: "Updated granted scopes."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse_UserScopes' }
         '400': { $ref: '#/components/responses/BadRequestError' }
         '401': { $ref: '#/components/responses/UnauthorizedError' }
         '403': { $ref: '#/components/responses/ForbiddenError' }
@@ -455,6 +518,30 @@ components:
         limit: { type: integer, example: 50 }
         offset: { type: integer, example: 0 }
 
+    UserAccountRef:
+      type: object
+      description: "Identify the user account by exactly one of `accountId` or `address`."
+      properties:
+        accountId: { type: string, format: uuid }
+        address: { type: string }
+    GetUserScopesRequest:
+      type: object
+      required: [account]
+      properties:
+        account: { $ref: '#/components/schemas/UserAccountRef' }
+    UpdateUserScopesRequest:
+      type: object
+      required: [account, scopes]
+      properties:
+        account: { $ref: '#/components/schemas/UserAccountRef' }
+        scopes: { type: array, items: { type: string }, description: "Replace semantics — the full set of scopes to grant." }
+    UserScopesResponse:
+      type: object
+      required: [accountId, scopes]
+      properties:
+        accountId: { type: string, format: uuid }
+        scopes: { type: array, items: { type: string } }
+
     # --- Specific Request Envelopes ---
     ApiRequest_SearchScopesRequest:       { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/SearchScopesRequest' } } } ] }
     ApiRequest_SearchScopeAPIsRequest:    { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/SearchScopeAPIsRequest' } } } ] }
@@ -464,6 +551,9 @@ components:
     ApiResponse_SearchScopes:       { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/SearchScopesResponse' } } } ] }
     ApiResponse_SearchScopeAPIs:    { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/SearchScopeAPIsResponse' } } } ] }
     ApiResponse_ListScopeApprovals: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/ListScopeApprovalsResponse' } } } ] }
+    ApiRequest_GetUserScopesRequest:    { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/GetUserScopesRequest' } } } ] }
+    ApiRequest_UpdateUserScopesRequest: { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/UpdateUserScopesRequest' } } } ] }
+    ApiResponse_UserScopes:             { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/UserScopesResponse' } } } ] }
 
   # -------------------- Responses --------------------
   responses:
