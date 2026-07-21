@@ -765,9 +765,9 @@ paths:
       summary: "Register an additional public key for the calling account"
       description: |
         Register a key reference for the authenticated account in the unified
-        `key_references` store. Supply `chainId` plus **exactly one** of
-        `publicKey` (standard keys) or `walletAddress` (the MetaMask/EVM exception,
-        used when only the on-chain wallet address is available, not the raw key).
+        `key_references` store. Supply `type` plus **exactly one** of
+        `publicKey` (hex- or base58-encoded key) or `address` (the MetaMask/EVM
+        exception, used when only the on-chain wallet address is available).
       security:
         - developerToken: []
         - developerSignature: []
@@ -786,9 +786,11 @@ paths:
                 developerToken: "fnt_..."
                 authorization: "Bearer eyJ..."
               payload:
-                chainId: "eip155:1"
+                type: "ed25519"
                 publicKey: "3f8a1c9d2b7e0f4a6c5d8e9b0a1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c"
+                name: "Ledger Nano"
                 isPrimary: false
+                isDefault: false
       responses:
         '201':
           description: "Key registered in the unified key_references store."
@@ -807,7 +809,7 @@ paths:
       summary: "Remove a public key from the calling account"
       description: |
         Revoke a key reference from the account's unified `key_references` store,
-        identified by its `id`. The primary key (the one initially provisioned
+        identified by its `id` or `address`. The primary key (the one initially provisioned
         at registration) cannot be removed via this endpoint.
       security:
         - developerToken: []
@@ -836,7 +838,7 @@ paths:
       summary: "Get a single public key for the calling account"
       description: |
         Fetch a single key reference from the account's unified `key_references`
-        store, identified by its `id`.
+        store, identified by its `id` or `address`.
       security:
         - developerToken: []
         - developerSignature: []
@@ -863,8 +865,8 @@ paths:
       summary: "List/search public keys for an account"
       description: |
         Returns the key references bound to the calling account from the unified
-        `key_references` store, optionally filtered by `filters.chainId`/`filters.isPrimary`
-        and paginated with `limit`/`offset`.
+        `key_references` store, optionally filtered by `type`/`status` and paginated
+        with `limit`/`offset`.
       security:
         - developerToken: []
         - developerSignature: []
@@ -883,7 +885,8 @@ paths:
                 developerToken: "fnt_..."
                 authorization: "Bearer eyJ..."
               payload:
-                filters: { chainId: "eip155:1", isPrimary: true }
+                type: "ed25519"
+                status: "active"
                 pagination: { limit: 20, offset: 0 }
       responses:
         '200':
@@ -932,9 +935,9 @@ components:
             - $ref: '#/components/schemas/ErrorPayload'
     Signature:
       type: object
-      required: [key_id, jws]
+      required: [keyId, jws]
       properties:
-        key_id: { type: string, format: uuid, example: "0f8fad5b-d9cb-469f-a165-70867728950e", description: "UUID of the registered key that produced the signature." }
+        keyId: { type: string, format: uuid, example: "0f8fad5b-d9cb-469f-a165-70867728950e", description: "UUID of the registered key that produced the signature." }
         jws: { type: string, example: "eyJ...", description: "End-user's JWS of the payload object." }
     ErrorPayload:
       type: object
@@ -992,52 +995,64 @@ components:
     # --- Account Keys (unified key_references store) ---
     KeyRegistrationEntry:
       type: object
-      required: [id, chainId, address, isPrimary, createdAt, updatedAt]
+      required: [id, type, address, isPrimary, isDefault, status, createdAt, updatedAt]
       description: "A key reference from the account's unified `key_references` store."
       properties:
         id: { type: string, format: uuid }
-        chainId: { type: string, example: "eip155:1", description: "Chain the key/address belongs to." }
-        publicKey: { type: string, nullable: true, example: "3f8a1c9d...", description: "Hex-encoded raw public key. Null when only a wallet address was registered." }
+        name: { type: string, nullable: true, description: "Human-readable label; null for unnamed rows." }
+        type: { type: string, example: "ed25519", description: "Key type/algorithm." }
+        publicKeyHex: { type: string, nullable: true, example: "3f8a1c9d...", description: "Hex-encoded raw public key. Null for address-only (EVM) rows." }
         address: { type: string, example: "0xAbC1230000000000000000000000000000000000" }
         isPrimary: { type: boolean, example: true }
+        isDefault: { type: boolean, example: false }
+        did: { type: string, nullable: true, example: "did:key:z...", description: "Null for address-only rows (no pubkey → no DID)." }
+        status: { type: string, example: "active" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
     RegisterKeyRequest:
       type: object
-      required: [chainId]
+      required: [type]
       additionalProperties: false
       description: |
-        Supply `chainId` plus **exactly one** of `publicKey` (standard keys) or
-        `walletAddress` (the MetaMask/EVM exception, used when only the on-chain
+        Supply `type` plus **exactly one** of `publicKey` (hex- or base58-encoded
+        key) or `address` (the MetaMask/EVM exception, used when only the on-chain
         wallet address is available, not the raw public key).
-      anyOf:
+      oneOf:
         - required: [publicKey]
-        - required: [walletAddress]
+        - required: [address]
       properties:
-        chainId: { type: string, example: "eip155:1", description: "Chain the key/address belongs to." }
-        publicKey: { type: string, description: "Hex-encoded raw public key. Supply for standard keys." }
-        walletAddress: { type: string, description: "On-chain wallet address. MetaMask/EVM exception, used when the raw public key is unavailable." }
+        type: { type: string, enum: [ed25519, secp256k1], example: "ed25519", description: "Key type/algorithm." }
+        publicKey: { type: string, description: "Hex- or base58-encoded public key (auto-detected). Supply for standard keys." }
+        address: { type: string, description: "On-chain wallet address. MetaMask/EVM exception, used when the raw public key is unavailable." }
+        name: { type: string, description: "Human-readable label for the key." }
         isPrimary: { type: boolean }
+        isDefault: { type: boolean }
     RemoveKeyRequest:
       type: object
-      required: [id]
       additionalProperties: false
+      description: "Identify the key by **exactly one** of `id` (the key_references UUID) or `address` (the canonical family address)."
+      oneOf:
+        - required: [id]
+        - required: [address]
       properties:
-        id: { type: string, format: uuid, description: "ID of the key reference to remove." }
+        id: { type: string, format: uuid, description: "Key reference UUID." }
+        address: { type: string, minLength: 1, description: "Canonical family address." }
     GetKeyRequest:
       type: object
-      required: [id]
       additionalProperties: false
+      description: "Identify the key by **exactly one** of `id` or `address`."
+      oneOf:
+        - required: [id]
+        - required: [address]
       properties:
-        id: { type: string, format: uuid, description: "ID of the key reference to fetch." }
+        id: { type: string, format: uuid, description: "Key reference UUID." }
+        address: { type: string, minLength: 1, description: "Canonical family address." }
     SearchKeysRequest:
       type: object
+      additionalProperties: false
       properties:
-        filters:
-          type: object
-          properties:
-            chainId: { type: string, description: "Filter by chain." }
-            isPrimary: { type: boolean, description: "Filter by primary flag." }
+        type: { type: string, enum: [ed25519, secp256k1], description: "Filter by key type/algorithm." }
+        status: { type: string, description: "Filter by key status." }
         pagination:
           type: object
           properties:

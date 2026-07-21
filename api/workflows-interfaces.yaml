@@ -332,9 +332,9 @@ components:
             - $ref: '#/components/schemas/ErrorPayload'
     Signature:
       type: object
-      required: [key_id, jws]
+      required: [keyId, jws]
       properties:
-        key_id: { type: string, format: uuid, example: "0f8fad5b-d9cb-469f-a165-70867728950e", description: "UUID of the registered key that produced the signature." }
+        keyId: { type: string, format: uuid, example: "0f8fad5b-d9cb-469f-a165-70867728950e", description: "UUID of the registered key that produced the signature." }
         jws: { type: string, example: "eyJ...", description: "End-user's JWS of the payload object." }
     ErrorPayload:
       type: object

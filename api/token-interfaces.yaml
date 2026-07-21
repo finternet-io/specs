@@ -844,7 +844,7 @@ paths:
                         roles: ["owner"]
                     initialSupply: "1000000000000"
                   signature:
-                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
+                    keyId: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               INRT:
                 summary: "Mint INRT - 10K tokens"
@@ -867,7 +867,7 @@ paths:
                         roles: ["owner"]
                     initialSupply: "1000000"
                   signature:
-                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
+                    keyId: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               NFH-T:
                 summary: "Mint NFH-T - 5K tokens with constraints"
@@ -890,7 +890,7 @@ paths:
                         roles: ["owner"]
                     initialSupply: "500000"
                   signature:
-                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
+                    keyId: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               ART-NFT:
                 summary: "Mint ART-NFT - Digital Art"
@@ -929,7 +929,7 @@ paths:
                         roles: ["owner"]
                     initialSupply: "1"
                   signature:
-                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
+                    keyId: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               RWA-NFT:
                 summary: "Mint RWA-NFT - Property Deed"
@@ -961,7 +961,7 @@ paths:
                         roles: ["owner"]
                     initialSupply: "1"
                   signature:
-                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
+                    keyId: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
       responses:
         '200':
@@ -1167,7 +1167,7 @@ paths:
                     to: "bob"
                     value: "100000000"
                   signature:
-                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
+                    keyId: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               TransferINRT:
                 summary: "Transfer - INRT (Cross-Border Remittance)"
@@ -1185,7 +1185,7 @@ paths:
                     to: "lakshmi"
                     value: "5000000000000"
                   signature:
-                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
+                    keyId: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               TransferARTNFT:
                 summary: "Transfer - ART-NFT (Art Sale)"
@@ -1203,7 +1203,7 @@ paths:
                     to: "charlie"
                     value: "1"
                   signature:
-                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
+                    keyId: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               TransferRWANFT:
                 summary: "Transfer - RWA-NFT (Property Sale)"
@@ -1226,7 +1226,7 @@ paths:
                       closingDate: "2025-03-15"
                       escrowAgent: "titlecompany"
                   signature:
-                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
+                    keyId: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               BurnUSDT:
                 summary: "Burn - USDT (Redemption)"
@@ -1244,7 +1244,7 @@ paths:
                     value: "1000000000"
                     reason: "Fiat withdrawal - Bank transfer to Tether redemption account"
                   signature:
-                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
+                    keyId: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               BurnNFHT:
                 summary: "Burn - NFH-T (Community Token Burn)"
@@ -1262,7 +1262,7 @@ paths:
                     value: "500000000000000000000"
                     reason: "Deflationary burn event - Q1 2025"
                   signature:
-                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
+                    keyId: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               FreezeINRT:
                 summary: "Freeze - INRT (Compliance Hold)"
@@ -1280,7 +1280,7 @@ paths:
                     reason: "AML investigation - Case #AML-2025-001"
                     frozenBy: "hdfc:compliance"
                   signature:
-                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
+                    keyId: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               UnfreezeToken:
                 summary: "Unfreeze a token"
@@ -1297,7 +1297,7 @@ paths:
                     tokenId: "1ab71000-5054-4001-8001-000000000001"
                     reason: "Compliance review completed"
                   signature:
-                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
+                    keyId: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               LockEURC:
                 summary: "Lock - EURC (DeFi Collateral)"
@@ -1316,7 +1316,7 @@ paths:
                     reason: "Collateral for DeFi loan - Protocol: Aave"
                     lockUntil: "2025-12-31T23:59:59Z"
                   signature:
-                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
+                    keyId: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               LockGBPT:
                 summary: "Lock - GBPT (Escrow for Trade)"
@@ -1335,7 +1335,7 @@ paths:
                     reason: "Escrow for international trade - Invoice #INV-2025-001"
                     lockUntil: "2025-06-30T23:59:59Z"
                   signature:
-                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
+                    keyId: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               UnlockToken:
                 summary: "Unlock previously locked tokens"
@@ -1353,7 +1353,7 @@ paths:
                     value: "500000000"
                     reason: "Loan repaid"
                   signature:
-                    key_id: "0f8fad5b-d9cb-469f-a165-70867728950e"
+                    keyId: "0f8fad5b-d9cb-469f-a165-70867728950e"
                     jws: "eyJhbGciOiJFUzI1NksifQ..aBcDeFgHiJkLmNoPqRsTuVwXyZ"
               UpdateToken:
                 summary: "Update token data and metadata"
@@ -2141,9 +2141,9 @@ components:
         error: { $ref: '#/components/schemas/ErrorPayload' }
     Signature:
       type: object
-      required: [key_id, jws]
+      required: [keyId, jws]
       properties:
-        key_id: { type: string, format: uuid, example: "0f8fad5b-d9cb-469f-a165-70867728950e", description: "UUID of the registered key that produced the signature." }
+        keyId: { type: string, format: uuid, example: "0f8fad5b-d9cb-469f-a165-70867728950e", description: "UUID of the registered key that produced the signature." }
         jws: { type: string, example: "eyJ...", description: "End-user's JWS of the payload object" }
     ErrorPayload:
       type: object
@@ -2656,20 +2656,20 @@ components:
 
     AddTokenRequest:
       type: object
-      required: [tokenClass, owner]
+      required: [tokenClass]
       description: |
         Request to add a token. Supports two shapes (selected via `oneOf`):
           - **Credential token** (W3C VC): requires `credential` + `metadata`.
           - **Proxy token** (USDC, ETH, SOL, etc.): requires `chainId`,
-            `contractAddress`, `walletAddress`, `value`.
+            `contractAddress`, `walletAddress`; `value` only when creating (a duplicate add from the owner reconciles and omits it).
 
         Called backend-to-backend by the Finternet App Backend (no end-user JWT).
-        The token owner address must be provided in the payload.
+        The token owner is optional: when omitted, the server derives it from the authenticated session.
       oneOf:
         - title: "Credential Token"
           required: [credential, metadata]
         - title: "Proxy Token"
-          required: [chainId, contractAddress, walletAddress, value]
+          required: [chainId, contractAddress, walletAddress]
       properties:
         tokenClass:
           type: string
