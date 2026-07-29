@@ -11,9 +11,8 @@ info:
     These endpoints let the authenticated end user inspect the delegations relevant to
     them (`/list`) and resolve the effective permissions on a specific token (`/check`).
 
-    Both endpoints authenticate the end user (user JWT) in addition to the developer
-    token. All endpoints follow the standard envelope (`context`/`payload` →
-    `context`/`response`) and are subject to scope-tier rate limiting.
+    Both endpoints require a user session token. All endpoints use the standard envelope
+    (`context`/`payload` → `context`/`response`) and are rate limited.
 
   version: "1.0.0"
 
@@ -129,7 +128,7 @@ components:
             - properties:
                 developerToken: { type: string, description: "Optional inline developer token; usually carried via the `Authorization` header." }
                 developerSignature: { type: string, description: "Optional inline developer signature." }
-                authorization: { type: string, description: "End-user session JWT. Required — both endpoints authenticate the end user (user JWT) in addition to the developer token." }
+                authorization: { type: string, description: "End user's session token. Required on both endpoints." }
 
     ResponseContext:
       type: object
@@ -267,7 +266,7 @@ components:
 
   responses:
     UnauthorizedError:
-      description: "Authentication failed."
+      description: "Authentication failed. The developer token or the user session token is missing, invalid or expired."
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
@@ -275,12 +274,12 @@ components:
             context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "UNAUTHORIZED", message: "Token invalid or expired." } }
             response: {}
     ForbiddenError:
-      description: "Scope check failed — the caller's developer token does not carry a scope required by this endpoint."
+      description: "The caller does not have the scope required by this endpoint."
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "FORBIDDEN", message: "Missing required scope: delegations:view" } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "CLIENT_INSUFFICIENT_SCOPE", message: "service account does not have required scope" } }
             response: {}
     BadRequestError:
       description: "Invalid request (e.g. missing or invalid `filter` for `list`, or missing `tokenId` for `check`)."
@@ -291,9 +290,7 @@ components:
             context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "INVALID_INPUT", message: "filter must be one of granted_by_me, granted_to_me, pending." } }
             response: {}
     RateLimitedError:
-      description: |
-        Request exceeded the scope-tier sliding-window rate limit. The `Retry-After`
-        response header indicates how long the caller should wait before retrying.
+      description: "Too many requests. The `Retry-After` header gives the number of seconds to wait before retrying."
       headers:
         Retry-After:
           schema: { type: integer, description: "Seconds to wait before retrying." }

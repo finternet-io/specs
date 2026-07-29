@@ -2,49 +2,25 @@ openapi: 3.0.4
 info:
   title: "Finternet API - Registry Service"
   description: |
-    API specification for the Finternet Registry service — chain and wallet provider registries.
+    API specification for the Finternet Registry service: chain and wallet provider registries.
 
     These registries are centrally managed by UNITS and consumed by App Backends.
     Token class registry endpoints are defined in `token-interfaces.yaml` under `/v1/registry/tokenclasses/*`.
 
-    ### Protocol-Agnostic Envelope
-    All API interactions use a standard JSON envelope.
+    ### Envelope
 
-    **Request Envelope:**
-    ```json
-    {
-      "context": { ... },
-      "payload": { ... },
-      "signature": { ... } // Optional
-    }
-    ```
+    All endpoints use the standard envelope (`context`/`payload` → `context`/`response`).
+    On failure `context.status` is `failed`, `context.error` carries a `code` and a
+    `message`, and `response` is empty.
 
-    **Response Envelope (Success):**
-    ```json
-    {
-      "context": { ..., "status": "successful" },
-      "response": { ... }
-    }
-    ```
+    ### Authentication
 
-    **Response Envelope (Error):**
-    ```json
-    {
-      "context": { ..., "status": "failed", "error": {"code": "...", "message": "..." }},
-      "response": {} // Empty on error
-    }
-    ```
-
-    ### Authentication and Authorization
-    This API uses the same two-level authorization model as the other UNITS services:
-
-    1.  **Platform-Level (Developer) Authentication:**
-        * `context.developerToken`: The B2B Developer's API Key/Token.
-        * `context.developerSignature`: The B2B Developer's signature.
-
-    2.  **Admin-Level Authorization:**
-        * Write operations (register, update) require admin privileges.
-        * Read operations (get, search) require developer authentication only.
+    * `context.developerToken`: the calling application's developer token. Required on
+      every endpoint.
+    * `context.developerSignature`: optional request signature (RFC 9421), sent in the
+      `Signature` header.
+    * `context.authorization`: the end user's session token, required by the endpoints
+      that act on a signed-in user. Each operation states when it is needed.
 
     ### RBAC Scopes
 
@@ -62,15 +38,15 @@ info:
     | `POST /v1/adapter/update` | `registry-adapters:manage` |
     | `POST /v1/adapter/get` | `registry-adapters:view` |
     | `POST /v1/adapter/search` | `registry-adapters:view` |
-    | `POST /v1/registry/capability/publish` | *(operator — developer token; no user scope)* |
+    | `POST /v1/registry/capability/publish` | *(developer token only)* |
     | `GET /v1/registry/forwarding/{did}` | *(developer token)* |
     | `GET /v1/instance/capabilities` | *(developer token)* |
 
     ### Rate limiting
 
-    Requests are subject to a scope-tier sliding-window rate limiter. When the limit
-    is exceeded the service responds with `429 Too Many Requests` and a `Retry-After`
-    header (see the `RateLimitedError` response component).
+    Every request is rate limited. Requests over the limit return `429 Too Many Requests`
+    with a `Retry-After` header giving the number of seconds to wait. The limit depends on
+    the tier assigned to the calling client.
   version: "1.0.0"
 servers:
   - url: "https://foundry.finternetlab.io"
@@ -84,9 +60,8 @@ tags:
     description: "Endpoints for wallet provider registry management. Policy allow-list for wallet apps."
   - name: "Adapter Registry"
     description: |
-      Endpoints for adapter service registry management. The AdapterOrchestrator uses
-      this table for priority-based routing of chain operations. All adapter endpoints
-      require both Developer and end-user authentication.
+      Endpoints for adapter service registry management. Used to route chain operations
+      to adapters by priority. All adapter endpoints require a user session token.
   - name: "Federation"
     description: |
       Federation address resolution. Resolves an on-chain (chainId, address) pair to the
@@ -238,6 +213,8 @@ paths:
           $ref: '#/components/responses/ForbiddenError'
         '409':
           description: "Chain with this networkId already exists"
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
 
   /v1/registry/chains/update:
     post:
@@ -245,7 +222,7 @@ paths:
         - "Chain Registry"
       summary: "Update chain registry entry"
       description: |
-        Update a chain's configuration — adapters, status, or metadata.
+        Update a chain's configuration: adapters, status, or metadata.
         Use this to add/remove adapters, change priorities, or deactivate a chain.
       security:
         - developerToken: []
@@ -299,6 +276,8 @@ paths:
           $ref: '#/components/responses/ForbiddenError'
         '404':
           $ref: '#/components/responses/NotFoundError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
 
   /v1/registry/chains/get:
     post:
@@ -334,6 +313,10 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
 
   /v1/registry/chains/search:
     post:
@@ -428,6 +411,10 @@ paths:
                     offset: 0
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
 
   # -------------------- Wallet Provider Registry --------------------
   /v1/registry/wallets/register:
@@ -437,7 +424,7 @@ paths:
       summary: "Register a wallet provider"
       description: |
         Register a wallet application in the provider registry. This is a policy allow-list
-        consumed by App Backends — not enforced by UNITS directly.
+        consumed by the calling application and not enforced by UNITS directly.
         Uses `rdns` (EIP-6963 standard) as the universal, library-agnostic identifier.
       security:
         - developerToken: []
@@ -544,6 +531,8 @@ paths:
           $ref: '#/components/responses/ForbiddenError'
         '409':
           description: "Wallet provider with this rdns already exists"
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
 
   /v1/registry/wallets/update:
     post:
@@ -600,6 +589,8 @@ paths:
           $ref: '#/components/responses/ForbiddenError'
         '404':
           $ref: '#/components/responses/NotFoundError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
 
   /v1/registry/wallets/get:
     post:
@@ -635,6 +626,10 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
 
   /v1/registry/wallets/search:
     post:
@@ -725,6 +720,10 @@ paths:
                     offset: 0
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
 
   # -------------------- Federation --------------------
   /v1/registry/forwarding/{did}:
@@ -778,6 +777,8 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ApiError' }
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
 
   # -------------------- Instance --------------------
   /v1/registry/capability/publish:
@@ -788,9 +789,8 @@ paths:
       description: |
         Operator endpoint. Re-computes and publishes the instance's signed capability
         document to the federation registry, returning the published instance identifier,
-        the new document version, and the signature. No request payload — the operator
-        trigger carries only the standard envelope context. Developer-token gated (no
-        end-user token) and rate limited.
+        the new document version, and the signature. There is no request payload. No user
+        session token is required.
       security:
         - developerToken: []
         - developerSignature: []
@@ -841,10 +841,10 @@ paths:
         - "Instance"
       summary: "Get this instance's signed capability document"
       description: |
-        Return the instance's current signed capability document — the free-form, signed
-        descriptor advertising the programs this instance supports (per-program asset
-        models, primitive methods, templates, and operation plans), its signing keys, and
-        the point in time it was generated. Developer-token gated.
+        Return the instance's current signed capability document: the signed descriptor
+        advertising the programs this instance supports (per-program asset models,
+        primitive methods, templates, and operation plans), its signing keys, and the time
+        it was generated. No user session token is required.
       security:
         - developerToken: []
       responses:
@@ -879,6 +879,8 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
         '403':
           $ref: '#/components/responses/ForbiddenError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
 
   # -------------------- Adapter Registry --------------------
   /v1/adapter/register:
@@ -889,7 +891,7 @@ paths:
       description: |
         Register a new adapter service instance in the adapter registry. Each adapter
         declares the chains it serves via `chainIds[]`. The AdapterOrchestrator uses this
-        table for priority-based routing. Requires Developer + User auth.
+        table for priority-based routing. Requires a user session token.
       security:
         - developerToken: []
         - userToken: []
@@ -952,6 +954,8 @@ paths:
           $ref: '#/components/responses/ForbiddenError'
         '409':
           description: "Adapter with this adapterId already exists"
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
 
   /v1/adapter/update:
     post:
@@ -960,7 +964,7 @@ paths:
       summary: "Update an adapter"
       description: |
         Update an adapter's configuration. Only the fields provided in the payload are
-        updated. Requires Developer + User auth.
+        updated. Requires a user session token.
       security:
         - developerToken: []
         - userToken: []
@@ -997,13 +1001,15 @@ paths:
           $ref: '#/components/responses/ForbiddenError'
         '404':
           $ref: '#/components/responses/NotFoundError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
 
   /v1/adapter/get:
     post:
       tags:
         - "Adapter Registry"
       summary: "Get adapter details"
-      description: "Retrieve details of a specific adapter by its adapter ID. Requires Developer + User auth."
+      description: "Retrieve details of a specific adapter by its adapter ID. Requires a user session token."
       security:
         - developerToken: []
         - userToken: []
@@ -1034,13 +1040,17 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
 
   /v1/adapter/search:
     post:
       tags:
         - "Adapter Registry"
       summary: "Search adapters"
-      description: "Search and list registered adapters with filters and pagination. Requires Developer + User auth."
+      description: "Search and list registered adapters with filters and pagination. Requires a user session token."
       security:
         - developerToken: []
         - userToken: []
@@ -1101,6 +1111,10 @@ paths:
                     offset: 0
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
 
 # ===============================================================
 #   COMPONENTS
@@ -1210,8 +1224,8 @@ components:
           additionalProperties: true
         identities:
           description: |
-            Optional identities associated with the chain. Untyped (interface{}) in the
-            service — any JSON value; the concrete shape is not constrained by the API.
+            Optional identities associated with the chain. Any JSON value; the shape is not
+            constrained by the API.
         createdAt:
           type: string
           format: date-time
@@ -1309,8 +1323,8 @@ components:
           additionalProperties: true
         identities:
           description: |
-            Optional identities associated with the wallet provider. Untyped (interface{})
-            in the service — any JSON value; the concrete shape is not constrained by the API.
+            Optional identities associated with the wallet provider. Any JSON value; the shape
+            is not constrained by the API.
         createdAt:
           type: string
           format: date-time
@@ -1434,7 +1448,7 @@ components:
         Signed capability document for an instance. A free-form, signed descriptor whose
         shape is intentionally open (`additionalProperties: true`) and NOT constrained by
         this API. Top-level fields include `instance`, `as_of`, and `signing_keys`, plus
-        one section per supported program — each advertising its asset models, primitive
+        one section per supported program, each advertising its asset models, primitive
         methods, templates, and operation plans. Consumers must treat unknown fields as
         forward-compatible additions.
 
@@ -1477,8 +1491,8 @@ components:
           description: "Adapter-specific configuration (e.g. url, timeouts)"
         identities:
           description: |
-            Optional adapter identities. Untyped (interface{}) in the service — any JSON
-            value; the concrete shape is not constrained by the API.
+            Optional adapter identities. Any JSON value; the shape is not constrained by the
+            API.
         createdAt:
           type: string
           format: date-time
@@ -1686,7 +1700,7 @@ components:
   # -------------------- Responses --------------------
   responses:
     UnauthorizedError:
-      description: "Authentication failed."
+      description: "Authentication failed. The developer token or the user session token is missing, invalid or expired."
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
@@ -1694,12 +1708,12 @@ components:
             context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "UNAUTHORIZED", message: "Token invalid or expired." } }
             response: {}
     ForbiddenError:
-      description: "Forbidden. Insufficient permissions."
+      description: "The caller does not have the scope required by this endpoint."
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "FORBIDDEN", message: "Insufficient permissions." } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "CLIENT_INSUFFICIENT_SCOPE", message: "service account does not have required scope" } }
             response: {}
     NotFoundError:
       description: "Resource not found."
@@ -1718,9 +1732,7 @@ components:
             context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "INVALID_INPUT", message: "Invalid request parameters." } }
             response: {}
     RateLimitedError:
-      description: |
-        Request exceeded the scope-tier sliding-window rate limit. The `Retry-After`
-        response header indicates how long the caller should wait before retrying.
+      description: "Too many requests. The `Retry-After` header gives the number of seconds to wait before retrying."
       headers:
         Retry-After:
           schema: { type: integer, description: "Seconds to wait before retrying." }
@@ -1748,5 +1760,5 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: |
-        End-user JWT session token, passed in `context.authorization` as `Bearer <token>`.
-        Required by the adapter registry endpoints (register, update, get, search).
+        End user's session token, obtained from `/v1/account/login` and passed in
+        `context.authorization` as `Bearer <token>`.

@@ -2,63 +2,34 @@ openapi: 3.0.4
 info:
   title: "Finternet API - Key Management Service"
   description: |
-    The official API specification for the Finternet Key Management service.
+    API specification for the account's platform-managed signing key and for signing
+    operations authorised by the account holder.
 
-    These endpoints manage the account's **Vault Transit** signing key
-    (`units-signing-<accountId>`) and expose a two-phase, OTP-gated signing
-    operation used to produce user-authorized ULIP envelopes.
+    Most endpoints use the standard envelope (`context`/`payload` → `context`/`response`).
+    On failure `context.status` is `failed`, `context.error` carries a `code` and a
+    `message`, and `response` is empty.
 
-    ### Protocol-Agnostic Envelope
-    Most interactions use the standard JSON envelope.
+    > `POST /v1/account/sign` is a special case: `context` also carries the required
+    > `method` and `account_did` fields, and `username`/`otp` are top level fields,
+    > siblings of `context` and `payload`. See that operation for the exact shape.
 
-    **Request Envelope:**
-    ```json
-    {
-      "context": { ... },
-      "payload": { ... },
-      "signature": { ... } // Optional
-    }
-    ```
+    ### Authentication
 
-    **Response Envelope (Success):**
-    ```json
-    {
-      "context": { ..., "status": "successful" },
-      "response": { ... }
-    }
-    ```
+    * `context.developerToken`: the calling application's developer token. Required on
+      every endpoint.
+    * `context.authorization`: the end user's session token. Required by
+      `/v1/account/keys/create`.
+    * `POST /v1/account/sign` takes no session token. The account holder authorises the
+      signature in band, by confirming a one-time code sent to their registered contact.
 
-    **Response Envelope (Error):**
-    ```json
-    {
-      "context": { ..., "status": "failed", "error": {"code": "...", "message": "..." }},
-      "response": {} // Empty on error
-    }
-    ```
-
-    > **Note — `POST /v1/account/sign` is a special case.** Its body is not the
-    > plain `{context, payload}` envelope: `context` additionally carries the
-    > required `method` and `account_did` routing fields, and `username`/`otp`
-    > are **top-level** fields (siblings of `context`/`payload`), not part of
-    > `payload`. See that operation for the exact shape.
-
-    ### Authentication and Authorization
-    Every Key Management endpoint is gated by **platform-level (developer)
-    authentication only**:
-
-    * `context.developerToken`: the B2B developer's API key/token (may also be
-      supplied via the `Authorization: Bearer <token>` header). The operating
-      account is resolved from the token owner's address — there is **no**
-      end-user JWT middleware and **no** per-endpoint scope check on these routes.
-
-    For `POST /v1/account/sign`, end-user authorization is instead proven
-    **in-band** via a two-phase OTP challenge (see that operation), not via a
-    session token.
+    Each endpoint requires the scope listed under `x-scopes`; calls without it return
+    `403`.
 
     ### Rate limiting
-    Endpoints are protected by a scope-tier sliding-window rate limiter; on breach
-    the response is `429 Too Many Requests` with a `Retry-After` header.
 
+    Every request is rate limited. Requests over the limit return `429 Too Many Requests`
+    with a `Retry-After` header giving the number of seconds to wait. The limit depends on
+    the tier assigned to the calling client.
   version: "1.0.0"
 servers:
   - url: "https://foundry.finternetlab.io"
@@ -67,7 +38,7 @@ servers:
     description: "Local Development"
 tags:
   - name: "Key Management"
-    description: "Endpoints for provisioning, listing, rotating and using the account's Vault Transit signing key."
+    description: "Provision the account's signing key and use it to sign operations."
 
 # ===============================================================
 #   PATHS
@@ -78,19 +49,16 @@ paths:
     post:
       tags:
         - "Key Management"
-      summary: "Create the account's Vault Transit signing key"
+      summary: "Create the account's signing key"
       description: |
-        Provisions the account's Ed25519 Vault Transit signing key
-        (`units-signing-<accountId>`) and persists a `key_reference` row.
-
-        The operation is **idempotent**: signup already provisions this key, so a
-        repeat call returns the existing key instead of colliding. The operating
-        account is derived from the developer token's owner — the request payload
-        is not read.
+        Provision the signing key for the signed-in user's account. The payload is empty.
+        The call is idempotent: an account that already has a signing key gets the existing
+        key back. Requires a user session token.
       operationId: createKey
       security:
         - developerToken: []
         - developerSignature: []
+      x-scopes: [keys:create]
       requestBody:
         required: true
         content:
@@ -104,10 +72,11 @@ paths:
                 ts: "2026-04-07T12:00:00Z"
                 msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
                 developerToken: "fnt_..."
+                authorization: "Bearer eyJ..."
               payload: {}
       responses:
         '201':
-          description: "Signing key created (or already provisioned)."
+          description: "Signing key created, or returned unchanged if it already existed."
           content:
             application/json:
               schema:
@@ -123,128 +92,41 @@ paths:
                   keyId: "019ab8e9-0636-74fd-b5c4-192fc68b71e3"
                   publicKey: "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"
                   did: "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH"
-                  keySource: "vault_transit"
-        '400':
-          $ref: '#/components/responses/BadRequestError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '429':
-          $ref: '#/components/responses/RateLimitedError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  /v1/account/keys:
-    get:
-      tags:
-        - "Key Management"
-      summary: "List the account's keys"
-      description: |
-        Returns all `key_reference` rows bound to the calling account (resolved
-        from the developer token owner). The DID for each row is derived from its
-        public key. This is a read-only `GET`; no request body is sent.
-      operationId: listKeys
-      security:
-        - developerToken: []
-        - developerSignature: []
-      responses:
-        '200':
-          description: "List of the account's keys."
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse_ListKeysResult'
-              example:
-                context:
-                  id: "api.account.keys.list"
-                  version: "v1"
-                  ts: "2026-04-07T12:05:01Z"
-                  msgId: "d1e2f3a4-b5c6-7890-1234-567890abcdef"
-                  status: "successful"
-                response:
-                  keys:
-                    - id: "019ab8e9-0636-74fd-b5c4-192fc68b71e3"
-                      keyType: "ed25519"
-                      keySource: "vault_transit"
-                      publicKey: "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"
-                      did: "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH"
-                      status: "active"
-                      createdAt: "2026-04-07T11:59:00Z"
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '429':
-          $ref: '#/components/responses/RateLimitedError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  /v1/account/keys/rotate:
-    post:
-      tags:
-        - "Key Management"
-      summary: "Rotate the account's signing key (NOT IMPLEMENTED)"
-      description: |
-        **Not implemented.** Correct rotation must mint a new Vault key version,
-        supersede the old `key_reference`, and propagate the new pubkey-derived
-        DID to the registry and peers — a cross-instance change that requires a
-        dedicated design. The endpoint therefore fails closed and always responds
-        with **HTTP 501** and error code `NOT_IMPLEMENTED`.
-      operationId: rotateKey
-      security:
-        - developerToken: []
-        - developerSignature: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ApiRequest_Empty'
-            example:
-              context:
-                id: "api.account.keys.rotate"
-                version: "v1"
-                ts: "2026-04-07T12:10:00Z"
-                msgId: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
-                developerToken: "fnt_..."
-              payload: {}
-      responses:
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '429':
-          $ref: '#/components/responses/RateLimitedError'
-        '501':
-          $ref: '#/components/responses/NotImplementedError'
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
 
   /v1/account/sign:
     post:
       tags:
         - "Key Management"
-      summary: "Sign a ULIP envelope (two-phase OTP)"
+      summary: "Sign an operation with the account's key"
       description: |
-        Produces a Vault Transit signature over a ULIP envelope for the account
-        identified by `context.account_did`. End-user authorization is proven
-        in-band via a **two-phase OTP** flow — there is no session JWT on this
-        route.
+        Sign an operation with the signing key of the account identified by
+        `context.account_did`. The account holder authorises the signature by confirming a
+        one-time code, so this endpoint takes no session token.
 
-        **Request shape (special).** The body is NOT the plain envelope:
-        - `context` carries the standard fields **plus** required `method` and
+        Request shape (special):
+
+        * `context` carries the standard fields plus the required `method` and
           `account_did`.
-        - `payload` is the operation body to be wrapped and signed. **It MUST be
-          byte-identical to the `payload` you then submit to `POST /v1/token/transact`**
-          — the signature is computed over exactly this object, so any mismatch
-          invalidates it.
-        - `username` and `otp` are **top-level** fields (siblings of `context`
-          and `payload`), NOT inside `payload`.
+        * `payload` is the operation body to be signed. It must be byte identical to the
+          `payload` later submitted to `POST /v1/token/transact`, because the signature is
+          computed over exactly this object.
+        * `username` and `otp` are top level fields, siblings of `context` and `payload`.
 
-        **Phase 1 — request without `otp`:** the contact in `username` (which must
-        belong to `account_did`) is sent an OTP. Responds `200` with
-        `{ "status": "otp_sent", ... }`.
+        Step 1, request without `otp`: a code is sent to `username`, which must be a
+        contact of the account. Responds `200` with `status: otp_sent`.
 
-        **Phase 2 — resubmit with `otp`:** the OTP is verified, the envelope is
-        signed, and the response returns the signed `envelope`, the stable
-        `keyId` (the `key_references` UUID), and the `method`.
+        Step 2, resubmit with `otp`: the code is verified and the signed envelope is
+        returned along with the `keyId` that produced the signature.
       operationId: sign
       security:
         - developerToken: []
         - developerSignature: []
+      x-scopes: [keys:manage]
       requestBody:
         required: true
         content:
@@ -253,7 +135,7 @@ paths:
               $ref: '#/components/schemas/SignRequest'
             examples:
               Phase1_SendOtp:
-                summary: "Phase 1 — omit otp to trigger an OTP send"
+                summary: "Step 1: omit otp to have a code sent"
                 value:
                   context:
                     id: "api.account.sign"
@@ -270,7 +152,7 @@ paths:
                     value: "100000000"
                   username: "alice@example.com"
               Phase2_CompleteSigning:
-                summary: "Phase 2 — resubmit with the received otp to sign"
+                summary: "Step 2: resubmit with the code to sign"
                 value:
                   context:
                     id: "api.account.sign"
@@ -289,10 +171,7 @@ paths:
                   otp: "123456"
       responses:
         '200':
-          description: |
-            Response depends on the phase:
-            - **Phase 1 (no `otp`)**: OTP-sent acknowledgement.
-            - **Phase 2 (with `otp`)**: the signed envelope.
+          description: "Acknowledgement that the code was sent (step 1), or the signed envelope (step 2)."
           content:
             application/json:
               schema:
@@ -301,7 +180,7 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse_SignEnvelope'
               examples:
                 Phase1_OtpSent:
-                  summary: "Phase 1 response"
+                  summary: "Step 1 response"
                   value:
                     context:
                       id: "api.account.sign"
@@ -313,7 +192,7 @@ paths:
                       status: "otp_sent"
                       message: "OTP sent. Resubmit with the otp field to complete signing."
                 Phase2_Signed:
-                  summary: "Phase 2 response"
+                  summary: "Step 2 response"
                   value:
                     context:
                       id: "api.account.sign"
@@ -340,17 +219,13 @@ paths:
                             value: "100000000"
                         signature:
                           signer_instance: "019ab8e9-0636-74fd-b5c4-192fc68b71e3"
-                          key_name: "units-signing-019ab8e9-0636-74fd-b5c4-192fc68b71e3"
                           algorithm: "ed25519"
                           signature: "3045022100abcdef..."
                       keyId: "019ab8e9-0636-74fd-b5c4-192fc68b71e3"
                       method: "lock.request"
-        '400':
-          $ref: '#/components/responses/BadRequestError'
+        '400': { $ref: '#/components/responses/BadRequestError' }
         '401':
-          description: |
-            OTP contact does not match the account, proof failed, or OTP invalid
-            (also returned for developer-token auth failure).
+          description: "Authentication failed, `username` is not a contact of the account, or the code is not valid."
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ApiError' }
@@ -365,10 +240,9 @@ paths:
                     code: "UNAUTHORIZED"
                     message: "OTP invalid"
                 response: {}
-        '429':
-          $ref: '#/components/responses/RateLimitedError'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
 
 # ===============================================================
 #   COMPONENTS
@@ -387,9 +261,9 @@ components:
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
         transactionId: { type: string, format: uuid, nullable: true }
-        developerToken: { type: string, example: "fnt_...", nullable: true, description: "B2B Developer API Key/Token" }
-        developerSignature: { type: string, example: "t=...,v1=...", nullable: true, description: "B2B Developer Signature (RFC 9421)" }
-        authorization: { type: string, example: "Bearer eyJ...", nullable: true, description: "End-user's session token (unused by key-management routes)." }
+        developerToken: { type: string, example: "fnt_...", nullable: true, description: "The calling application's developer token." }
+        developerSignature: { type: string, example: "t=...,v1=...", nullable: true, description: "Signature over the request (RFC 9421)." }
+        authorization: { type: string, example: "Bearer eyJ...", nullable: true, description: "End user's session token." }
 
     ResponseContext:
       type: object
@@ -411,7 +285,7 @@ components:
       required: [keyId, jws]
       properties:
         keyId: { type: string, format: uuid, example: "0f8fad5b-d9cb-469f-a165-70867728950e", description: "UUID of the registered key that produced the signature." }
-        jws: { type: string, example: "eyJ...", description: "End-user's JWS of the payload object." }
+        jws: { type: string, example: "eyJ...", description: "End user's JWS over the payload object." }
 
     ErrorPayload:
       type: object
@@ -454,7 +328,7 @@ components:
     SignContext:
       type: object
       required: [method, account_did]
-      description: "Standard envelope context PLUS the required routing fields method and account_did. Only method and account_did are enforced by the sign handler; id/version/ts/msgId are optional here."
+      description: "The standard context plus the required `method` and `account_did`. Only those two are enforced on this endpoint."
       properties:
         id: { type: string, example: "api.account.sign" }
         version: { type: string, example: "v1" }
@@ -465,11 +339,11 @@ components:
         method:
           type: string
           example: "lock.request"
-          description: "ULIP method to sign for; populates the signed envelope's context.method."
+          description: "The operation being signed. Becomes `context.method` in the signed envelope."
         account_did:
           type: string
           example: "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH"
-          description: "DID of the account whose Vault Transit signing key produces the signature."
+          description: "DID of the account whose key produces the signature."
     SignRequest:
       type: object
       required: [context, payload, username]
@@ -477,20 +351,16 @@ components:
         context: { $ref: '#/components/schemas/SignContext' }
         payload:
           type: object
-          description: "Method-specific body to be wrapped and signed (becomes the ULIP payload value)."
+          description: "The operation body to be signed."
         username:
           type: string
           example: "alice@example.com"
-          description: |
-            Contact (email, or +E.164 mobile) that must belong to `account_did`.
-            The OTP is sent here. TOP-LEVEL field — not part of `payload`.
+          description: "Contact of the account (email, or mobile in E.164 format) that receives the code. Top level field, not part of `payload`."
         otp:
           type: string
           nullable: true
           example: "123456"
-          description: |
-            Omit for phase 1 (send OTP); provide to complete signing in phase 2.
-            TOP-LEVEL field — not part of `payload`.
+          description: "Omit on step 1; supply on step 2 to complete signing. Top level field, not part of `payload`."
 
     # --- Specific Response Envelopes ---
     ApiResponse_CreateKeyResult:
@@ -498,12 +368,6 @@ components:
         - $ref: '#/components/schemas/ApiResponse'
         - properties:
             response: { $ref: '#/components/schemas/CreateKeyResult' }
-
-    ApiResponse_ListKeysResult:
-      allOf:
-        - $ref: '#/components/schemas/ApiResponse'
-        - properties:
-            response: { $ref: '#/components/schemas/ListKeysResult' }
 
     ApiResponse_SignOtpSent:
       allOf:
@@ -520,11 +384,11 @@ components:
     # --- Core Data Schemas (Payloads) ---
     CreateKeyResult:
       type: object
-      required: [keyId, publicKey, did, keySource]
+      required: [keyId, publicKey, did]
       properties:
         keyId:
           type: string
-          description: "Vault key identifier for the signing key."
+          description: "Identifier of the signing key."
           example: "019ab8e9-0636-74fd-b5c4-192fc68b71e3"
         publicKey:
           type: string
@@ -534,29 +398,6 @@ components:
           type: string
           description: "did:key derived from the public key."
           example: "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH"
-        keySource:
-          type: string
-          example: "vault_transit"
-
-    KeyInfo:
-      type: object
-      required: [id, keyType, keySource, publicKey, did, status, createdAt]
-      properties:
-        id: { type: string, format: uuid, description: "key_references row UUID." }
-        keyType: { type: string, example: "ed25519" }
-        keySource: { type: string, example: "vault_transit", description: "vault_transit or external." }
-        publicKey: { type: string, description: "Hex-encoded public key." }
-        did: { type: string, description: "did:key derived from the public key (empty if the key is malformed)." }
-        status: { type: string, example: "active" }
-        createdAt: { type: string, format: date-time }
-
-    ListKeysResult:
-      type: object
-      required: [keys]
-      properties:
-        keys:
-          type: array
-          items: { $ref: '#/components/schemas/KeyInfo' }
 
     SignOtpSentResponse:
       type: object
@@ -573,7 +414,7 @@ components:
         keyId:
           type: string
           format: uuid
-          description: "Stable key_references UUID for the signing key."
+          description: "Identifier of the key that produced the signature."
           example: "019ab8e9-0636-74fd-b5c4-192fc68b71e3"
         method: { type: string, example: "lock.request" }
 
@@ -587,7 +428,7 @@ components:
 
     UlipContext:
       type: object
-      description: "Cross-cutting ULIP envelope metadata."
+      description: "Envelope metadata."
       properties:
         ulip_version: { type: string, example: "v1" }
         method: { type: string, example: "lock.request" }
@@ -605,26 +446,25 @@ components:
 
     UlipPayload:
       type: object
-      description: "Method-specific body with a TypeURL discriminator (mimics google.protobuf.Any)."
+      description: "The signed operation body."
       properties:
         type_url: { type: string, example: "" }
         value:
           type: object
-          description: "The signed method body (arbitrary JSON)."
+          description: "The signed body, as submitted in the request `payload`."
 
     UlipSignature:
       type: object
-      description: "Signature block as returned by /v1/account/sign (key_name replaces the versioned vault key id)."
       properties:
         signer_instance: { type: string }
-        key_name: { type: string, example: "units-signing-019ab8e9-0636-74fd-b5c4-192fc68b71e3" }
+        key_name: { type: string, description: "Name of the key that produced the signature." }
         algorithm: { type: string, example: "ed25519" }
         signature: { type: string, description: "Signature bytes, base64-encoded on the wire." }
 
   # -------------------- Responses --------------------
   responses:
     UnauthorizedError:
-      description: "Authentication failed. The developer token is missing, invalid, or expired."
+      description: "Authentication failed. The developer token or the user session token is missing, invalid or expired."
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
@@ -640,8 +480,25 @@ components:
                 message: "invalid developer token"
             response: {}
 
+    ForbiddenError:
+      description: "The caller does not have the scope required by this endpoint."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context:
+              id: "api.account.keys.create"
+              version: "v1"
+              ts: "2026-04-07T12:00:00Z"
+              msgId: "..."
+              status: "failed"
+              error:
+                code: "CLIENT_INSUFFICIENT_SCOPE"
+                message: "service account does not have required scope: keys:create"
+            response: {}
+
     BadRequestError:
-      description: "Invalid request parameters."
+      description: "Invalid request."
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
@@ -653,31 +510,12 @@ components:
               msgId: "..."
               status: "failed"
               error:
-                code: "BAD_REQUEST"
+                code: "INVALID_INPUT"
                 message: "context.account_did is required"
             response: {}
 
-    NotImplementedError:
-      description: "The operation is not implemented (HTTP 501)."
-      content:
-        application/json:
-          schema: { $ref: '#/components/schemas/ApiError' }
-          example:
-            context:
-              id: "api.account.keys.rotate"
-              version: "v1"
-              ts: "2026-04-07T12:10:00Z"
-              msgId: "..."
-              status: "failed"
-              error:
-                code: "NOT_IMPLEMENTED"
-                message: "key rotation is not yet supported"
-            response: {}
-
     RateLimitedError:
-      description: |
-        Request exceeded the scope-tier sliding-window rate limit. The `Retry-After`
-        response header indicates how long the caller should wait before retrying.
+      description: "Too many requests. The `Retry-After` header gives the number of seconds to wait before retrying."
       headers:
         Retry-After:
           schema: { type: integer, description: "Seconds to wait before retrying." }
@@ -707,20 +545,16 @@ components:
 
   # -------------------- Security --------------------
   securitySchemes:
-    # The server checks the HTTP header first and falls back to the context object.
-
     developerToken:
       type: http
       scheme: bearer
       bearerFormat: "JWT or Opaque"
-      description: |
-        A JWT or Opaque token that identifies the calling B2B developer/backend service.
-        The operating account is resolved from the token owner.
+      description: "Token identifying the calling application, sent as `context.developerToken`."
 
     developerSignature:
       type: apiKey
       in: header
       name: Signature
       description: |
-        The IETF HTTP Signature (RFC 9421) used by B2B developers for message integrity
-        and non-repudiation. Passed in the `Signature` header.
+        Optional request signature (RFC 9421) for message integrity and non-repudiation,
+        sent in the `Signature` header.

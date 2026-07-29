@@ -2,56 +2,33 @@ openapi: 3.0.4
 info:
   title: "Finternet API - Token Class Configuration"
   description: |
-    API specification for managing **Token Class Configurations** — the mapping
+    API specification for managing **Token Class Configurations**: the mapping
     between a registered Token Class and the Token Program (and hooks) that
     process its operations.
 
     A Token Class describes *what* the token is (its metadata, identity model,
     token standard). A Token Program describes *how* operations on it are
     executed (mint, burn, transfer, freeze, etc.). The Token Class Config glues
-    the two together for a specific class — and additionally configures pre/post
+    the two together for a specific class, and configures pre/post
     hooks, per-operation overrides, and class-specific commitment settings.
 
     A Token Class **must** have a corresponding Token Class Config before any
     operation (mint, transfer, burn …) can be executed on tokens in that class.
 
-    ### Protocol-Agnostic Envelope
-    All API interactions use a standard JSON envelope.
+    ### Envelope
 
-    **Request Envelope:**
-    ```json
-    {
-      "context": { ... },
-      "payload": { ... },
-      "signature": { ... } // Optional
-    }
-    ```
+    All endpoints use the standard envelope (`context`/`payload` → `context`/`response`).
+    On failure `context.status` is `failed`, `context.error` carries a `code` and a
+    `message`, and `response` is empty.
 
-    **Response Envelope (Success):**
-    ```json
-    {
-      "context": { ..., "status": "successful" },
-      "response": { ... }
-    }
-    ```
+    ### Authentication
 
-    **Response Envelope (Error):**
-    ```json
-    {
-      "context": { ..., "status": "failed", "error": {"code": "...", "message": "..." }},
-      "response": {} // Empty on error
-    }
-    ```
-
-    ### Authentication and Authorization
-    This API uses the same two-level authorization model as other UNITS services:
-
-    1.  **Platform-Level (Developer) Authentication:**
-        * `context.developerToken`: The B2B Developer's API Key/Token.
-        * `context.developerSignature`: The B2B Developer's signature.
-
-    2.  **User-Level (End-User) Authorization:**
-        * `context.authorization`: The end-user's JWT session token.
+    * `context.developerToken`: the calling application's developer token. Required on
+      every endpoint.
+    * `context.developerSignature`: optional request signature (RFC 9421), sent in the
+      `Signature` header.
+    * `context.authorization`: the end user's session token, required by the endpoints
+      that act on a signed-in user. Each operation states when it is needed.
 
     ### RBAC Scopes
 
@@ -64,9 +41,9 @@ info:
 
     ### Rate limiting
 
-    Requests are subject to a scope-tier sliding-window rate limiter. When the
-    limit is exceeded the service responds with `429 Too Many Requests` and a
-    `Retry-After` header (see the `RateLimitedError` response component).
+    Every request is rate limited. Requests over the limit return `429 Too Many Requests`
+    with a `Retry-After` header giving the number of seconds to wait. The limit depends on
+    the tier assigned to the calling client.
   version: "1.0.0"
 servers:
   - url: "https://foundry.finternetlab.io"
@@ -75,7 +52,7 @@ servers:
     description: "Local Server"
 tags:
   - name: "Token Class Configs"
-    description: "Endpoints for managing the mapping between a Token Class and a Token Program — including pre/post hooks, per-operation overrides, and commitment settings."
+    description: "Endpoints for managing the mapping between a Token Class and a Token Program, including pre/post hooks, per-operation overrides, and commitment settings."
 
 # ===============================================================
 #   PATHS
@@ -212,8 +189,8 @@ paths:
         - "Token Class Configs"
       summary: "Update a token class config"
       description: |
-        Update an existing token class configuration. Supports partial update —
-        only fields present in the payload are modified. Use to add or rotate
+        Update an existing token class configuration. Only fields present in the payload
+        are modified. Use to add or rotate
         hooks, change the program binding, or toggle status.
       security:
         - developerToken: []
@@ -313,6 +290,8 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '429':
           $ref: '#/components/responses/RateLimitedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
 
   /v1/tokenclassconfig/search:
     post:
@@ -357,6 +336,8 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
         '429':
           $ref: '#/components/responses/RateLimitedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
 
 # ===============================================================
 #   COMPONENTS
@@ -375,7 +356,7 @@ components:
         msgId: { type: string, format: uuid }
         developerToken: { type: string, nullable: true, description: "B2B Developer API Key/Token" }
         developerSignature: { type: string, nullable: true, description: "B2B Developer Signature" }
-        authorization: { type: string, nullable: true, description: "End-user JWT session token" }
+        authorization: { type: string, nullable: true, description: "End user's session token" }
     ResponseContext:
       type: object
       required: [id, version, ts, msgId, status]
@@ -581,7 +562,7 @@ components:
   # -------------------- Responses --------------------
   responses:
     UnauthorizedError:
-      description: "Authentication failed."
+      description: "Authentication failed. The developer token or the user session token is missing, invalid or expired."
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
@@ -589,12 +570,12 @@ components:
             context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "UNAUTHORIZED", message: "Token invalid or expired." } }
             response: {}
     ForbiddenError:
-      description: "Forbidden. Insufficient permissions."
+      description: "The caller does not have the scope required by this endpoint."
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "FORBIDDEN", message: "Insufficient permissions." } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "CLIENT_INSUFFICIENT_SCOPE", message: "service account does not have required scope" } }
             response: {}
     NotFoundError:
       description: "Resource not found."
@@ -613,9 +594,7 @@ components:
             context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "INVALID_INPUT", message: "Invalid request parameters." } }
             response: {}
     RateLimitedError:
-      description: |
-        Request exceeded the scope-tier sliding-window rate limit. The `Retry-After`
-        response header indicates how long the caller should wait before retrying.
+      description: "Too many requests. The `Retry-After` header gives the number of seconds to wait before retrying."
       headers:
         Retry-After:
           schema: { type: integer, description: "Seconds to wait before retrying." }

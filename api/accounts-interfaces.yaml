@@ -2,75 +2,31 @@ openapi: 3.0.4
 info:
   title: "Finternet API - Account & Address Service"
   description: |
-    The official API specification for the Finternet Account and Address (Identifier) services.
+    API specification for account, address and account-key management in UNITS.
 
-    ### Protocol-Agnostic Envelope
-    All API interactions use a standard JSON envelope.
+    All endpoints use the standard envelope (`context`/`payload` → `context`/`response`).
+    On failure `context.status` is `failed`, `context.error` carries a `code` and a
+    `message`, and `response` is empty.
 
-    **Request Envelope:**
-    ```json
-    {
-      "context": { ... },
-      "payload": { ... },
-      "signature": { ... } // Optional
-    }
-    ```
+    ### Authentication
 
-    **Response Envelope (Success):**
-    ```json
-    {
-      "context": { ..., "status": "successful" },
-      "response": { ... }
-    }
-    ```
+    * `context.developerToken`: the calling application's developer token. Required on
+      every endpoint.
+    * `context.developerSignature`: optional request signature (RFC 9421), sent in the
+      `Signature` header.
+    * `context.authorization`: the end user's session token. Required by the endpoints
+      that act on a signed-in user; each operation states when it is needed.
+    * `signature` (top level): the end user's JWS, for operations that must be
+      cryptographically signed by the user.
 
-    **Response Envelope (Error):**
-    ```json
-    {
-      "context": { ..., "status": "failed", "error": {"code": "...", "message": "..." },
-      "response": {} // Empty on error
-    }
-    ```
-    (Error details are in the context.error object)
-
-    ### Authentication and Authorization
-    This API uses a two-level authorization model contained within the `context`:
-
-    1.  **Platform-Level (Developer) Authentication:**
-        * `context.developerToken`: The B2B Developer's API Key/Token.
-        * `context.developerSignature`: The B2B Developer's signature (e.g., RFC 9421) of the payload.
-
-    2.  **User-Level (End-User) Authorization:**
-        * `context.authorization`: The end-user's JWT session token (for session-based calls).
-        * `signature` (top-level): The end-user's JWS for critical, cryptographically-signed operations.
-
-    *Note for HTTP Clients:* As a convenience, the `developerToken` may be provided in the standard `Authorization: Bearer <token>` HTTP header, and the `developerSignature` in an `X-Finternet-Signature` header. The server will check the headers first, then fall back to the `context` object.
-
-    ### RBAC Scopes
-
-    | Endpoint | Required scope |
-    |----------|----------------|
-    | `POST /v1/account/create` | `accounts:create` |
-    | `POST /v1/account/update` | `accounts:manage` |
-    | `POST /v1/account/get` | `accounts:view` |
-    | `POST /v1/account/otp/generate` | *(scope resolved from apiID; requires user auth)* |
-    | `POST /v1/account/otp/verify` | *(scope resolved from apiID; requires user auth)* |
-    | `POST /v1/account/pii/decrypt` | *(scope resolved from apiID; requires user auth)* |
-    | `POST /v1/account/login` | *(public — OTP/SSO bootstrap)* |
-    | `POST /v1/account/logout` | *(public)* |
-    | `POST /v1/address/checkAvailability` | *(public)* |
-    | `POST /v1/address/resolve` | `accounts:view` |
-    | `POST /v1/account/keys/register` | `keys:create` |
-    | `POST /v1/account/keys/remove` | `keys:manage` |
-    | `POST /v1/account/keys/get` | `keys:view` |
-    | `POST /v1/account/keys/search` | `keys:view` |
-
-    Calls failing the scope check return `403 FORBIDDEN`.
+    Each endpoint requires the scope listed under `x-scopes`; calls without it return
+    `403`.
 
     ### Rate limiting
 
-    All endpoints are protected by a scope-tier sliding-window rate limiter; on
-    breach the response is `429 Too Many Requests` with a `Retry-After` header.
+    Every request is rate limited. Requests over the limit return `429 Too Many Requests`
+    with a `Retry-After` header giving the number of seconds to wait. The limit depends on
+    the tier assigned to the calling client.
   version: "1.0.0"
 servers:
   - url: "https://foundry.finternetlab.io"
@@ -79,11 +35,11 @@ servers:
     description: "Local Server"
 tags:
   - name: "Account"
-    description: "Endpoints for user registration, authentication, and account management."
+    description: "Registration, authentication and account profile management."
   - name: "Address"
-    description: "Endpoints for managing human-readable identifiers (Addresses)."
+    description: "Human-readable identifiers (Addresses)."
   - name: "Account Keys"
-    description: "Endpoints for managing additional public keys bound to a Finternet account (multi-device, hardware key rotation, agent keys)."
+    description: "Public keys bound to an account, for additional devices, hardware keys and agent keys."
 
 # ===============================================================
 #   PATHS
@@ -96,10 +52,13 @@ paths:
       tags:
         - "Account"
       summary: "Register a new account"
-      description: "Creates a new user account. Requires Developer auth and user authentication token."
+      description: |
+        Create a new account. The email or mobile is taken from the token in
+        `context.authorization`, so it is not accepted in the payload.
       security:
         - developerToken: []
         - developerSignature: []
+      x-scopes: [accounts:create]
       requestBody:
         required: true
         content:
@@ -108,7 +67,7 @@ paths:
               $ref: '#/components/schemas/ApiRequest_RegistrationRequest'
             examples:
               PersonalRegistration:
-                summary: "Example for registering an PERSONAL account"
+                summary: "Register a PERSONAL account"
                 value:
                   context:
                     id: "api.account.create"
@@ -122,7 +81,7 @@ paths:
                     name: "Alice Smith"
                     entityType: "PERSONAL"
               BusinessRegistration:
-                summary: "Example for registering a BUSINESS account"
+                summary: "Register a BUSINESS account"
                 value:
                   context:
                     id: "api.account.create"
@@ -137,12 +96,7 @@ paths:
                     entityType: "BUSINESS"
       responses:
         '200':
-          description: |
-            Account registered successfully. Both federation branches (reservation-proof
-            and signed-envelope) run the signup workflow synchronously to its COMMITTED
-            verdict, then mint a Keycloak session token via token exchange. The response
-            carries that token, so the client is logged in immediately — no follow-up
-            `/v1/account/login` is required.
+          description: "Account created. The response carries a session token, so no separate login call is needed."
           content:
             application/json:
               schema:
@@ -158,56 +112,26 @@ paths:
                   accessToken: "eyJ..."
                   tokenType: "Bearer"
                   expiresIn: 3600
-        '400':
-          description: "Bad request, such as a missing required field."
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-              examples:
-                MissingField:
-                  summary: "Missing Required Field"
-                  value:
-                    context:
-                      id: "api.account.create"
-                      version: "v1"
-                      ts: "2025-09-08T12:00:00Z"
-                      msgId: "a1b2c3d4..."
-                      status: "failed"
-                      error:
-                        code: "BAD_REQUEST"
-                        message: "Field 'name' is required."
-                    response: {}
-        '409':
-          description: "Conflict, an identifier is already in use."
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-              examples:
-                IdentifierTaken:
-                  summary: "Address Taken"
-                  value:
-                    context:
-                      id: "api.account.create"
-                      version: "v1"
-                      ts: "2025-09-08T12:00:00Z"
-                      msgId: "a1b2c3d4..."
-                      status: "failed"
-                      error:
-                        code: "IDENTIFIER_TAKEN"
-                        message: "The address 'alice' is already in use."
-                    response: {}
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
 
   /v1/account/update:
     post:
       tags:
         - "Account"
       summary: "Update account profile"
-      description: "Allows an authenticated end-user to update their profile information. The account to update is determined by the session token."
+      description: |
+        Update the profile of the signed-in user. The account is taken from the session
+        token. `action` selects the step: `initiate` starts the update, the `verify_*`
+        actions confirm a new contact with a one-time code, and `cancel` stops an update
+        that is in progress. Requires a user session token.
       security:
         - developerToken: []
         - developerSignature: []
+      x-scopes: [accounts:manage]
       requestBody:
         required: true
         content:
@@ -216,7 +140,7 @@ paths:
               $ref: '#/components/schemas/ApiRequest_UpdateAccountRequest'
             examples:
               Initiate:
-                summary: "Start the profile-update workflow"
+                summary: "Start a profile update"
                 value:
                   context:
                     id: "api.account.update"
@@ -227,9 +151,28 @@ paths:
                     authorization: "Bearer <End_User_JWT_Token>"
                   payload:
                     action: "initiate"
-                    data: {}
+                    data:
+                      name: "Alice A. Smith"
+                      email: "alice.smith@example.com"
+                      mobile: "+919876543210"
+              VerifyNewEmail:
+                summary: "Confirm a new email with the code that was sent to it"
+                value:
+                  context:
+                    id: "api.account.update"
+                    version: "v1"
+                    ts: "2025-09-09T10:02:00Z"
+                    msgId: "d3e4f5a6-b7c8-9012-3456-7890abcdef12"
+                    developerToken: "fnt_..."
+                    authorization: "Bearer <End_User_JWT_Token>"
+                  payload:
+                    action: "verify_new_email"
+                    data:
+                      workflowId: "018f2c3d-4e5f-7890-abcd-1234567890ab"
+                      recipient: "alice.smith@example.com"
+                      otp: "123456"
               Cancel:
-                summary: "Cancel an in-flight profile-update workflow"
+                summary: "Cancel an update that is in progress"
                 value:
                   context:
                     id: "api.account.update"
@@ -244,11 +187,7 @@ paths:
                       workflowId: "018f2c3d-4e5f-7890-abcd-1234567890ab"
       responses:
         '200':
-          description: |
-            Workflow step completed, or (for `action: cancel`) the workflow was cancelled.
-            The `response` object is the workflow step result; its shape depends on the
-            action/step and is validated downstream against the workflow registry schema.
-            For `cancel` it is `{ workflowId, status: "cancelled" }`.
+          description: "Step completed. The `response` object depends on the action."
           content:
             application/json:
               schema:
@@ -267,13 +206,15 @@ paths:
                       workflowId: "018f2c3d-4e5f-7890-abcd-1234567890ab"
                       status: "cancelled"
         '202':
-          description: "Workflow step accepted and still running (asynchronous)."
+          description: "Step accepted and still in progress."
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
 
   /v1/address/checkAvailability:
     post:
@@ -281,12 +222,12 @@ paths:
         - "Address"
       summary: "Check address availability"
       description: |
-        Checks if a given human-readable address is available for registration.
-        Availability now consults the **federation registry**: an address already
-        registered at another federated instance is reported as unavailable.
+        Check whether an address is free to register. An address already registered on
+        another federated instance is reported as unavailable.
       security:
         - developerToken: []
         - developerSignature: []
+      x-scopes: [accounts:view]
       requestBody:
         required: true
         content:
@@ -304,7 +245,7 @@ paths:
                 address: "newuser"
       responses:
         '200':
-          description: "Availability status of the identifier."
+          description: "Availability of the address."
           content:
             application/json:
               schema:
@@ -318,6 +259,10 @@ paths:
                   status: "successful"
                 response:
                   available: true
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
 
   /v1/account/login:
     post:
@@ -325,15 +270,16 @@ paths:
         - "Account"
       summary: "User login (OTP or SSO)"
       description: |
-        Login with one of two flows (see `LoginRequest` for details):
+        Two flows:
 
-        - **OTP** (default): step 1 sends OTP, step 2 verifies and returns JWT.
-        - **SSO** (`authToken`): bypasses OTP; the app backend supplies a signed authToken.
-
-        Password-based login was removed in release 2026.04.07. Requires developer auth.
+        * **OTP**: send `username` to have a one-time code delivered, then send `username`
+          and `otp` to receive a session token.
+        * **SSO**: send `username` and `authToken`, a JWT signed by your own backend, to
+          receive a session token without a code.
       security:
         - developerToken: []
         - developerSignature: []
+      x-scopes: [accounts:manage]
       requestBody:
         required: true
         content:
@@ -342,7 +288,7 @@ paths:
               $ref: '#/components/schemas/ApiRequest_LoginRequest'
             examples:
               InitiateOTPMobile:
-                summary: "Step 1: Initiate login by sending OTP (Mobile)"
+                summary: "OTP step 1: request a code (mobile)"
                 value:
                   context:
                     id: "api.account.login"
@@ -353,7 +299,7 @@ paths:
                   payload:
                     username: "+919876543210"
               InitiateOTPEmail:
-                summary: "Step 1: Initiate login by sending OTP (Email)"
+                summary: "OTP step 1: request a code (email)"
                 value:
                   context:
                     id: "api.account.login"
@@ -364,7 +310,7 @@ paths:
                   payload:
                     username: "alice@example.com"
               VerifyOTP:
-                summary: "Step 2: Verify OTP and get session token"
+                summary: "OTP step 2: submit the code"
                 value:
                   context:
                     id: "api.account.login"
@@ -376,7 +322,7 @@ paths:
                     username: "alice@example.com"
                     otp: "1234"
               SSOLogin:
-                summary: "SSO: bypass OTP with a BFF-signed authToken"
+                summary: "SSO: log in with an authToken"
                 value:
                   context:
                     id: "api.account.login"
@@ -390,16 +336,16 @@ paths:
       responses:
         '200':
           description: |
-            Login response varies based on request:
-            - **Step 1 (username only)**: Returns OTP sent confirmation
-            - **Step 2 (username + otp)**: Returns authentication token
+            An acknowledgement that the code was sent (OTP step 1), or a session token.
+            `isExisting` is `false` when no account exists yet for `username`, in which case
+            the account must be created before the token can be used.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               examples:
                 InitiateOTP_Response:
-                  summary: "Step 1 Response: OTP sent successfully"
+                  summary: "OTP step 1: code sent"
                   value:
                     context:
                       id: "api.account.login"
@@ -411,7 +357,7 @@ paths:
                       success: true
                       message: "OTP sent successfully"
                 VerifyOTP_Response_AccountExisits:
-                  summary: "Step 2 Response: [Existing Account] Authentication successful, token granted"
+                  summary: "Session token for an existing account"
                   value:
                     context:
                       id: "api.account.login"
@@ -425,7 +371,7 @@ paths:
                       expiresIn: 3600
                       isExisting: true
                 VerifyOTP_Response_NewAccount:
-                  summary: "Step 2 Response: [New Account] Authentication successful, token granted"
+                  summary: "Token for a user who has no account yet"
                   value:
                     context:
                       id: "api.account.login"
@@ -438,24 +384,26 @@ paths:
                       tokenType: "Bearer"
                       expiresIn: 3600
                       isExisting: false
-
-        '401':
-          $ref: '#/components/responses/UnauthorizedError' # Catches both dev auth and user auth failures
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
         '404':
-          description: |
-            SSO flow only — the external identity is not yet registered in UNITS. The
-            application backend is expected to drive account registration and then
-            re-issue its own JWT. Not returned for the OTP flow.
+          description: "No account is registered for `username`. Returned on the OTP flow only."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
 
   /v1/account/logout:
     post:
       tags:
         - "Account"
       summary: "User logout"
-      description: "Invalidates the end-user's current JWT session token. Requires Developer + User auth."
+      description: "Invalidate the user's current session token. Requires a user session token."
       security:
         - developerToken: []
         - developerSignature: []
+      x-scopes: [accounts:view]
       requestBody:
         required: true
         content:
@@ -473,13 +421,14 @@ paths:
               payload: {}
       responses:
         '200':
-          description: "Logout successful."
+          description: "Session ended."
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse_Success'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
 
 
   /v1/account/get:
@@ -487,10 +436,11 @@ paths:
       tags:
         - "Account"
       summary: "Get current account profile"
-      description: "Retrieves the full account profile for the authenticated end-user. Requires Developer + User auth."
+      description: "Return the profile of the signed-in user. Requires a user session token."
       security:
         - developerToken: []
         - developerSignature: []
+      x-scopes: [accounts:view]
       requestBody:
         required: true
         content:
@@ -508,26 +458,28 @@ paths:
               payload: {}
       responses:
         '200':
-          description: "Account profile retrieved successfully."
+          description: "Account profile."
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse_AccountProfile'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
 
   /v1/account/otp/generate:
     post:
       tags:
         - "Account"
-      summary: "Generate an OTP for the authenticated user"
+      summary: "Generate an OTP for the signed-in user"
       description: |
-        Generates and sends an OTP to the authenticated user's email or mobile,
-        derived from the account PII. The payload is empty — the recipient is
-        resolved server-side from the session. Requires Developer + User auth.
+        Send a one-time code to the signed-in user's registered email or mobile. The
+        payload is empty; the recipient is resolved from the session. Requires a user
+        session token.
       security:
         - developerToken: []
         - developerSignature: []
+      x-scopes: [accounts:manage]
       requestBody:
         required: true
         content:
@@ -545,7 +497,7 @@ paths:
               payload: {}
       responses:
         '200':
-          description: "OTP generated and sent."
+          description: "Code sent."
           content:
             application/json:
               schema:
@@ -565,26 +517,25 @@ paths:
                     to: "alice@example.com"
                     channel: "email"
         '400':
-          description: "No contact information available for the account."
+          description: "The account has no email or mobile on record."
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ApiError' }
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '429':
-          $ref: '#/components/responses/RateLimitedError'
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
 
   /v1/account/otp/verify:
     post:
       tags:
         - "Account"
-      summary: "Verify an OTP for the authenticated user"
+      summary: "Verify an OTP for the signed-in user"
       description: |
-        Verifies a 6-digit OTP code for the authenticated user. The recipient is
-        derived server-side from the account PII. Requires Developer + User auth.
+        Verify a code sent to the signed-in user. Requires a user session token.
       security:
         - developerToken: []
         - developerSignature: []
+      x-scopes: [accounts:manage]
       requestBody:
         required: true
         content:
@@ -603,7 +554,7 @@ paths:
                 code: "123456"
       responses:
         '200':
-          description: "OTP verification result."
+          description: "Verification result."
           content:
             application/json:
               schema:
@@ -621,29 +572,28 @@ paths:
                   data:
                     status: "verified"
                     valid: true
-        '400':
-          $ref: '#/components/responses/BadRequestError'
+        '400': { $ref: '#/components/responses/BadRequestError' }
         '401':
-          description: "Unauthorized, or the OTP is invalid."
+          description: "Authentication failed, or the code is not valid."
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ApiError' }
-        '429':
-          $ref: '#/components/responses/RateLimitedError'
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
 
   /v1/account/pii/decrypt:
     post:
       tags:
         - "Account"
-      summary: "Decrypt one of the caller's own PII ciphertexts"
+      summary: "Decrypt one of the caller's own encrypted profile values"
       description: |
-        Decrypts a Vault transit ciphertext that belongs to the authenticated
-        account (one of its `pii.*_encrypted` values). A ciphertext that does not
-        belong to the account is refused with `403` (no decryption oracle).
-        Requires Developer + User auth.
+        Decrypt one of the encrypted values on the caller's own profile (a `pii.*_encrypted`
+        value from `/v1/account/get`). A ciphertext belonging to any other account is
+        refused. Requires a user session token.
       security:
         - developerToken: []
         - developerSignature: []
+      x-scopes: [accounts:manage]
       requestBody:
         required: true
         content:
@@ -659,10 +609,10 @@ paths:
                 developerToken: "fnt_..."
                 authorization: "Bearer eyJ..."
               payload:
-                ciphertext: "vault:v1:v90bM0LC7ugYyIEoC1Mry+Xu7p9AndTvYsIGe1gsHI54kut2oxWViXVOHd5w"
+                ciphertext: "<pii.email_encrypted value from /v1/account/get>"
       responses:
         '200':
-          description: "Decrypted plaintext."
+          description: "Decrypted value."
           content:
             application/json:
               schema:
@@ -676,61 +626,21 @@ paths:
                   status: "successful"
                 response:
                   plaintext: "alice@example.com"
-        '400':
-          $ref: '#/components/responses/BadRequestError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '429':
-          $ref: '#/components/responses/RateLimitedError'
-
-  # /v1/account/lookup:
-  #   post:
-  #     tags:
-  #       - "Account"
-  #     summary: "Lookup account by PII"
-  #     description: "Securely looks up an account profile using private info like email or phone. Requires Developer + User auth."
-  #     security:
-  #       - developerToken: []
-  #       - developerSignature: []
-  #     requestBody:
-  #       required: true
-  #       content:
-  #         application/json:
-  #           schema:
-  #             $ref: '#/components/schemas/ApiRequest_LookupRequest'
-  #           example:
-  #             context:
-  #               id: "api.account.lookup"
-  #               version: "v1"
-  #               ts: "2025-09-09T09:06:00Z"
-  #               msgId: "e2f3a4b5-c6d7-8901-2345-67890abcdef"
-  #               developerToken: "fnt_..."
-  #               authorization: "Bearer eyJ..."
-  #             payload:
-  #               email: "bob.smith@example.com"
-  #     responses:
-  #       '200':
-  #         description: "Account profile retrieved successfully."
-  #         content:
-  #           application/json:
-  #             schema:
-  #               $ref: '#/components/schemas/ApiResponse_AccountProfile'
-  #       '401':
-  #         $ref: '#/components/responses/UnauthorizedError'
-  #       '404':
-  #         $ref: '#/components/responses/NotFoundError'
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
 
   /v1/address/resolve:
     post:
       tags:
         - "Address"
-      summary: "[Placeholder] Resolve an Address"
-      description: "Publicly resolves a human-readable address. Requires Developer auth."
+      summary: "Resolve an address"
+      description: "Resolve an address to its DID."
       security:
         - developerToken: []
         - developerSignature: []
+      x-scopes: [accounts:view]
       requestBody:
         required: true
         content:
@@ -748,13 +658,26 @@ paths:
                 address: "alice"
       responses:
         '200':
-          description: "Public key and DID retrieved."
+          description: "Resolved address."
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse_ResolveResponse'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
+              example:
+                context:
+                  id: "api.address.resolve"
+                  version: "v1"
+                  ts: "2025-09-09T11:05:01Z"
+                  msgId: "f1a2b3c4-d5e6-7890-1234-567890abcdef"
+                  status: "successful"
+                response:
+                  address: "alice"
+                  did: "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH"
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
 
 
   # -------------------- Account Keys --------------------
@@ -762,12 +685,10 @@ paths:
   /v1/account/keys/register:
     post:
       tags: [Account Keys]
-      summary: "Register an additional public key for the calling account"
+      summary: "Register an additional public key for the account"
       description: |
-        Register a key reference for the authenticated account in the unified
-        `key_references` store. Supply `type` plus **exactly one** of
-        `publicKey` (hex- or base58-encoded key) or `address` (the MetaMask/EVM
-        exception, used when only the on-chain wallet address is available).
+        Register a public key for the signed-in user. Supply `type` plus exactly one of
+        `publicKey` or `address`. Requires a user session token.
       security:
         - developerToken: []
         - developerSignature: []
@@ -793,7 +714,7 @@ paths:
                 isDefault: false
       responses:
         '201':
-          description: "Key registered in the unified key_references store."
+          description: "Key registered."
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ApiResponse_AccountKeyInfo' }
@@ -806,11 +727,11 @@ paths:
   /v1/account/keys/remove:
     post:
       tags: [Account Keys]
-      summary: "Remove a public key from the calling account"
+      summary: "Remove a public key from the account"
       description: |
-        Revoke a key reference from the account's unified `key_references` store,
-        identified by its `id` or `address`. The primary key (the one initially provisioned
-        at registration) cannot be removed via this endpoint.
+        Remove one of the signed-in user's keys, identified by its `id` or `address`. The
+        default key cannot be removed; make another key the default first. Requires a user
+        session token.
       security:
         - developerToken: []
         - developerSignature: []
@@ -820,6 +741,16 @@ paths:
         content:
           application/json:
             schema: { $ref: '#/components/schemas/ApiRequest_RemoveKeyRequest' }
+            example:
+              context:
+                id: "api.account.keys.remove"
+                version: "v1"
+                ts: "2026-04-07T10:00:00Z"
+                msgId: "33333333-4444-5555-6666-777777777777"
+                developerToken: "fnt_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                id: "0f8fad5b-d9cb-469f-a165-70867728950e"
       responses:
         '200':
           description: "Key removed."
@@ -830,15 +761,23 @@ paths:
         '401': { $ref: '#/components/responses/UnauthorizedError' }
         '403': { $ref: '#/components/responses/ForbiddenError' }
         '404': { $ref: '#/components/responses/NotFoundError' }
+        '409':
+          description: "The key is the account's default key."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example:
+                context: { id: "api.account.keys.remove", version: "v1", ts: "...", msgId: "...", status: "failed", error: { code: "CONFLICT", message: "cannot remove the default key; set another key as default first" } }
+                response: {}
         '429': { $ref: '#/components/responses/RateLimitedError' }
 
   /v1/account/keys/get:
     post:
       tags: [Account Keys]
-      summary: "Get a single public key for the calling account"
+      summary: "Get a single public key for the account"
       description: |
-        Fetch a single key reference from the account's unified `key_references`
-        store, identified by its `id` or `address`.
+        Return one of the signed-in user's keys, identified by its `id` or `address`.
+        Requires a user session token.
       security:
         - developerToken: []
         - developerSignature: []
@@ -848,12 +787,23 @@ paths:
         content:
           application/json:
             schema: { $ref: '#/components/schemas/ApiRequest_GetKeyRequest' }
+            example:
+              context:
+                id: "api.account.keys.get"
+                version: "v1"
+                ts: "2026-04-07T10:00:00Z"
+                msgId: "44444444-5555-6666-7777-888888888888"
+                developerToken: "fnt_..."
+                authorization: "Bearer eyJ..."
+              payload:
+                id: "0f8fad5b-d9cb-469f-a165-70867728950e"
       responses:
         '200':
-          description: "Key info."
+          description: "Key."
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ApiResponse_AccountKeyInfo' }
+        '400': { $ref: '#/components/responses/BadRequestError' }
         '401': { $ref: '#/components/responses/UnauthorizedError' }
         '403': { $ref: '#/components/responses/ForbiddenError' }
         '404': { $ref: '#/components/responses/NotFoundError' }
@@ -862,11 +812,10 @@ paths:
   /v1/account/keys/search:
     post:
       tags: [Account Keys]
-      summary: "List/search public keys for an account"
+      summary: "List the account's public keys"
       description: |
-        Returns the key references bound to the calling account from the unified
-        `key_references` store, optionally filtered by `type`/`status` and paginated
-        with `limit`/`offset`.
+        List the signed-in user's keys. Optionally filter by `type` and `status`, and page
+        the results with `pagination`. Requires a user session token.
       security:
         - developerToken: []
         - developerSignature: []
@@ -890,10 +839,11 @@ paths:
                 pagination: { limit: 20, offset: 0 }
       responses:
         '200':
-          description: "Key list."
+          description: "Keys."
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ApiResponse_AccountKeyList' }
+        '400': { $ref: '#/components/responses/BadRequestError' }
         '401': { $ref: '#/components/responses/UnauthorizedError' }
         '403': { $ref: '#/components/responses/ForbiddenError' }
         '429': { $ref: '#/components/responses/RateLimitedError' }
@@ -915,10 +865,10 @@ components:
         version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
-        transactionId: { type: string, format: uuid, nullable: true, description: "ID for async operations" }
-        developerToken: { type: string, example: "fnt_...", nullable: true, description: "B2B Developer API Key/Token" }
-        developerSignature: { type: string, example: "t=...,v1=...", nullable: true, description: "B2B Developer Signature (e.g., HMAC)" }
-        authorization: { type: string, example: "Bearer eyJ...", nullable: true, description: "End-user's session token." }
+        transactionId: { type: string, format: uuid, nullable: true, description: "ID for asynchronous operations." }
+        developerToken: { type: string, example: "fnt_...", nullable: true, description: "The calling application's developer token." }
+        developerSignature: { type: string, example: "t=...,v1=...", nullable: true, description: "Signature over the request (RFC 9421)." }
+        authorization: { type: string, example: "Bearer eyJ...", nullable: true, description: "End user's session token." }
     ResponseContext:
       type: object
       required: [id, version, ts, msgId, status]
@@ -938,7 +888,7 @@ components:
       required: [keyId, jws]
       properties:
         keyId: { type: string, format: uuid, example: "0f8fad5b-d9cb-469f-a165-70867728950e", description: "UUID of the registered key that produced the signature." }
-        jws: { type: string, example: "eyJ...", description: "End-user's JWS of the payload object." }
+        jws: { type: string, example: "eyJ...", description: "End user's JWS over the payload object." }
     ErrorPayload:
       type: object
       required: [code, message]
@@ -992,20 +942,20 @@ components:
 
     ApiResponse_Success: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { type: object, properties: { message: { type: string, example: "Signout successful" } } } } } ] }
 
-    # --- Account Keys (unified key_references store) ---
+    # --- Account Keys ---
     KeyRegistrationEntry:
       type: object
       required: [id, type, address, isPrimary, isDefault, status, createdAt, updatedAt]
-      description: "A key reference from the account's unified `key_references` store."
+      description: "A public key registered to the account."
       properties:
         id: { type: string, format: uuid }
-        name: { type: string, nullable: true, description: "Human-readable label; null for unnamed rows." }
-        type: { type: string, example: "ed25519", description: "Key type/algorithm." }
-        publicKeyHex: { type: string, nullable: true, example: "3f8a1c9d...", description: "Hex-encoded raw public key. Null for address-only (EVM) rows." }
+        name: { type: string, nullable: true, description: "Label for the key." }
+        type: { type: string, example: "ed25519", description: "Key algorithm." }
+        publicKeyHex: { type: string, nullable: true, example: "3f8a1c9d...", description: "Hex-encoded public key. Null when only a wallet address was registered." }
         address: { type: string, example: "0xAbC1230000000000000000000000000000000000" }
         isPrimary: { type: boolean, example: true }
         isDefault: { type: boolean, example: false }
-        did: { type: string, nullable: true, example: "did:key:z...", description: "Null for address-only rows (no pubkey → no DID)." }
+        did: { type: string, nullable: true, example: "did:key:z...", description: "Null when only a wallet address was registered." }
         status: { type: string, example: "active" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
@@ -1014,44 +964,43 @@ components:
       required: [type]
       additionalProperties: false
       description: |
-        Supply `type` plus **exactly one** of `publicKey` (hex- or base58-encoded
-        key) or `address` (the MetaMask/EVM exception, used when only the on-chain
-        wallet address is available, not the raw public key).
+        Supply `type` plus exactly one of `publicKey` or `address`. Use `address` for
+        wallets that expose only an on-chain address, such as MetaMask.
       oneOf:
         - required: [publicKey]
         - required: [address]
       properties:
-        type: { type: string, enum: [ed25519, secp256k1], example: "ed25519", description: "Key type/algorithm." }
-        publicKey: { type: string, description: "Hex- or base58-encoded public key (auto-detected). Supply for standard keys." }
-        address: { type: string, description: "On-chain wallet address. MetaMask/EVM exception, used when the raw public key is unavailable." }
-        name: { type: string, description: "Human-readable label for the key." }
+        type: { type: string, enum: [ed25519, secp256k1], example: "ed25519", description: "Key algorithm." }
+        publicKey: { type: string, description: "Hex- or base58-encoded public key." }
+        address: { type: string, description: "On-chain wallet address, when the public key is not available." }
+        name: { type: string, description: "Label for the key." }
         isPrimary: { type: boolean }
         isDefault: { type: boolean }
     RemoveKeyRequest:
       type: object
       additionalProperties: false
-      description: "Identify the key by **exactly one** of `id` (the key_references UUID) or `address` (the canonical family address)."
+      description: "Identify the key by exactly one of `id` or `address`."
       oneOf:
         - required: [id]
         - required: [address]
       properties:
-        id: { type: string, format: uuid, description: "Key reference UUID." }
-        address: { type: string, minLength: 1, description: "Canonical family address." }
+        id: { type: string, format: uuid }
+        address: { type: string, minLength: 1 }
     GetKeyRequest:
       type: object
       additionalProperties: false
-      description: "Identify the key by **exactly one** of `id` or `address`."
+      description: "Identify the key by exactly one of `id` or `address`."
       oneOf:
         - required: [id]
         - required: [address]
       properties:
-        id: { type: string, format: uuid, description: "Key reference UUID." }
-        address: { type: string, minLength: 1, description: "Canonical family address." }
+        id: { type: string, format: uuid }
+        address: { type: string, minLength: 1 }
     SearchKeysRequest:
       type: object
       additionalProperties: false
       properties:
-        type: { type: string, enum: [ed25519, secp256k1], description: "Filter by key type/algorithm." }
+        type: { type: string, enum: [ed25519, secp256k1], description: "Filter by key algorithm." }
         status: { type: string, description: "Filter by key status." }
         pagination:
           type: object
@@ -1085,38 +1034,32 @@ components:
       type: object
       required: [address, name, entityType]
       description: |
-        Email/mobile are NOT accepted here — they are taken from the JWT access token
-        (username claim) in the Authorization header, obtained via the OTP login flow.
+        The email or mobile is taken from the token in `context.authorization`, not from
+        this payload.
       properties:
         address: { type: string, example: "alice" }
         name: { type: string, example: "Alice Smith" }
         entityType: { type: string, enum: [PERSONAL, BUSINESS] }
-        signedRegisterNameEnvelope: { type: string, nullable: true, description: "Optional base64-encoded ULIP envelope the user signed with their Ed25519 key. When present, registration uses the envelope-driven asynchronous workflow path that registers the name at the central registry." }
-        reservationProof: { type: string, nullable: true, description: "JSON-serialized signed reservation proof from the registry (ADR-007 OTP-first). When present, units-api verifies the registrar signature and creates the account directly." }
-        homeInstance: { type: string, nullable: true, description: "Accepted for forward-compatibility but currently IGNORED. The receiving instance is always the home." }
+        signedRegisterNameEnvelope: { type: string, nullable: true, description: "Optional base64-encoded envelope, signed by the user's Ed25519 key, authorising registration of the address in the federation." }
+        reservationProof: { type: string, nullable: true, description: "Optional signed proof that the address was already reserved for this user." }
+        homeInstance: { type: string, nullable: true, description: "Accepted for forward compatibility and currently ignored; the receiving instance is always the home instance." }
     UpdateAccountRequest:
       type: object
       required: [action, data]
-      description: |
-        Public facade for the profile-update workflow. `action` discriminates the operation:
-        workflow steps (`initiate`, `verify_*`) are dispatched to the workflow executor and
-        the per-action `data` is validated downstream against the registered workflow schema;
-        `cancel` cancels the workflow and requires `data.workflowId`.
       properties:
         action:
           type: string
           enum: [initiate, verify_current_ownership, verify_new_email, verify_new_mobile, cancel]
-          description: "Workflow step or control-plane operation."
         data:
           type: object
-          description: "For workflow steps: action-specific data validated dynamically against the workflow registry schema. For `cancel`: must include `workflowId`."
+          description: |
+            Fields for the chosen action. `initiate` accepts any of `name`, `email` and
+            `mobile`. The `verify_*` actions require `workflowId`, `recipient` and `otp`.
+            `cancel` requires `workflowId`.
     CreateAccountResponse:
       type: object
       required: [accessToken, tokenType, expiresIn]
-      description: |
-        Registration completes synchronously to its COMMITTED verdict and mints a Keycloak
-        session token via token exchange. The response carries that token, so the client is
-        logged in immediately — no follow-up `/v1/account/login` is required.
+      description: "Session token for the new account, so no separate login call is needed."
       properties:
         accessToken: { type: string, example: "eyJ..." }
         tokenType: { type: string, example: "Bearer" }
@@ -1130,29 +1073,14 @@ components:
       type: object
       required: [address]
       properties:
-        address: { type: string, example: "alice", description: "The address to resolve (e.g., alice)" }
+        address: { type: string, example: "alice", description: "The address to resolve." }
     LoginRequest:
       type: object
       required: [username]
-      description: |
-        Login payload. Two supported flows:
-
-        1. **OTP login** — omit `authToken`. Send request without `otp` to
-           receive an OTP on the registered email/mobile. Send again with `otp` populated
-           to receive a JWT access token.
-
-        2. **SSO login** — supply `authToken` (a BFF-signed Ed25519 JWT). UNITS does not
-           call the OTP service; it verifies the BFF's signature. The app backend/BFF
-           verifies the external IdP (NextAuth — Google, Microsoft, etc.), signs the
-           authToken, and returns the final session JWT to the end user. On the first SSO
-           call for a brand-new user, UNITS returns HTTP 404 — the app backend drives the
-           registration flow before issuing a JWT.
-
-        Password-based login has been removed as of release 2026.04.07.
       properties:
-        username: { type: string, example: "alice", description: "Finternet address, email, or mobile number" }
-        otp: { type: string, example: "1234", nullable: true, description: "One-time password for verification. Only used for OTP flow." }
-        authToken: { type: string, minLength: 1, description: "BFF-signed Ed25519 authToken JWT. Supply (instead of otp) to complete an SSO login without OTP; UNITS verifies the BFF key." }
+        username: { type: string, example: "alice", description: "Finternet address, email or mobile number." }
+        otp: { type: string, example: "1234", nullable: true, description: "The one-time code. OTP flow only." }
+        authToken: { type: string, minLength: 1, description: "A JWT signed by your backend. Supply instead of `otp` to log in without a code." }
     AvailabilityResponse:
       type: object
       properties:
@@ -1175,24 +1103,25 @@ components:
         status: { type: string, example: "active" }
         controllers:
           type: array
-          description: "Array of DIDs for key controllers."
+          description: "DIDs of the account's key controllers."
           items: { type: string }
-        vaultEntityID: { type: string, example: "b50db0e7d5f76bfefcbf7f45ae7683e106f221b9a6d34036284ad749c761422b" }
-        homeInstance: { type: string, nullable: true, description: "Federation home-instance UUID the account is bound to. Empty for non-federation accounts." }
+        vaultEntityID: { type: string }
+        homeInstance: { type: string, nullable: true, description: "The federated instance the account belongs to. Empty when the account is not federated." }
         createdAt: { type: string, format: date-time }
         pii:
           type: object
           nullable: true
+          description: "Masked and encrypted forms of the account's contact details. Pass an encrypted value to `/v1/account/pii/decrypt` to read it."
           properties:
             address_encrypted: { type: string }
             address_masked: { type: string }
-            email_encrypted: { type: string, example: "vault:v1:v90bM0LC7ugYyIEoC1Mry+Xu7p9AndTvYsIGe1gsHI54kut2oxWViXVOHd5w" }
+            email_encrypted: { type: string }
             email_masked: { type: string, example: "u***@example.com" }
-            mobile_encrypted: { type: string, example: "vault:v1:LMliIQx/Urho2xrAidounWtzDT01P1lmA+l+bisgefLervcpdJhdhdc=" }
+            mobile_encrypted: { type: string }
             mobile_masked: { type: string, example: "+9***3210" }
         consents:
           type: array
-          description: "Per-document consent status so the app can prompt for outstanding Terms agreements."
+          description: "Consent status per document, so the application can prompt for outstanding Terms agreements."
           items:
             type: object
             required: [docType, currentVersion, consentRequired]
@@ -1202,7 +1131,7 @@ components:
               acceptedVersion: { type: integer, nullable: true, example: 2 }
               consentRequired: { type: boolean, example: true }
 
-    # --- OTP & PII (authenticated user) ---
+    # --- OTP and profile values ---
     OTPVerifyRequest:
       type: object
       properties:
@@ -1210,7 +1139,7 @@ components:
           type: string
           pattern: '^\d{6}$'
           example: "123456"
-          description: "6-digit OTP code."
+          description: "The 6-digit code."
     DecryptPIIRequest:
       type: object
       required: [ciphertext]
@@ -1218,8 +1147,7 @@ components:
         ciphertext:
           type: string
           minLength: 1
-          example: "vault:v1:v90bM0LC7ugYyIEoC1Mry+Xu7p9AndTvYsIGe1gsHI54kut2oxWViXVOHd5w"
-          description: "A Vault transit ciphertext that belongs to the caller's account (one of pii.*_encrypted)."
+          description: "One of the caller's own `pii.*_encrypted` values."
     OTPGenerateResponse:
       type: object
       required: [success, message, data]
@@ -1230,7 +1158,7 @@ components:
           type: object
           properties:
             status: { type: string, example: "pending" }
-            to: { type: string, example: "alice@example.com", description: "Recipient the OTP was sent to, as reported by the OTP service (email or mobile)." }
+            to: { type: string, example: "alice@example.com", description: "Where the code was sent." }
             channel: { type: string, enum: [email, sms], example: "email" }
     OTPVerifyResponse:
       type: object
@@ -1246,7 +1174,6 @@ components:
             valid: { type: boolean, example: true }
             jwt:
               nullable: true
-              description: "Present only when the underlying OTP service returns a token."
               allOf:
                 - $ref: '#/components/schemas/OTPJWTData'
     OTPJWTData:
@@ -1260,33 +1187,25 @@ components:
       type: object
       required: [plaintext]
       properties:
-        plaintext: { type: string, example: "alice@example.com", description: "The decrypted PII value." }
+        plaintext: { type: string, example: "alice@example.com", description: "The decrypted value." }
 
   # -------------------- Responses --------------------
   responses:
     UnauthorizedError:
-      description: "Authentication failed. Can be invalid Developer Token OR invalid User JWT."
+      description: "Authentication failed. The developer token or the user session token is missing, invalid or expired."
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "UNAUTHORIZED", message: "Token invalid or expired." } }
-            response: {}
-    UnauthorizedDeveloperError:
-      description: "Developer authentication failed (HTTP 401)."
-      content:
-        application/json:
-          schema: { $ref: '#/components/schemas/ApiError' }
-          example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "UNAUTHORIZED", message: "Invalid developer token." } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "UNAUTHORIZED", message: "Token invalid or expired." } }
             response: {}
     ForbiddenError:
-      description: "Forbidden. Insufficient permissions."
+      description: "The caller does not have the scope required by this endpoint."
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "FORBIDDEN", message: "Insufficient permissions to perform this action." } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "CLIENT_INSUFFICIENT_SCOPE", message: "service account does not have required scope: accounts:view" } }
             response: {}
     NotFoundError:
       description: "Resource not found."
@@ -1294,7 +1213,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "The requested resource was not found." } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "The requested resource was not found." } }
             response: {}
     BadRequestError:
       description: "Invalid request."
@@ -1302,20 +1221,18 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "INVALID_INPUT", message: "Invalid request parameters." } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "INVALID_INPUT", message: "Invalid request parameters." } }
             response: {}
     ConflictError:
-      description: "Conflict with existing resource."
+      description: "The address is already registered."
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "CONFLICT", message: "An account with this identifier already exists." } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "RESOURCE_ALREADY_EXISTS", message: "This address is already registered in the federation; sign in instead" } }
             response: {}
     RateLimitedError:
-      description: |
-        Request exceeded the scope-tier sliding-window rate limit. The `Retry-After`
-        response header indicates how long the caller should wait before retrying.
+      description: "Too many requests. The `Retry-After` header gives the number of seconds to wait before retrying."
       headers:
         Retry-After:
           schema: { type: integer, description: "Seconds to wait before retrying." }
@@ -1323,33 +1240,24 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "TOO_MANY_REQUESTS", message: "Too many requests. Retry after 30s." } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "TOO_MANY_REQUESTS", message: "Too many requests. Retry after 30s." } }
             response: {}
 
   # -------------------- Security --------------------
   securitySchemes:
-    # This section is for documentation purposes.
-    # The server will check for the HTTP header first and fallbacks to context in case the headers are missing.
-
-    # 1. The Developer's Identity Token (Who they are)
     developerToken:
       type: http
       scheme: bearer
       bearerFormat: "JWT or Opaque"
-      description: |
-        A JWT or Opaque token that identifies the calling B2B developer/backend service.
+      description: "Token identifying the calling application, sent as `context.developerToken`."
 
-    # 2. The Developer's Request Signature (What they're attesting to)
     developerSignature:
       type: apiKey
       in: header
       name: Signature
       description: |
-        The IETF HTTP Signature (RFC 9421) used by B2B developers to ensure message
-        integrity and non-repudiation. This is passed in the `Signature` header.
+        Optional request signature (RFC 9421) for message integrity and non-repudiation,
+        sent in the `Signature` header.
 
-        Example Format:
+        Format:
         Signature keyId="...",algorithm="...",created="...",expires="...",headers="...",signature="..."
-
-        Example Value:
-        Signature keyId="fcd8c50d-edf0-49f0-b322-4b9bc2bc6218",algorithm="ed25519",created="1760443594",expires="1760447194",headers="(created) (expires) digest",signature="enGs3APIGK7PFRbefP1hMQe/iPjBAwc6R4wjmcysafnEAK5q9/+aKr0Ohc4J6w4XexD1nLgnmSy21yTYDRkSDw=="'

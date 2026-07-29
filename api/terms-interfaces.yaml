@@ -6,56 +6,28 @@ info:
     These endpoints publish, serve, and record end-user agreement to versioned
     legal documents (Terms of Use, Privacy Policy, etc.).
 
-    ### Protocol-Agnostic Envelope
-    All API interactions use a standard JSON envelope.
+    ### Envelope
 
-    **Request Envelope:**
-    ```json
-    {
-      "context": { ... },
-      "payload": { ... },
-      "signature": { ... } // Optional
-    }
-    ```
+    All endpoints use the standard envelope (`context`/`payload` → `context`/`response`).
+    On failure `context.status` is `failed`, `context.error` carries a `code` and a
+    `message`, and `response` is empty.
 
-    **Response Envelope (Success):**
-    ```json
-    {
-      "context": { ..., "status": "successful" },
-      "response": { ... }
-    }
-    ```
+    ### Authentication
 
-    **Response Envelope (Error):**
-    ```json
-    {
-      "context": { ..., "status": "failed", "error": {"code": "...", "message": "..." },
-      "response": {} // Empty on error
-    }
-    ```
-    (Error details are in the context.error object)
+    * `context.developerToken`: the calling application's developer token. Required on
+      every endpoint.
+    * `context.developerSignature`: optional request signature (RFC 9421), sent in the
+      `Signature` header.
+    * `context.authorization`: the end user's session token, required by the endpoints
+      that act on a signed-in user. Each operation states when it is needed.
 
-    ### Authentication and Authorization
-    This API uses a two-level authorization model contained within the `context`:
+    ### Per-endpoint requirements
 
-    1.  **Platform-Level (Developer) Authentication:**
-        * `context.developerToken`: The B2B Developer's API Key/Token.
-        * `context.developerSignature`: The B2B Developer's signature (e.g., RFC 9421) of the payload.
-
-    2.  **User-Level (End-User) Authorization:**
-        * `context.authorization`: The end-user's JWT session token (for session-based calls).
-        * `signature` (top-level): The end-user's JWS for critical, cryptographically-signed operations.
-
-    *Note for HTTP Clients:* As a convenience, the `developerToken` may be provided in the standard `Authorization: Bearer <token>` HTTP header, and the `developerSignature` in an `X-Finternet-Signature` header. The server will check the headers first, then fall back to the `context` object.
-
-    ### Per-endpoint authentication
-
-    * `POST /v1/terms/get` — Developer auth only. **No end-user JWT** is required: the
-      document must be readable during onboarding, before the user has a session.
-    * `POST /v1/terms/accept` — Developer auth **plus** an end-user JWT
-      (`context.authorization`). Consent is recorded against the authenticated account.
-    * `POST /v1/terms/publish` — Developer auth only, admin-gated via a protected scope.
-      **No end-user JWT** is required.
+    * `POST /v1/terms/get`: no user session token, so the document can be read during
+      onboarding before the user has a session.
+    * `POST /v1/terms/accept`: requires a user session token. Consent is recorded against
+      that user.
+    * `POST /v1/terms/publish`: no user session token; restricted to administrators.
 
     ### RBAC Scopes
 
@@ -63,14 +35,15 @@ info:
     |----------|----------------|
     | `POST /v1/terms/get` | `terms:view` |
     | `POST /v1/terms/accept` | `terms:create` |
-    | `POST /v1/terms/publish` | `terms:manage` *(protected — admin-only; granted via the scope-approval workflow at client registration)* |
+    | `POST /v1/terms/publish` | `terms:manage` *(administrators only)* |
 
-    Calls failing the scope check return `403 FORBIDDEN`.
+    Calls failing the scope check return `403`.
 
     ### Rate limiting
 
-    All endpoints are protected by a scope-tier sliding-window rate limiter; on
-    breach the response is `429 Too Many Requests` with a `Retry-After` header.
+    Every request is rate limited. Requests over the limit return `429 Too Many Requests`
+    with a `Retry-After` header giving the number of seconds to wait. The limit depends on
+    the tier assigned to the calling client.
   version: "1.0.0"
 servers:
   - url: "https://foundry.finternetlab.io"
@@ -95,8 +68,8 @@ paths:
         Returns the current published version (with content) of a Terms document.
         The `docType` selects which document; omitting it returns the default document.
 
-        Requires Developer auth only — **no end-user JWT is required**, so the document
-        can be fetched during onboarding before the user has a session.
+        No user session token is required, so the document can be fetched during onboarding
+        before the user has a session.
       security:
         - developerToken: []
         - developerSignature: []
@@ -155,12 +128,11 @@ paths:
       summary: "Record consent to a Terms version"
       description: |
         Records the authenticated user's agreement to a specific version of a Terms
-        document. `versionId` must be the version the user actually saw — if a newer
+        document. `versionId` must be the version the user actually saw. If a newer
         version has since been published, the accept is rejected (409) so the user
         re-reads it.
 
-        Requires Developer auth **plus** an end-user JWT (`context.authorization`);
-        the consent is recorded against the authenticated account.
+        Requires a user session token. The consent is recorded against that user.
       security:
         - developerToken: []
         - developerSignature: []
@@ -233,7 +205,7 @@ paths:
         `terms:manage` scope, which is granted through the scope-approval workflow at
         client registration.
 
-        Requires Developer auth only — **no end-user JWT is required**.
+        No user session token is required.
         `requiresReconsent` defaults to `true` when omitted (treated as a material change).
       security:
         - developerToken: []
@@ -420,7 +392,7 @@ components:
   # -------------------- Responses --------------------
   responses:
     UnauthorizedError:
-      description: "Authentication failed. Can be invalid Developer Token OR invalid User JWT."
+      description: "Authentication failed. The developer token or the user session token is missing, invalid or expired."
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
@@ -428,12 +400,12 @@ components:
             context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "UNAUTHORIZED", message: "Token invalid or expired." } }
             response: {}
     ForbiddenError:
-      description: "Forbidden. Insufficient permissions (missing required scope)."
+      description: "The caller does not have the scope required by this endpoint."
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "FORBIDDEN", message: "Insufficient permissions to perform this action." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "CLIENT_INSUFFICIENT_SCOPE", message: "service account does not have required scope" } }
             response: {}
     NotFoundError:
       description: "Resource not found."
@@ -452,9 +424,7 @@ components:
             context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "INVALID_INPUT", message: "Invalid request parameters." } }
             response: {}
     RateLimitedError:
-      description: |
-        Request exceeded the scope-tier sliding-window rate limit. The `Retry-After`
-        response header indicates how long the caller should wait before retrying.
+      description: "Too many requests. The `Retry-After` header gives the number of seconds to wait before retrying."
       headers:
         Retry-After:
           schema: { type: integer, description: "Seconds to wait before retrying." }
