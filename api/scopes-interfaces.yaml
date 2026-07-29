@@ -11,20 +11,50 @@ info:
     - **Scope approvals** (`/v1/scope-approvals`): admin-facing listing of pending
       (or otherwise-filtered) scope-approval entries, grouped by API client.
 
-    ### Envelope
+    ### Protocol-Agnostic Envelope
+    All API interactions use a standard JSON envelope.
 
-    All endpoints use the standard envelope (`context`/`payload` → `context`/`response`).
-    On failure `context.status` is `failed`, `context.error` carries a `code` and a
-    `message`, and `response` is empty.
+    **Request Envelope:**
+    ```json
+    {
+      "context": { ... },
+      "payload": { ... },
+      "signature": { ... } // Optional
+    }
+    ```
 
-    ### Authentication
+    **Response Envelope (Success):**
+    ```json
+    {
+      "context": { ..., "status": "successful" },
+      "response": { ... }
+    }
+    ```
 
-    * `context.developerToken`: the calling application's developer token. Required on
-      every endpoint.
-    * `context.developerSignature`: optional request signature (RFC 9421), sent in the
-      `Signature` header.
-    * `context.authorization`: the end user's session token, required by the endpoints
-      that act on a signed-in user. Each operation states when it is needed.
+    **Response Envelope (Error):**
+    ```json
+    {
+      "context": { ..., "status": "failed", "error": {"code": "...", "message": "..." },
+      "response": {} // Empty on error
+    }
+    ```
+    (Error details are in the context.error object)
+
+    ### Authentication and Authorization
+    This API uses a two-level authorization model contained within the `context`:
+
+    1.  **Platform-Level (Developer) Authentication:**
+        * `context.developerToken`: The B2B Developer's API Key/Token.
+        * `context.developerSignature`: The B2B Developer's signature (e.g., RFC 9421) of the payload.
+
+    2.  **User-Level (End-User) Authorization:**
+        * `context.authorization`: The end-user's JWT session token (for session-based calls).
+        * `signature` (top-level): The end-user's JWS for critical, cryptographically-signed operations.
+
+    *Note for HTTP Clients:* As a convenience, the `developerToken` may be provided in the standard `Authorization: Bearer <token>` HTTP header, and the `developerSignature` in an `X-Finternet-Signature` header. The server will check the headers first, then fall back to the `context` object.
+
+    All endpoints in this service require **both** developer authentication and a
+    valid end-user session token.
 
     ### RBAC Scopes
 
@@ -32,17 +62,18 @@ info:
     |----------|----------------|
     | `POST /v1/scopes/search` | `scopes:view` |
     | `POST /v1/scopes/apis/search` | `scopes:view` |
-    | `POST /v1/scope-approvals/` | *(scope check applies; see the note below)* |
+    | `POST /v1/scope-approvals/` | *(scope check applies; specific scope key not fixed in source; see note)* |
 
-    Calls failing the scope check return `403`. The scope-approvals list is additionally
-    narrowed by caller role: super admins see all clients, owners see their clients'
-    entries, and other callers see only their own.
+    Scope keys are resolved from the server-side `scope_api` mapping table. Calls
+    failing the scope check return `403 FORBIDDEN`. The scope-approvals
+    list is additionally narrowed server-side by caller role: super admins see
+    all clients, owners see their clients' entries, and other callers see only
+    their own.
 
     ### Rate limiting
 
-    Every request is rate limited. Requests over the limit return `429 Too Many Requests`
-    with a `Retry-After` header giving the number of seconds to wait. The limit depends on
-    the tier assigned to the calling client.
+    All endpoints are protected by a scope-tier sliding-window rate limiter; on
+    breach the response is `429 Too Many Requests` with a `Retry-After` header.
   version: "1.0.0"
 servers:
   - url: "https://foundry.finternetlab.io"
@@ -68,7 +99,9 @@ paths:
       tags: [Scopes]
       summary: "Search scopes catalogue"
       description: |
-        Returns a paginated list of scope entities × actions. Requires a user session token.
+        Returns a paginated list of scope entities × actions. Requires developer
+        authentication and a valid end-user session token, plus the `scopes:view`
+        scope.
       operationId: searchScopes
       security:
         - developerToken: []
@@ -122,7 +155,8 @@ paths:
       summary: "Search scope-to-API mappings"
       description: |
         Returns a paginated list of `(api_id -> scope_key)` mappings that drive
-        per-endpoint authorization. Requires a user session token.
+        per-endpoint authorization. Requires developer authentication and a valid
+        end-user session token, plus the `scopes:view` scope.
       operationId: searchScopeAPIs
       security:
         - developerToken: []
@@ -178,7 +212,8 @@ paths:
         Returns one row per client with at least one scope matching the requested
         status (defaults to `pending`). Results are narrowed server-side by caller
         role: super admins see all clients, owners see their clients' entries, and
-        other callers see only their own. Requires a user session token.
+        other callers see only their own. Requires developer authentication and a
+        valid end-user session token.
       operationId: listScopeApprovals
       security:
         - developerToken: []
@@ -523,7 +558,7 @@ components:
   # -------------------- Responses --------------------
   responses:
     UnauthorizedError:
-      description: "Authentication failed. The developer token or the user session token is missing, invalid or expired."
+      description: "Authentication failed. Can be invalid Developer Token OR invalid User JWT."
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
@@ -531,12 +566,12 @@ components:
             context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "UNAUTHORIZED", message: "Token invalid or expired." } }
             response: {}
     ForbiddenError:
-      description: "The caller does not have the scope required by this endpoint."
+      description: "Forbidden. Insufficient permissions (scope check failed)."
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "CLIENT_INSUFFICIENT_SCOPE", message: "service account does not have required scope" } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "FORBIDDEN", message: "Insufficient permissions to perform this action." } }
             response: {}
     BadRequestError:
       description: "Invalid request."
@@ -547,7 +582,9 @@ components:
             context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "INVALID_INPUT", message: "Invalid request parameters." } }
             response: {}
     RateLimitedError:
-      description: "Too many requests. The `Retry-After` header gives the number of seconds to wait before retrying."
+      description: |
+        Request exceeded the scope-tier sliding-window rate limit. The `Retry-After`
+        response header indicates how long the caller should wait before retrying.
       headers:
         Retry-After:
           schema: { type: integer, description: "Seconds to wait before retrying." }

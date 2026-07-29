@@ -7,9 +7,9 @@ info:
     An **API client** represents a developer or application that integrates with the
     Finternet platform. Each client:
 
-    - Gets a `clientSecret` and an initial `developerToken` on registration, returned
-      **once**. The plaintext secret is not recoverable and must be captured by the
-      caller. Use `/v1/clients/rotate-secret` to roll it.
+    - Is backed by a Keycloak client. Registration returns the `clientSecret` and an
+      initial `developerToken` **once**. The plaintext secret is not recoverable and
+      must be captured by the caller. Use `/v1/clients/rotate-secret` to roll it.
     - Is granted a set of **scopes** (see the RBAC vocabulary under
       `#/components/schemas/Scope`). Scopes are enforced on every endpoint; calls with
       an insufficient scope return `403 FORBIDDEN`. Scopes are managed via
@@ -21,9 +21,10 @@ info:
 
     ### Rate limiting
 
-    Every request is rate limited. Requests over the limit return `429 Too Many Requests`
-    with a `Retry-After` header giving the number of seconds to wait. The limit depends on
-    the tier assigned to the calling client.
+    Every request is passed through a scope-tier sliding-window rate limiter. When the
+    limit is exceeded the service responds with `429 Too Many Requests` and a
+    `Retry-After` header indicating when the caller may retry.
+
   version: "1.0.0"
 
 servers:
@@ -45,9 +46,9 @@ paths:
       tags: [API Clients]
       summary: "Register a new API client"
       description: |
-        Create a new API client. Returns the `clientSecret` and an initial
-        `developerToken` **once**. Capture them now; the plaintext secret cannot be
-        recovered.
+        Create a new API client backed by a Keycloak client. Returns the
+        `clientSecret` and an initial `developerToken` **once**. Capture them now;
+        the plaintext secret cannot be recovered.
       security:
         - developerToken: []
         - developerSignature: []
@@ -475,7 +476,7 @@ components:
           description: "Free-form identity metadata associated with the client (structure is service-defined)."
         status: { $ref: '#/components/schemas/ClientStatus' }
         isSuperAdmin: { type: boolean }
-        keycloakClientId: { type: string, description: "Identifier of the client in the underlying identity provider." }
+        keycloakClientId: { type: string, description: "The backing Keycloak client identifier." }
         creator:
           allOf:
             - $ref: '#/components/schemas/ClientCreatorRef'
@@ -492,7 +493,7 @@ components:
         plaintext credentials, returned **only on this response**.
       properties:
         clientId: { type: string, format: uuid }
-        keycloakClientId: { type: string, description: "Identifier of the client in the underlying identity provider." }
+        keycloakClientId: { type: string, description: "The backing Keycloak client identifier." }
         clientSecret:
           type: string
           description: "Plaintext client secret. Returned **only on creation** and unrecoverable thereafter."
@@ -609,7 +610,7 @@ components:
         new plaintext credentials, returned **only on this response**.
       properties:
         clientId: { type: string, format: uuid }
-        keycloakClientId: { type: string, description: "Identifier of the client in the underlying identity provider." }
+        keycloakClientId: { type: string, description: "The backing Keycloak client identifier." }
         clientSecret:
           type: string
           description: "New plaintext client secret. Returned **only on this response** and unrecoverable thereafter."
@@ -680,7 +681,7 @@ components:
 
   responses:
     UnauthorizedError:
-      description: "Authentication failed. The developer token or the user session token is missing, invalid or expired."
+      description: "Authentication failed."
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
@@ -688,12 +689,12 @@ components:
             context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "UNAUTHORIZED", message: "Token invalid or expired." } }
             response: {}
     ForbiddenError:
-      description: "The caller does not have the scope required by this endpoint."
+      description: "Scope check failed. The caller's developer token does not carry a scope required by this endpoint."
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "CLIENT_INSUFFICIENT_SCOPE", message: "service account does not have required scope" } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "FORBIDDEN", message: "Missing required scope: clients:create" } }
             response: {}
     NotFoundError:
       description: "Resource not found."
@@ -712,7 +713,9 @@ components:
             context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "INVALID_INPUT", message: "Invalid request parameters." } }
             response: {}
     RateLimitedError:
-      description: "Too many requests. The `Retry-After` header gives the number of seconds to wait before retrying."
+      description: |
+        Request exceeded the scope-tier sliding-window rate limit. The `Retry-After`
+        response header indicates how long the caller should wait before retrying.
       headers:
         Retry-After:
           schema: { type: integer, description: "Seconds to wait before retrying." }

@@ -7,20 +7,47 @@ info:
     This API enables creation, management, and lifecycle operations for universal tokens
     following the UNITS Token Specification.
 
-    ### Envelope
+    ### Protocol-Agnostic Envelope
+    All API interactions use a standard JSON envelope.
 
-    All endpoints use the standard envelope (`context`/`payload` → `context`/`response`).
-    On failure `context.status` is `failed`, `context.error` carries a `code` and a
-    `message`, and `response` is empty.
+    **Request Envelope:**
+    ```json
+    {
+      "context": { ... },
+      "payload": { ... },
+      "signature": { ... } // Optional
+    }
+    ```
 
-    ### Authentication
+    **Response Envelope (Success):**
+    ```json
+    {
+      "context": { ..., "status": "successful" },
+      "response": { ... }
+    }
+    ```
 
-    * `context.developerToken`: the calling application's developer token. Required on
-      every endpoint.
-    * `context.developerSignature`: optional request signature (RFC 9421), sent in the
-      `Signature` header.
-    * `context.authorization`: the end user's session token, required by the endpoints
-      that act on a signed-in user. Each operation states when it is needed.
+    **Response Envelope (Error):**
+    ```json
+    {
+      "context": { ..., "status": "failed", "error": {"code": "...", "message": "..." }},
+      "response": {} // Empty on error
+    }
+    ```
+    (Error details are in the context.error object)
+
+    ### Authentication and Authorization
+    This API uses the same two-level authorization model as the Account service:
+
+    1.  **Platform-Level (Developer) Authentication:**
+        * `context.developerToken`: The B2B Developer's API Key/Token.
+        * `context.developerSignature`: The B2B Developer's signature (e.g., RFC 9421) of the payload.
+
+    2.  **User-Level (End-User) Authorization:**
+        * `context.authorization`: The end-user's JWT session token (for session-based calls).
+        * `signature` (top-level): The end-user's JWS for critical, cryptographically-signed operations.
+
+    *Note for HTTP Clients:* As a convenience, the `developerToken` may be provided in the standard `Authorization: Bearer <token>` HTTP header, and the `developerSignature` in an `X-Finternet-Signature` header.
 
     ### RBAC Scopes
 
@@ -50,9 +77,10 @@ info:
 
     ### Rate limiting
 
-    Every request is rate limited. Requests over the limit return `429 Too Many Requests`
-    with a `Retry-After` header giving the number of seconds to wait. The limit depends on
-    the tier assigned to the calling client.
+    All endpoints are protected by a scope-tier sliding-window rate limiter. When the
+    limit is exceeded the service responds with `429 Too Many Requests` and a
+    `Retry-After` header indicating when the caller may retry. The shared
+    `RateLimitedError` response component documents the body shape.
   version: "1.0.0"
 servers:
   - url: "https://foundry.finternetlab.io"
@@ -424,8 +452,6 @@ paths:
           $ref: '#/components/responses/ForbiddenError'
         '409':
           description: "Token class already exists"
-        '429':
-          $ref: '#/components/responses/RateLimitedError'
 
   /v1/registry/tokenclasses/update:
     post:
@@ -475,8 +501,6 @@ paths:
           $ref: '#/components/responses/ForbiddenError'
         '404':
           $ref: '#/components/responses/NotFoundError'
-        '429':
-          $ref: '#/components/responses/RateLimitedError'
 
   /v1/registry/tokenclasses/get:
     post:
@@ -549,10 +573,6 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '429':
-          $ref: '#/components/responses/RateLimitedError'
 
   /v1/registry/tokenclasses/search:
     post:
@@ -663,10 +683,6 @@ paths:
                     offset: 0
         '401':
           $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '429':
-          $ref: '#/components/responses/RateLimitedError'
 
   # -------------------- Token --------------------
   /v1/token/get:
@@ -674,7 +690,7 @@ paths:
       tags:
         - "Token"
       summary: "Get token details"
-      description: "Retrieves detailed information about a specific token by its ID. Requires a user session token."
+      description: "Retrieves detailed information about a specific token by its ID. Requires Developer and User auth."
       security:
         - developerToken: []
         - userToken: []
@@ -786,10 +802,6 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '429':
-          $ref: '#/components/responses/RateLimitedError'
 
   /v1/token/mint:
     post:
@@ -977,15 +989,13 @@ paths:
           $ref: '#/components/responses/UnauthorizedError'
         '403':
           $ref: '#/components/responses/ForbiddenError'
-        '429':
-          $ref: '#/components/responses/RateLimitedError'
 
   /v1/token/search:
     post:
       tags:
         - "Token"
       summary: "Search tokens"
-      description: "Search tokens with filters (type, status, and so on). Results are limited to the tokens the caller may see. Supports pagination."
+      description: "Search tokens with filters (type, status, etc.). Owner filtering inferred from JWT/ACL. Supports pagination. Requires Developer auth."
       security:
         - developerToken: []
         - developerSignature: []
@@ -1107,10 +1117,6 @@ paths:
                         offset: 0
         '401':
           $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '429':
-          $ref: '#/components/responses/RateLimitedError'
 
   /v1/token/transact:
     post:
@@ -1121,19 +1127,20 @@ paths:
         Unified endpoint for all token write operations. The operation is specified in the payload.
 
         **Supported Operations:**
-        - `burn`: burn or destroy the token (terminal state)
-        - `freeze`: freeze the token (compliance or regulatory hold)
-        - `unfreeze`: unfreeze the token
-        - `lock`: lock the token (for escrow or collateral)
-        - `unlock`: unlock the token
-        - `redeem`: redeem the token (for redeemable assets)
-        - `transfer`: transfer ownership of the token
-        - `update`: update the token's data or metadata fields
+        - `burn` - Burn/destroy token (terminal state)
+        - `freeze` - Freeze token (compliance/regulatory hold)
+        - `unfreeze` - Unfreeze token
+        - `lock` - Lock token (for escrow/collateral)
+        - `unlock` - Unlock token
+        - `redeem` - Redeem token (for redeemable assets)
+        - `transfer` - Transfer token ownership
+        - `update` - Update token data or metadata fields
 
         **Note:** `mint` operation has a dedicated `/v1/token/mint` endpoint with separate ACL controls.
 
-        **Signature required:** a top-level end user `signature` over the payload is mandatory
-        for every transact operation. A request without a valid `signature` is rejected.
+        **Signature required:** a top-level end-user payload `signature` is mandatory for
+        every transact operation. units-api enforces this via a `RequireSignature`
+        middleware on this route; a request without a valid `signature` is rejected.
       security:
         - developerToken: []
         - developerSignature: []
@@ -1412,8 +1419,6 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '409':
           $ref: '#/components/responses/ConflictError'
-        '429':
-          $ref: '#/components/responses/RateLimitedError'
 
   # -------------------- Transaction APIs --------------------
   /v1/transaction/status:
@@ -1515,10 +1520,6 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '429':
-          $ref: '#/components/responses/RateLimitedError'
 
   /v1/transaction/get:
     post:
@@ -1560,10 +1561,6 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '429':
-          $ref: '#/components/responses/RateLimitedError'
 
   /v1/transaction/search:
     post:
@@ -1611,10 +1608,6 @@ paths:
                 $ref: '#/components/schemas/ApiResponse_TransactionList'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '429':
-          $ref: '#/components/responses/RateLimitedError'
 
   /v1/transactions/status:
     post:
@@ -1689,8 +1682,6 @@ paths:
           $ref: '#/components/responses/ForbiddenError'
         '404':
           $ref: '#/components/responses/NotFoundError'
-        '429':
-          $ref: '#/components/responses/RateLimitedError'
 
   /v1/token/transactions:
     post:
@@ -1737,10 +1728,6 @@ paths:
                 $ref: '#/components/schemas/ApiResponse_TokenTransactionList'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '429':
-          $ref: '#/components/responses/RateLimitedError'
 
   /v1/token/add:
     post:
@@ -1847,10 +1834,6 @@ paths:
           $ref: '#/components/responses/NotFoundError'
         '409':
           $ref: '#/components/responses/ConflictError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '429':
-          $ref: '#/components/responses/RateLimitedError'
 
   # -------------------- Proof APIs --------------------
   /v1/transaction/proof:
@@ -1867,7 +1850,7 @@ paths:
         - `proven`: Merkle proof generated
         - `anchored`: proof anchored to a public ledger, fully verifiable
 
-        Requires a user session token.
+        Requires Developer + User auth.
       security:
         - developerToken: []
         - userToken: []
@@ -1958,7 +1941,7 @@ paths:
         Merkle tree. Enables independent verification: fetch this data, hash it, and
         confirm it matches the `leafHash` returned by `/v1/transaction/proof`.
 
-        Requires a user session token.
+        Requires Developer + User auth.
       security:
         - developerToken: []
         - userToken: []
@@ -2030,7 +2013,7 @@ paths:
         For trustless verification, clients should verify independently using the data
         from `/v1/transaction/proof` and `/v1/transaction/proof/leaf`.
 
-        Requires a user session token.
+        Requires Developer + User auth.
       security:
         - developerToken: []
         - userToken: []
@@ -2103,7 +2086,7 @@ paths:
                       valid: false
                       leafHashValid: false
                       proofPathValid: true
-                      message: "Leaf hash mismatch; the transaction data may have been modified."
+                      message: "Leaf hash mismatch; transaction data may have been modified."
         '400':
           $ref: '#/components/responses/BadRequestError'
         '401':
@@ -2144,7 +2127,7 @@ components:
             - `raw` (default): Smallest-unit integer strings (e.g., "100500000" for 100.5 USDC with 6 decimals).
             - `display`: Human-readable decimal strings (e.g., "100.50" for 100.5 USDC).
             The service layer performs decimal conversion using token class metadata.
-            Amounts are always opaque strings and are never parsed as a float.
+            Amounts are always opaque strings, never parsed as float by any system.
     ResponseContext:
       type: object
       required: [id, version, ts, msgId, status]
@@ -2612,7 +2595,7 @@ components:
         **For update:** `operation`, `tokenId`, `data` (optional), `metadata` (optional)
         **For burn/freeze/lock/transfer:** `operation`, `tokenId`, plus operation-specific params at root level
 
-        `operation` is an open string. Common lifecycle operations (burn, freeze,
+        `operation` is an open string; common lifecycle operations (burn, freeze,
         transfer, …) as well as domain-specific operations (e.g. `loan_disbursed`,
         `emi_due`) are accepted.
 
@@ -2680,8 +2663,8 @@ components:
           - **Proxy token** (USDC, ETH, SOL, etc.): requires `chainId`,
             `contractAddress`, `walletAddress`; `value` only when creating (a duplicate add from the owner reconciles and omits it).
 
-        Called by the application backend; no user session token is required. The token owner
-        is optional: when omitted it is taken from the authenticated session.
+        Called backend-to-backend by the Finternet App Backend (no end-user JWT).
+        The token owner is optional: when omitted, the server derives it from the authenticated session.
       oneOf:
         - title: "Credential Token"
           required: [credential, metadata]
@@ -3680,7 +3663,7 @@ components:
   # -------------------- Responses --------------------
   responses:
     UnauthorizedError:
-      description: "Authentication failed. The developer token or the user session token is missing, invalid or expired."
+      description: "Authentication failed. Can be invalid Developer Token OR invalid User JWT."
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
@@ -3688,12 +3671,12 @@ components:
             context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "UNAUTHORIZED", message: "Token invalid or expired." } }
             response: {}
     ForbiddenError:
-      description: "The caller does not have the scope required by this endpoint."
+      description: "Forbidden. Insufficient permissions."
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "CLIENT_INSUFFICIENT_SCOPE", message: "service account does not have required scope" } }
+            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "FORBIDDEN", message: "Insufficient permissions to perform this action." } }
             response: {}
     NotFoundError:
       description: "Resource not found."
@@ -3720,7 +3703,9 @@ components:
             context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "CONFLICT", message: "Operation conflicts with current token state." } }
             response: {}
     RateLimitedError:
-      description: "Too many requests. The `Retry-After` header gives the number of seconds to wait before retrying."
+      description: |
+        Request exceeded the scope-tier sliding-window rate limit. The `Retry-After`
+        response header indicates how long the caller should wait before retrying.
       headers:
         Retry-After:
           schema: { type: integer, description: "Seconds to wait before retrying." }
@@ -3753,5 +3738,6 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: |
-        End user's session token, obtained from `/v1/account/login` and passed in
-        `context.authorization` as `Bearer <token>`.
+        A JWT token that identifies the end-user making the request. This is obtained
+        after user authentication (e.g., via `/v1/account/login`) and is passed in
+        the `context.authorization` field as `Bearer <token>`.
