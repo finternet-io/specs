@@ -306,21 +306,26 @@ paths:
         - "Account"
       summary: "User login (OTP or SSO)"
       description: |
-        Two flows:
+        Three request shapes, selectable above:
 
-        * **OTP**: send `username` to have a one-time code delivered, then send `username`
-          and `otp` to receive a session token.
-        * **SSO**: send `username` and `authToken`, a JWT signed by your own backend, to
-          receive a session token without a code.
+        * **Send OTP**: `username` only. Delivers a one-time code.
+        * **Verify OTP**: `username` and `otp`. Returns a session token.
+        * **SSO login**: `username` and `authToken`, a JWT signed by your own backend.
+          Returns a session token without a code.
+
+        `otp` and `authToken` are mutually exclusive.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ApiRequest_LoginRequest'
+              oneOf:
+                - $ref: '#/components/schemas/ApiRequest_LoginSendOTP'
+                - $ref: '#/components/schemas/ApiRequest_LoginVerifyOTP'
+                - $ref: '#/components/schemas/ApiRequest_LoginSSO'
             examples:
               InitiateOTPMobile:
-                summary: "OTP step 1: request a code (mobile)"
+                summary: "Send OTP (mobile)"
                 value:
                   context:
                     id: "api.account.login"
@@ -331,7 +336,7 @@ paths:
                   payload:
                     username: "+919876543210"
               InitiateOTPEmail:
-                summary: "OTP step 1: request a code (email)"
+                summary: "Send OTP (email)"
                 value:
                   context:
                     id: "api.account.login"
@@ -342,7 +347,7 @@ paths:
                   payload:
                     username: "alice@example.com"
               VerifyOTP:
-                summary: "OTP step 2: submit the code"
+                summary: "Verify OTP"
                 value:
                   context:
                     id: "api.account.login"
@@ -354,7 +359,7 @@ paths:
                     username: "alice@example.com"
                     otp: "1234"
               SSOLogin:
-                summary: "SSO: log in with an authToken"
+                summary: "SSO login"
                 value:
                   context:
                     id: "api.account.login"
@@ -377,7 +382,7 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               examples:
                 InitiateOTP_Response:
-                  summary: "OTP step 1: code sent"
+                  summary: "Send OTP: code delivered"
                   value:
                     context:
                       id: "api.account.login"
@@ -971,7 +976,9 @@ components:
     ApiRequest_RegistrationRequest: { allOf: [ { $ref: '#/components/schemas/UserRequestContext' }, { properties: { payload: { $ref: '#/components/schemas/RegistrationRequest' } } } ] }
     ApiRequest_UpdateAccountRequest: { allOf: [ { $ref: '#/components/schemas/UserRequestContext' }, { properties: { payload: { $ref: '#/components/schemas/UpdateAccountRequest' } } } ] }
     ApiRequest_AvailabilityCheckRequest: { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/AvailabilityCheckRequest' } } } ] }
-    ApiRequest_LoginRequest: { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/LoginRequest' } } } ] }
+    ApiRequest_LoginSendOTP: { title: "Send OTP", allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/LoginSendOTPRequest' } } } ] }
+    ApiRequest_LoginVerifyOTP: { title: "Verify OTP", allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/LoginVerifyOTPRequest' } } } ] }
+    ApiRequest_LoginSSO: { title: "SSO login", allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/LoginSSORequest' } } } ] }
     ApiRequest_ResolveRequest: { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/ResolveRequest' } } } ] }
     ApiRequest_OTPVerifyRequest: { allOf: [ { $ref: '#/components/schemas/UserRequestContext' }, { properties: { payload: { $ref: '#/components/schemas/OTPVerifyRequest' } } } ] }
     ApiRequest_DecryptPIIRequest: { allOf: [ { $ref: '#/components/schemas/UserRequestContext' }, { properties: { payload: { $ref: '#/components/schemas/DecryptPIIRequest' } } } ] }
@@ -1119,13 +1126,32 @@ components:
       required: [address]
       properties:
         address: { type: string, example: "alice", description: "The address to resolve." }
-    LoginRequest:
+    LoginSendOTPRequest:
       type: object
+      title: "Send OTP"
+      description: "Step 1 of the OTP flow: deliver a one-time code to the user."
       required: [username]
+      additionalProperties: false
       properties:
         username: { type: string, example: "alice", description: "Finternet address, email or mobile number." }
-        otp: { type: string, example: "1234", nullable: true, description: "The one-time code. OTP flow only." }
-        authToken: { type: string, minLength: 1, description: "A JWT signed by your backend. Supply instead of `otp` to log in without a code." }
+    LoginVerifyOTPRequest:
+      type: object
+      title: "Verify OTP"
+      description: "Step 2 of the OTP flow: exchange the code for a session token."
+      required: [username, otp]
+      additionalProperties: false
+      properties:
+        username: { type: string, example: "alice", description: "Finternet address, email or mobile number." }
+        otp: { type: string, example: "1234", description: "The one-time code delivered in step 1." }
+    LoginSSORequest:
+      type: object
+      title: "SSO login"
+      description: "Exchange a JWT signed by your own backend for a session token, without a code."
+      required: [username, authToken]
+      additionalProperties: false
+      properties:
+        username: { type: string, example: "alice", description: "Finternet address, email or mobile number." }
+        authToken: { type: string, minLength: 1, description: "A JWT signed by your backend." }
     AvailabilityResponse:
       type: object
       properties:
