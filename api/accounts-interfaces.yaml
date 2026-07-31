@@ -68,10 +68,9 @@ paths:
         - "Account"
       summary: "Register a new account"
       description: |
-        Create a new account. The email or mobile is taken from the token in
-        `context.authorization`, so it is not accepted in the payload.
-
-        Requires a user session token in `context.authorization`.
+        Create a new account. Requires the JWT returned by `/v1/account/login` in
+        `context.authorization`; the email or mobile is taken from it and is not accepted
+        in the payload.
       requestBody:
         required: true
         content:
@@ -428,7 +427,7 @@ paths:
       tags:
         - "Account"
       summary: "User logout"
-      description: "Invalidate the user's current session token. Requires a user session token in `context.authorization`."
+      description: "Invalidate the user's current session token, supplied in `context.authorization`."
       requestBody:
         required: true
         content:

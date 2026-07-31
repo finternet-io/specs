@@ -1712,11 +1712,8 @@ paths:
         - **Proxy token** (USDC, ETH, SOL, etc.): supply `chainId`, `contractAddress`,
           `walletAddress`, `value`.
 
-        This is a **backend-to-backend** endpoint, typically called by the Finternet App
-        Backend on a provider callback.
-
-        **No User JWT Required:** This endpoint does not require end-user authentication.
-        The token owner address is provided in the payload.
+        This is a **backend-to-backend** endpoint, typically called by the application
+        backend on a provider callback. The token owner address is provided in the payload.
 
         The token is created via an async transaction/workflow; the returned `txId`
         tracks it.
