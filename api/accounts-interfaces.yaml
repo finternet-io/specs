@@ -19,14 +19,31 @@ info:
     * `signature` (top level): the end user's JWS, for operations that must be
       cryptographically signed by the user.
 
-    Each endpoint requires the scope listed under `x-scopes`; calls without it return
-    `403`.
+    ### RBAC Scopes
+
+    | Endpoint | Required scope |
+    |----------|----------------|
+    | `POST /v1/account/create` | `accounts:create` |
+    | `POST /v1/account/update` | `accounts:manage` |
+    | `POST /v1/account/get` | `accounts:view` |
+    | `POST /v1/account/otp/generate` | *(scope resolved from apiID; requires user auth)* |
+    | `POST /v1/account/otp/verify` | *(scope resolved from apiID; requires user auth)* |
+    | `POST /v1/account/pii/decrypt` | *(scope resolved from apiID; requires user auth)* |
+    | `POST /v1/account/login` | *(public: OTP/SSO bootstrap)* |
+    | `POST /v1/account/logout` | *(public)* |
+    | `POST /v1/address/checkAvailability` | *(public)* |
+    | `POST /v1/address/resolve` | `accounts:view` |
+    | `POST /v1/account/keys/register` | `keys:create` |
+    | `POST /v1/account/keys/remove` | `keys:manage` |
+    | `POST /v1/account/keys/get` | `keys:view` |
+    | `POST /v1/account/keys/search` | `keys:view` |
+
+    Calls failing the scope check return `403 FORBIDDEN`.
 
     ### Rate limiting
 
-    Every request is rate limited. Requests over the limit return `429 Too Many Requests`
-    with a `Retry-After` header giving the number of seconds to wait. The limit depends on
-    the tier assigned to the calling client.
+    All endpoints are protected by a scope-tier sliding-window rate limiter; on
+    breach the response is `429 Too Many Requests` with a `Retry-After` header.
   version: "1.0.0"
 servers:
   - url: "https://foundry.finternetlab.io"
@@ -58,7 +75,6 @@ paths:
       security:
         - developerToken: []
         - developerSignature: []
-      x-scopes: [accounts:create]
       requestBody:
         required: true
         content:
@@ -112,11 +128,46 @@ paths:
                   accessToken: "eyJ..."
                   tokenType: "Bearer"
                   expiresIn: 3600
-        '400': { $ref: '#/components/responses/BadRequestError' }
-        '401': { $ref: '#/components/responses/UnauthorizedError' }
-        '403': { $ref: '#/components/responses/ForbiddenError' }
-        '409': { $ref: '#/components/responses/ConflictError' }
-        '429': { $ref: '#/components/responses/RateLimitedError' }
+        '400':
+          description: "Bad request, such as a missing required field."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              examples:
+                MissingField:
+                  summary: "Missing Required Field"
+                  value:
+                    context:
+                      id: "api.account.create"
+                      version: "v1"
+                      ts: "2025-09-08T12:00:00Z"
+                      msgId: "a1b2c3d4..."
+                      status: "failed"
+                      error:
+                        code: "BAD_REQUEST"
+                        message: "Field 'name' is required."
+                    response: {}
+        '409':
+          description: "Conflict, an identifier is already in use."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              examples:
+                IdentifierTaken:
+                  summary: "Address Taken"
+                  value:
+                    context:
+                      id: "api.account.create"
+                      version: "v1"
+                      ts: "2025-09-08T12:00:00Z"
+                      msgId: "a1b2c3d4..."
+                      status: "failed"
+                      error:
+                        code: "IDENTIFIER_TAKEN"
+                        message: "The address 'alice' is already in use."
+                    response: {}
 
   /v1/account/update:
     post:
@@ -131,7 +182,6 @@ paths:
       security:
         - developerToken: []
         - developerSignature: []
-      x-scopes: [accounts:manage]
       requestBody:
         required: true
         content:
@@ -211,10 +261,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
-        '400': { $ref: '#/components/responses/BadRequestError' }
-        '401': { $ref: '#/components/responses/UnauthorizedError' }
-        '403': { $ref: '#/components/responses/ForbiddenError' }
-        '429': { $ref: '#/components/responses/RateLimitedError' }
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
 
   /v1/address/checkAvailability:
     post:
@@ -227,7 +275,6 @@ paths:
       security:
         - developerToken: []
         - developerSignature: []
-      x-scopes: [accounts:view]
       requestBody:
         required: true
         content:
@@ -259,10 +306,6 @@ paths:
                   status: "successful"
                 response:
                   available: true
-        '400': { $ref: '#/components/responses/BadRequestError' }
-        '401': { $ref: '#/components/responses/UnauthorizedError' }
-        '403': { $ref: '#/components/responses/ForbiddenError' }
-        '429': { $ref: '#/components/responses/RateLimitedError' }
 
   /v1/account/login:
     post:
@@ -279,7 +322,6 @@ paths:
       security:
         - developerToken: []
         - developerSignature: []
-      x-scopes: [accounts:manage]
       requestBody:
         required: true
         content:
@@ -384,15 +426,10 @@ paths:
                       tokenType: "Bearer"
                       expiresIn: 3600
                       isExisting: false
-        '400': { $ref: '#/components/responses/BadRequestError' }
-        '401': { $ref: '#/components/responses/UnauthorizedError' }
-        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '401':
+          $ref: '#/components/responses/UnauthorizedError' # Catches both dev auth and user auth failures
         '404':
           description: "No account is registered for `username`. Returned on the OTP flow only."
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/ApiError' }
-        '429': { $ref: '#/components/responses/RateLimitedError' }
 
   /v1/account/logout:
     post:
@@ -403,7 +440,6 @@ paths:
       security:
         - developerToken: []
         - developerSignature: []
-      x-scopes: [accounts:view]
       requestBody:
         required: true
         content:
@@ -426,9 +462,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse_Success'
-        '401': { $ref: '#/components/responses/UnauthorizedError' }
-        '403': { $ref: '#/components/responses/ForbiddenError' }
-        '429': { $ref: '#/components/responses/RateLimitedError' }
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
 
 
   /v1/account/get:
@@ -440,7 +475,6 @@ paths:
       security:
         - developerToken: []
         - developerSignature: []
-      x-scopes: [accounts:view]
       requestBody:
         required: true
         content:
@@ -463,9 +497,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse_AccountProfile'
-        '401': { $ref: '#/components/responses/UnauthorizedError' }
-        '403': { $ref: '#/components/responses/ForbiddenError' }
-        '429': { $ref: '#/components/responses/RateLimitedError' }
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
 
   /v1/account/otp/generate:
     post:
@@ -479,7 +512,6 @@ paths:
       security:
         - developerToken: []
         - developerSignature: []
-      x-scopes: [accounts:manage]
       requestBody:
         required: true
         content:
@@ -517,13 +549,14 @@ paths:
                     to: "alice@example.com"
                     channel: "email"
         '400':
-          description: "The account has no email or mobile on record."
+          description: "No contact information available for the account."
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ApiError' }
-        '401': { $ref: '#/components/responses/UnauthorizedError' }
-        '403': { $ref: '#/components/responses/ForbiddenError' }
-        '429': { $ref: '#/components/responses/RateLimitedError' }
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
 
   /v1/account/otp/verify:
     post:
@@ -535,7 +568,6 @@ paths:
       security:
         - developerToken: []
         - developerSignature: []
-      x-scopes: [accounts:manage]
       requestBody:
         required: true
         content:
@@ -572,14 +604,15 @@ paths:
                   data:
                     status: "verified"
                     valid: true
-        '400': { $ref: '#/components/responses/BadRequestError' }
+        '400':
+          $ref: '#/components/responses/BadRequestError'
         '401':
-          description: "Authentication failed, or the code is not valid."
+          description: "Unauthorized, or the OTP is invalid."
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ApiError' }
-        '403': { $ref: '#/components/responses/ForbiddenError' }
-        '429': { $ref: '#/components/responses/RateLimitedError' }
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
 
   /v1/account/pii/decrypt:
     post:
@@ -593,7 +626,6 @@ paths:
       security:
         - developerToken: []
         - developerSignature: []
-      x-scopes: [accounts:manage]
       requestBody:
         required: true
         content:
@@ -626,10 +658,51 @@ paths:
                   status: "successful"
                 response:
                   plaintext: "alice@example.com"
-        '400': { $ref: '#/components/responses/BadRequestError' }
-        '401': { $ref: '#/components/responses/UnauthorizedError' }
-        '403': { $ref: '#/components/responses/ForbiddenError' }
-        '429': { $ref: '#/components/responses/RateLimitedError' }
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
+
+  # /v1/account/lookup:
+  #   post:
+  #     tags:
+  #       - "Account"
+  #     summary: "Lookup account by PII"
+  #     description: "Securely looks up an account profile using private info like email or phone. Requires Developer + User auth."
+  #     security:
+  #       - developerToken: []
+  #       - developerSignature: []
+  #     requestBody:
+  #       required: true
+  #       content:
+  #         application/json:
+  #           schema:
+  #             $ref: '#/components/schemas/ApiRequest_LookupRequest'
+  #           example:
+  #             context:
+  #               id: "api.account.lookup"
+  #               version: "v1"
+  #               ts: "2025-09-09T09:06:00Z"
+  #               msgId: "e2f3a4b5-c6d7-8901-2345-67890abcdef"
+  #               developerToken: "fnt_..."
+  #               authorization: "Bearer eyJ..."
+  #             payload:
+  #               email: "bob.smith@example.com"
+  #     responses:
+  #       '200':
+  #         description: "Account profile retrieved successfully."
+  #         content:
+  #           application/json:
+  #             schema:
+  #               $ref: '#/components/schemas/ApiResponse_AccountProfile'
+  #       '401':
+  #         $ref: '#/components/responses/UnauthorizedError'
+  #       '404':
+  #         $ref: '#/components/responses/NotFoundError'
 
   /v1/address/resolve:
     post:
@@ -640,7 +713,6 @@ paths:
       security:
         - developerToken: []
         - developerSignature: []
-      x-scopes: [accounts:view]
       requestBody:
         required: true
         content:
@@ -673,11 +745,8 @@ paths:
                 response:
                   address: "alice"
                   did: "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH"
-        '400': { $ref: '#/components/responses/BadRequestError' }
-        '401': { $ref: '#/components/responses/UnauthorizedError' }
-        '403': { $ref: '#/components/responses/ForbiddenError' }
-        '404': { $ref: '#/components/responses/NotFoundError' }
-        '429': { $ref: '#/components/responses/RateLimitedError' }
+        '404':
+          $ref: '#/components/responses/NotFoundError'
 
 
   # -------------------- Account Keys --------------------
@@ -761,14 +830,6 @@ paths:
         '401': { $ref: '#/components/responses/UnauthorizedError' }
         '403': { $ref: '#/components/responses/ForbiddenError' }
         '404': { $ref: '#/components/responses/NotFoundError' }
-        '409':
-          description: "The key is the account's default key."
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/ApiError' }
-              example:
-                context: { id: "api.account.keys.remove", version: "v1", ts: "...", msgId: "...", status: "failed", error: { code: "CONFLICT", message: "cannot remove the default key; set another key as default first" } }
-                response: {}
         '429': { $ref: '#/components/responses/RateLimitedError' }
 
   /v1/account/keys/get:
@@ -803,7 +864,6 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ApiResponse_AccountKeyInfo' }
-        '400': { $ref: '#/components/responses/BadRequestError' }
         '401': { $ref: '#/components/responses/UnauthorizedError' }
         '403': { $ref: '#/components/responses/ForbiddenError' }
         '404': { $ref: '#/components/responses/NotFoundError' }
@@ -843,7 +903,6 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ApiResponse_AccountKeyList' }
-        '400': { $ref: '#/components/responses/BadRequestError' }
         '401': { $ref: '#/components/responses/UnauthorizedError' }
         '403': { $ref: '#/components/responses/ForbiddenError' }
         '429': { $ref: '#/components/responses/RateLimitedError' }
@@ -1192,20 +1251,28 @@ components:
   # -------------------- Responses --------------------
   responses:
     UnauthorizedError:
-      description: "Authentication failed. The developer token or the user session token is missing, invalid or expired."
+      description: "Authentication failed. Can be invalid Developer Token OR invalid User JWT."
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "UNAUTHORIZED", message: "Token invalid or expired." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "UNAUTHORIZED", message: "Token invalid or expired." } }
+            response: {}
+    UnauthorizedDeveloperError:
+      description: "Developer authentication failed (HTTP 401)."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "UNAUTHORIZED", message: "Invalid developer token." } }
             response: {}
     ForbiddenError:
-      description: "The caller does not have the scope required by this endpoint."
+      description: "Forbidden. Insufficient permissions."
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "CLIENT_INSUFFICIENT_SCOPE", message: "service account does not have required scope: accounts:view" } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "FORBIDDEN", message: "Insufficient permissions to perform this action." } }
             response: {}
     NotFoundError:
       description: "Resource not found."
@@ -1213,7 +1280,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "The requested resource was not found." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "The requested resource was not found." } }
             response: {}
     BadRequestError:
       description: "Invalid request."
@@ -1221,18 +1288,20 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "INVALID_INPUT", message: "Invalid request parameters." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "INVALID_INPUT", message: "Invalid request parameters." } }
             response: {}
     ConflictError:
-      description: "The address is already registered."
+      description: "Conflict with existing resource."
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "RESOURCE_ALREADY_EXISTS", message: "This address is already registered in the federation; sign in instead" } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "CONFLICT", message: "An account with this identifier already exists." } }
             response: {}
     RateLimitedError:
-      description: "Too many requests. The `Retry-After` header gives the number of seconds to wait before retrying."
+      description: |
+        Request exceeded the scope-tier sliding-window rate limit. The `Retry-After`
+        response header indicates how long the caller should wait before retrying.
       headers:
         Retry-After:
           schema: { type: integer, description: "Seconds to wait before retrying." }
@@ -1240,7 +1309,7 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
           example:
-            context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "TOO_MANY_REQUESTS", message: "Too many requests. Retry after 30s." } }
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "TOO_MANY_REQUESTS", message: "Too many requests. Retry after 30s." } }
             response: {}
 
   # -------------------- Security --------------------

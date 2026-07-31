@@ -22,14 +22,10 @@ info:
     * `POST /v1/account/sign` takes no session token. The account holder authorises the
       signature in band, by confirming a one-time code sent to their registered contact.
 
-    Each endpoint requires the scope listed under `x-scopes`; calls without it return
-    `403`.
-
     ### Rate limiting
+    Endpoints are protected by a scope-tier sliding-window rate limiter; on breach
+    the response is `429 Too Many Requests` with a `Retry-After` header.
 
-    Every request is rate limited. Requests over the limit return `429 Too Many Requests`
-    with a `Retry-After` header giving the number of seconds to wait. The limit depends on
-    the tier assigned to the calling client.
   version: "1.0.0"
 servers:
   - url: "https://foundry.finternetlab.io"
@@ -58,7 +54,6 @@ paths:
       security:
         - developerToken: []
         - developerSignature: []
-      x-scopes: [keys:create]
       requestBody:
         required: true
         content:
@@ -92,11 +87,56 @@ paths:
                   keyId: "019ab8e9-0636-74fd-b5c4-192fc68b71e3"
                   publicKey: "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"
                   did: "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH"
-        '400': { $ref: '#/components/responses/BadRequestError' }
-        '401': { $ref: '#/components/responses/UnauthorizedError' }
-        '403': { $ref: '#/components/responses/ForbiddenError' }
-        '429': { $ref: '#/components/responses/RateLimitedError' }
-        '500': { $ref: '#/components/responses/InternalServerError' }
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/account/keys:
+    get:
+      tags:
+        - "Key Management"
+      summary: "List the account's keys"
+      description: |
+        Return the keys bound to the account. This is a read-only `GET`, so no request
+        body is sent.
+      operationId: listKeys
+      security:
+        - developerToken: []
+        - developerSignature: []
+      responses:
+        '200':
+          description: "List of the account's keys."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_ListKeysResult'
+              example:
+                context:
+                  id: "api.account.keys.list"
+                  version: "v1"
+                  ts: "2026-04-07T12:05:01Z"
+                  msgId: "d1e2f3a4-b5c6-7890-1234-567890abcdef"
+                  status: "successful"
+                response:
+                  keys:
+                    - id: "019ab8e9-0636-74fd-b5c4-192fc68b71e3"
+                      keyType: "ed25519"
+                      keySource: "external"
+                      publicKey: "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"
+                      did: "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH"
+                      status: "active"
+                      createdAt: "2026-04-07T11:59:00Z"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /v1/account/sign:
     post:
@@ -126,7 +166,6 @@ paths:
       security:
         - developerToken: []
         - developerSignature: []
-      x-scopes: [keys:manage]
       requestBody:
         required: true
         content:
@@ -223,9 +262,12 @@ paths:
                           signature: "3045022100abcdef..."
                       keyId: "019ab8e9-0636-74fd-b5c4-192fc68b71e3"
                       method: "lock.request"
-        '400': { $ref: '#/components/responses/BadRequestError' }
+        '400':
+          $ref: '#/components/responses/BadRequestError'
         '401':
-          description: "Authentication failed, `username` is not a contact of the account, or the code is not valid."
+          description: |
+            OTP contact does not match the account, proof failed, or OTP invalid
+            (also returned for developer-token auth failure).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ApiError' }
@@ -240,9 +282,10 @@ paths:
                     code: "UNAUTHORIZED"
                     message: "OTP invalid"
                 response: {}
-        '403': { $ref: '#/components/responses/ForbiddenError' }
-        '429': { $ref: '#/components/responses/RateLimitedError' }
-        '500': { $ref: '#/components/responses/InternalServerError' }
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
 # ===============================================================
 #   COMPONENTS
@@ -369,6 +412,12 @@ components:
         - properties:
             response: { $ref: '#/components/schemas/CreateKeyResult' }
 
+    ApiResponse_ListKeysResult:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - properties:
+            response: { $ref: '#/components/schemas/ListKeysResult' }
+
     ApiResponse_SignOtpSent:
       allOf:
         - $ref: '#/components/schemas/ApiResponse'
@@ -398,6 +447,26 @@ components:
           type: string
           description: "did:key derived from the public key."
           example: "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH"
+
+    KeyInfo:
+      type: object
+      required: [id, keyType, keySource, publicKey, did, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        keyType: { type: string, example: "ed25519" }
+        keySource: { type: string, example: "external", description: "How the key is held." }
+        publicKey: { type: string, description: "Hex-encoded public key." }
+        did: { type: string, description: "did:key derived from the public key (empty if the key is malformed)." }
+        status: { type: string, example: "active" }
+        createdAt: { type: string, format: date-time }
+
+    ListKeysResult:
+      type: object
+      required: [keys]
+      properties:
+        keys:
+          type: array
+          items: { $ref: '#/components/schemas/KeyInfo' }
 
     SignOtpSentResponse:
       type: object
@@ -464,7 +533,7 @@ components:
   # -------------------- Responses --------------------
   responses:
     UnauthorizedError:
-      description: "Authentication failed. The developer token or the user session token is missing, invalid or expired."
+      description: "Authentication failed. The developer token is missing, invalid, or expired."
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
@@ -478,23 +547,6 @@ components:
               error:
                 code: "UNAUTHORIZED"
                 message: "invalid developer token"
-            response: {}
-
-    ForbiddenError:
-      description: "The caller does not have the scope required by this endpoint."
-      content:
-        application/json:
-          schema: { $ref: '#/components/schemas/ApiError' }
-          example:
-            context:
-              id: "api.account.keys.create"
-              version: "v1"
-              ts: "2026-04-07T12:00:00Z"
-              msgId: "..."
-              status: "failed"
-              error:
-                code: "CLIENT_INSUFFICIENT_SCOPE"
-                message: "service account does not have required scope: keys:create"
             response: {}
 
     BadRequestError:
@@ -515,7 +567,9 @@ components:
             response: {}
 
     RateLimitedError:
-      description: "Too many requests. The `Retry-After` header gives the number of seconds to wait before retrying."
+      description: |
+        Request exceeded the scope-tier sliding-window rate limit. The `Retry-After`
+        response header indicates how long the caller should wait before retrying.
       headers:
         Retry-After:
           schema: { type: integer, description: "Seconds to wait before retrying." }
