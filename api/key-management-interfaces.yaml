@@ -15,12 +15,12 @@ info:
 
     ### Authentication
 
-    * `context.developerToken`: the calling application's developer token. Required on
+    * `context.developerToken`: the developer token of the calling application. Required on
       every endpoint.
-    * `context.authorization`: the end user's session token. Required by
-      `/v1/account/keys/create`.
-    * `POST /v1/account/sign` takes no session token. The account holder authorises the
-      signature in band, by confirming a one-time code sent to their registered contact.
+    * `context.authorization`: the end user's session token. Required on the endpoints that
+      act on a signed-in user; each operation states when it is needed.
+    * `signature` (top level): the end user's JWS over the payload, for operations that must
+      be signed by the user.
 
     ### Rate limiting
     Endpoints are protected by a scope-tier sliding-window rate limiter; on breach
@@ -49,10 +49,10 @@ paths:
       description: |
         Provision the signing key for the signed-in user's account. The payload is empty.
         The call is idempotent: an account that already has a signing key gets the existing
-        key back. Requires a user session token.
+        key back.
+
+        Requires a user session token in `context.authorization`.
       operationId: createKey
-      security:
-        - developerToken: []
       requestBody:
         required: true
         content:
@@ -65,7 +65,7 @@ paths:
                 version: "v1"
                 ts: "2026-04-07T12:00:00Z"
                 msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
-                developerToken: "fnt_..."
+                developerToken: "c2Et..."
                 authorization: "Bearer eyJ..."
               payload: {}
       responses:
@@ -104,8 +104,6 @@ paths:
         Return the keys bound to the account. This is a read-only `GET`, so no request
         body is sent.
       operationId: listKeys
-      security:
-        - developerToken: []
       responses:
         '200':
           description: "List of the account's keys."
@@ -161,8 +159,6 @@ paths:
         Step 2, resubmit with `otp`: the code is verified and the signed envelope is
         returned along with the `keyId` that produced the signature.
       operationId: sign
-      security:
-        - developerToken: []
       requestBody:
         required: true
         content:
@@ -178,7 +174,7 @@ paths:
                     version: "v1"
                     ts: "2026-04-07T12:15:00Z"
                     msgId: "f1a2b3c4-d5e6-7890-1234-567890abcdef"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     method: "lock.request"
                     account_did: "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH"
                   payload:
@@ -195,7 +191,7 @@ paths:
                     version: "v1"
                     ts: "2026-04-07T12:15:30Z"
                     msgId: "a2b3c4d5-e6f7-8901-2345-67890abcdef1"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     method: "lock.request"
                     account_did: "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH"
                   payload:
@@ -294,14 +290,13 @@ components:
     # --- API Envelope Schemas ---
     Context:
       type: object
-      required: [id, version, ts, msgId]
+      required: [id, version, ts, msgId, developerToken]
       properties:
         id: { type: string, example: "api.account.keys.create" }
         version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
-        transactionId: { type: string, format: uuid, nullable: true }
-        developerToken: { type: string, example: "fnt_...", nullable: true, description: "Developer token identifying the calling application, sent in the request body." }
+        developerToken: { type: string, example: "c2Et...", description: "Developer token for the calling application: base64 of `<clientId>:<clientSecret>`, as returned by `/v1/clients/register`." }
         authorization: { type: string, example: "Bearer eyJ...", nullable: true, description: "End user's session token." }
 
     ResponseContext:
@@ -344,6 +339,26 @@ components:
           nullable: true
           allOf:
             - $ref: '#/components/schemas/Signature'
+    UserContext:
+      type: object
+      required: [id, version, ts, msgId, developerToken, authorization]
+      properties:
+        id: { type: string, example: "api.account.keys.create" }
+        version: { type: string, example: "v1" }
+        ts: { type: string, format: date-time }
+        msgId: { type: string, format: uuid }
+        developerToken: { type: string, example: "c2Et...", description: "Developer token for the calling application: base64 of `<clientId>:<clientSecret>`, as returned by `/v1/clients/register`." }
+        authorization: { type: string, example: "Bearer eyJ...", description: "End user's session token." }
+    UserRequestContext:
+      type: object
+      required: [context, payload]
+      properties:
+        context: { $ref: '#/components/schemas/UserContext' }
+        payload: { type: object }
+        signature:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Signature'
 
     ApiResponse:
       type: object
@@ -360,20 +375,20 @@ components:
         response: { type: object, description: "Always empty on error.", example: {} }
 
     # --- Specific Request Envelopes ---
-    ApiRequest_Empty: { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { type: object } } } ] }
+    ApiRequest_Empty: { allOf: [ { $ref: '#/components/schemas/UserRequestContext' }, { properties: { payload: { type: object } } } ] }
 
     # The /v1/account/sign body is intentionally NOT built on RequestContext:
     # context carries extra routing fields and username/otp are top-level.
     SignContext:
       type: object
-      required: [method, account_did]
+      required: [method, account_did, developerToken]
       description: "The standard context plus the required `method` and `account_did`. Only those two are enforced on this endpoint."
       properties:
         id: { type: string, example: "api.account.sign" }
         version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
-        developerToken: { type: string, example: "fnt_...", nullable: true, description: "Developer token identifying the calling application, sent in the request body." }
+        developerToken: { type: string, example: "c2Et...", description: "Developer token for the calling application: base64 of `<clientId>:<clientSecret>`, as returned by `/v1/clients/register`." }
         method:
           type: string
           example: "lock.request"
@@ -591,11 +606,3 @@ components:
                 code: "INTERNAL_ERROR"
                 message: "An unexpected error occurred"
             response: {}
-
-  # -------------------- Security --------------------
-  securitySchemes:
-    developerToken:
-      type: http
-      scheme: bearer
-      bearerFormat: "JWT or Opaque"
-      description: "Developer token identifying the calling application, sent as `context.developerToken` in the request body."

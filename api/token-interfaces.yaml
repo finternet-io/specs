@@ -36,15 +36,14 @@ info:
     ```
     (Error details are in the context.error object)
 
-    ### Authentication and Authorization
-    This API uses the same two-level authorization model as the Account service:
+    ### Authentication
 
-    1.  **Platform-Level (Developer) Authentication:**
-        * `context.developerToken`: The B2B Developer's API Key/Token.
-
-    2.  **User-Level (End-User) Authorization:**
-        * `context.authorization`: The end-user's JWT session token (for session-based calls).
-        * `signature` (top-level): The end-user's JWS for critical, cryptographically-signed operations.
+    * `context.developerToken`: the developer token of the calling application. Required on
+      every endpoint.
+    * `context.authorization`: the end user's session token. Required on the endpoints that
+      act on a signed-in user; each operation states when it is needed.
+    * `signature` (top level): the end user's JWS over the payload, for operations that must
+      be signed by the user.
 
     ### RBAC Scopes
 
@@ -113,8 +112,8 @@ paths:
       description: |
         Register a new token class with schema definition and metadata.
         Only authorized administrators can register token classes.
-      security:
-        - developerToken: []
+
+        Requires a user session token in `context.authorization`.
       requestBody:
         required: true
         content:
@@ -130,7 +129,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "USDC"
@@ -164,7 +163,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "USDT"
@@ -198,7 +197,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "EURC"
@@ -232,7 +231,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "GBPT"
@@ -266,7 +265,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "e5f6a7b8-c9d0-1234-5678-90abcdef1"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "INRT"
@@ -300,7 +299,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "f6a7b8c9-d0e1-2345-6789-0abcdef12"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "NFH-T"
@@ -335,7 +334,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "a7b8c9d0-e1f2-3456-7890-abcdef123"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "ART-NFT"
@@ -373,7 +372,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "b8c9d0e1-f2a3-4567-8901-bcdef1234"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "RWA-NFT"
@@ -457,8 +456,8 @@ paths:
       description: |
         Update token class metadata, schema, or identities/roles.
         Can be used to add/remove authorized minters or update class properties.
-      security:
-        - developerToken: []
+
+        Requires a user session token in `context.authorization`.
       requestBody:
         required: true
         content:
@@ -471,7 +470,7 @@ paths:
                 version: "v1"
                 ts: "2025-01-04T11:00:00Z"
                 msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef"
-                developerToken: "fnt_..."
+                developerToken: "c2Et..."
                 authorization: "Bearer eyJ..."
               payload:
                 tokenClass: "USDC"
@@ -502,10 +501,7 @@ paths:
       tags:
         - "Token Classes"
       summary: "Get token class details"
-      description: "Retrieve detailed information about a specific token class"
-      security:
-        - developerToken: []
-        - userToken: []
+      description: "Retrieve detailed information about a specific token class Requires a user session token in `context.authorization`."
       requestBody:
         required: true
         content:
@@ -518,7 +514,7 @@ paths:
                 version: "v1"
                 ts: "2025-01-04T10:00:00Z"
                 msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef12"
-                developerToken: "fnt_..."
+                developerToken: "c2Et..."
                 authorization: "Bearer eyJ..."
               payload:
                 tokenClass: "USDC"
@@ -574,10 +570,7 @@ paths:
       tags:
         - "Token Classes"
       summary: "Search token classes"
-      description: "Search and list all registered token classes with filters"
-      security:
-        - developerToken: []
-        - userToken: []
+      description: "Search and list all registered token classes with filters Requires a user session token in `context.authorization`."
       requestBody:
         required: true
         content:
@@ -590,7 +583,7 @@ paths:
                 version: "v1"
                 ts: "2025-01-04T10:00:00Z"
                 msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef123"
-                developerToken: "fnt_..."
+                developerToken: "c2Et..."
                 authorization: "Bearer eyJ..."
               payload:
                 filters:
@@ -685,10 +678,7 @@ paths:
       tags:
         - "Token"
       summary: "Get token details"
-      description: "Retrieves detailed information about a specific token by its ID. Requires Developer and User auth."
-      security:
-        - developerToken: []
-        - userToken: []
+      description: "Retrieves detailed information about a specific token by its ID. Requires Developer and User auth. Requires a user session token in `context.authorization`."
       requestBody:
         required: true
         content:
@@ -704,7 +694,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenId: "urn:uuid:a1b2c3d4-e5f6-7890-abcd-1234567890ab"
@@ -716,7 +706,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdf0"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                     valueFormat: "display"
                   payload:
@@ -807,9 +797,9 @@ paths:
         Mint (create) a new token instance. This endpoint has separate ACL controls from other token operations.
         Only authorized identities registered for the tokenClass can mint tokens.
 
-        Requires both developer authentication and end-user signature.
-      security:
-        - developerToken: []
+        Requires an end-user signature over the payload.
+
+        Requires a user session token in `context.authorization`.
       requestBody:
         required: true
         content:
@@ -825,7 +815,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "c1d2e3f4-a5b6-7890-1234-567890abcdef"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "USDC"
@@ -848,7 +838,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "d2e3f4a5-b6c7-8901-2345-67890abcdef"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "INRT"
@@ -871,7 +861,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "e3f4a5b6-c7d8-9012-3456-7890abcdef1"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "NFH-T"
@@ -894,7 +884,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "f4a5b6c7-d8e9-0123-4567-890abcdef12"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "ART-NFT"
@@ -933,7 +923,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "a5b6c7d8-e9f0-1234-5678-90abcdef123"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     tokenClass: "RWA-NFT"
@@ -989,9 +979,7 @@ paths:
       tags:
         - "Token"
       summary: "Search tokens"
-      description: "Search tokens with filters (type, status, etc.). Owner filtering inferred from JWT/ACL. Supports pagination. Requires Developer auth."
-      security:
-        - developerToken: []
+      description: "Search tokens with filters (type, status, etc.). Owner filtering inferred from JWT/ACL. Supports pagination. Requires Developer auth. Requires a user session token in `context.authorization`."
       requestBody:
         required: true
         content:
@@ -1007,7 +995,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     filters:
@@ -1030,7 +1018,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:00:00Z"
                     msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef2"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                     valueFormat: "display"
                   payload:
@@ -1134,8 +1122,8 @@ paths:
         **Signature required:** a top-level end-user payload `signature` is mandatory for
         every transact operation. units-api enforces this via a `RequireSignature`
         middleware on this route; a request without a valid `signature` is rejected.
-      security:
-        - developerToken: []
+
+        Requires a user session token in `context.authorization`.
       requestBody:
         required: true
         content:
@@ -1151,7 +1139,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:15:00Z"
                     msgId: "f1a2b3c4-d5e6-7890-1234-567890abcdef"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "transfer"
@@ -1169,7 +1157,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:15:00Z"
                     msgId: "g2b3c4d5-e6f7-8901-2345-67890abcdef"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "transfer"
@@ -1187,7 +1175,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:15:00Z"
                     msgId: "h3c4d5e6-f7a8-9012-3456-7890abcdef1"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "transfer"
@@ -1205,7 +1193,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:15:00Z"
                     msgId: "i4d5e6f7-a8b9-0123-4567-890abcdef12"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "transfer"
@@ -1228,7 +1216,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:05:00Z"
                     msgId: "d1e2f3a4-b5c6-7890-1234-567890abcdef"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "burn"
@@ -1246,7 +1234,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:05:00Z"
                     msgId: "d2e3f4a5-b6c7-8901-2345-67890abcdef"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "burn"
@@ -1264,7 +1252,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:10:00Z"
                     msgId: "e1f2a3b4-c5d6-7890-1234-567890abcdef"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "freeze"
@@ -1282,7 +1270,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:10:00Z"
                     msgId: "e2f3a4b5-c6d7-8901-2345-67890abcdef"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "unfreeze"
@@ -1299,7 +1287,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:20:00Z"
                     msgId: "f3a4b5c6-d7e8-9012-3456-7890abcdef1"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "lock"
@@ -1318,7 +1306,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:20:00Z"
                     msgId: "f4a5b6c7-d8e9-0123-4567-890abcdef12"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "lock"
@@ -1337,7 +1325,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:20:00Z"
                     msgId: "f5a6b7c8-d9e0-1234-5678-90abcdef123"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "unlock"
@@ -1355,7 +1343,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-04T10:20:00Z"
                     msgId: "a2b3c4d5-e6f7-8901-2345-67890abcdef"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                     authorization: "Bearer eyJ..."
                   payload:
                     operation: "update"
@@ -1431,9 +1419,8 @@ paths:
         `POST /v1/transactions/status` instead.
 
         Use this endpoint to poll for transaction completion after submitting via /v1/token/transact.
-      security:
-        - developerToken: []
-        - userToken: []
+
+        Requires a user session token in `context.authorization`.
       requestBody:
         required: true
         content:
@@ -1446,7 +1433,7 @@ paths:
                 version: "v1"
                 ts: "2025-01-04T10:00:02Z"
                 msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
-                developerToken: "fnt_..."
+                developerToken: "c2Et..."
                 authorization: "Bearer eyJ..."
               payload:
                 txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
@@ -1523,9 +1510,8 @@ paths:
         proofs, and ledger anchors.
 
         Use this after transaction completion to get full audit trail.
-      security:
-        - developerToken: []
-        - userToken: []
+
+        Requires a user session token in `context.authorization`.
       requestBody:
         required: true
         content:
@@ -1538,7 +1524,7 @@ paths:
                 version: "v1"
                 ts: "2025-01-04T10:00:10Z"
                 msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef"
-                developerToken: "fnt_..."
+                developerToken: "c2Et..."
                 authorization: "Bearer eyJ..."
               payload:
                 txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
@@ -1562,9 +1548,8 @@ paths:
       description: |
         Search transactions with filters and pagination.
         Useful for transaction history, reconciliation, and reporting. Owner/initiator filtering inferred from JWT/ACL.
-      security:
-        - developerToken: []
-        - userToken: []
+
+        Requires a user session token in `context.authorization`.
       requestBody:
         required: true
         content:
@@ -1577,7 +1562,7 @@ paths:
                 version: "v1"
                 ts: "2025-01-04T10:00:00Z"
                 msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
-                developerToken: "fnt_..."
+                developerToken: "c2Et..."
                 authorization: "Bearer eyJ..."
               payload:
                 filters:
@@ -1615,13 +1600,8 @@ paths:
         FederationController.Status). It reads the `transactions` row plus the
         `workflow_ops` audit list. A txn id with no transactions row returns 404.
 
-        Requires a developer token (+ scope) and a user token.
-
         The request has no dedicated JSON schema; the payload is modelled here as the
         transaction id (`txn_id`).
-      security:
-        - developerToken: []
-        - userToken: []
       requestBody:
         required: true
         content:
@@ -1634,7 +1614,7 @@ paths:
                 version: "v1"
                 ts: "2025-01-04T10:00:02Z"
                 msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
-                developerToken: "fnt_..."
+                developerToken: "c2Et..."
                 authorization: "Bearer eyJ..."
               payload:
                 txn_id: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
@@ -1683,9 +1663,8 @@ paths:
       description: |
         Retrieves all transactions that affected a specific token.
         Provides complete audit trail and state history for the token.
-      security:
-        - developerToken: []
-        - userToken: []
+
+        Requires a user session token in `context.authorization`.
       requestBody:
         required: true
         content:
@@ -1698,7 +1677,7 @@ paths:
                 version: "v1"
                 ts: "2025-01-04T10:00:00Z"
                 msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef"
-                developerToken: "fnt_..."
+                developerToken: "c2Et..."
                 authorization: "Bearer eyJ..."
               payload:
                 filters:
@@ -1741,8 +1720,8 @@ paths:
 
         The token is created via an async transaction/workflow; the returned `txId`
         tracks it.
-      security:
-        - developerToken: []
+
+        Requires a user session token in `context.authorization`.
       requestBody:
         required: true
         content:
@@ -1758,7 +1737,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-28T10:15:00Z"
                     msgId: "550e8400-e29b-41d4-a716-446655440000"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                   payload:
                     tokenClass: "CREDENTIAL"
                     owner: "alice"
@@ -1789,7 +1768,7 @@ paths:
                     version: "v1"
                     ts: "2025-01-28T10:15:00Z"
                     msgId: "550e8400-e29b-41d4-a716-446655440001"
-                    developerToken: "fnt_..."
+                    developerToken: "c2Et..."
                   payload:
                     tokenClass: "USDC"
                     owner: "alice"
@@ -1841,10 +1820,7 @@ paths:
         - `proven`: Merkle proof generated
         - `anchored`: proof anchored to a public ledger, fully verifiable
 
-        Requires Developer + User auth.
-      security:
-        - developerToken: []
-        - userToken: []
+        Requires a user session token in `context.authorization`.
       requestBody:
         required: true
         content:
@@ -1857,7 +1833,7 @@ paths:
                 version: "v1"
                 ts: "2025-01-04T10:00:02Z"
                 msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
-                developerToken: "fnt_..."
+                developerToken: "c2Et..."
                 authorization: "Bearer eyJ..."
               payload:
                 txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
@@ -1932,10 +1908,7 @@ paths:
         Merkle tree. Enables independent verification: fetch this data, hash it, and
         confirm it matches the `leafHash` returned by `/v1/transaction/proof`.
 
-        Requires Developer + User auth.
-      security:
-        - developerToken: []
-        - userToken: []
+        Requires a user session token in `context.authorization`.
       requestBody:
         required: true
         content:
@@ -1948,7 +1921,7 @@ paths:
                 version: "v1"
                 ts: "2025-01-04T10:00:02Z"
                 msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef"
-                developerToken: "fnt_..."
+                developerToken: "c2Et..."
                 authorization: "Bearer eyJ..."
               payload:
                 txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
@@ -2004,10 +1977,7 @@ paths:
         For trustless verification, clients should verify independently using the data
         from `/v1/transaction/proof` and `/v1/transaction/proof/leaf`.
 
-        Requires Developer + User auth.
-      security:
-        - developerToken: []
-        - userToken: []
+        Requires a user session token in `context.authorization`.
       requestBody:
         required: true
         content:
@@ -2020,7 +1990,7 @@ paths:
                 version: "v1"
                 ts: "2025-01-04T10:00:02Z"
                 msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef"
-                developerToken: "fnt_..."
+                developerToken: "c2Et..."
                 authorization: "Bearer eyJ..."
               payload:
                 txId: "urn:uuid:tx-b7e3f9a1-c4d2-5e6f-7890-1234567890cd"
@@ -2099,14 +2069,13 @@ components:
     # --- API Envelope Schemas (reusing from account API) ---
     Context:
       type: object
-      required: [id, version, ts, msgId]
+      required: [id, version, ts, msgId, developerToken]
       properties:
         id: { type: string, example: "api.token.get" }
         version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
-        transactionId: { type: string, format: uuid, nullable: true, description: "ID for async operations" }
-        developerToken: { type: string, example: "fnt_...", nullable: true, description: "Developer token identifying the calling application, sent in the request body." }
+        developerToken: { type: string, example: "c2Et...", description: "Developer token for the calling application: base64 of `<clientId>:<clientSecret>`, as returned by `/v1/clients/register`." }
         authorization: { type: string, example: "Bearer eyJ...", nullable: true, description: "End-user's session token" }
         valueFormat:
           type: string
@@ -2149,6 +2118,33 @@ components:
       required: [context, payload]
       properties:
         context: { $ref: '#/components/schemas/Context' }
+        payload: { type: object }
+        signature: { $ref: '#/components/schemas/Signature'}
+    UserContext:
+      type: object
+      required: [id, version, ts, msgId, developerToken, authorization]
+      properties:
+        id: { type: string, example: "api.token.get" }
+        version: { type: string, example: "v1" }
+        ts: { type: string, format: date-time }
+        msgId: { type: string, format: uuid }
+        developerToken: { type: string, example: "c2Et...", description: "Developer token for the calling application: base64 of `<clientId>:<clientSecret>`, as returned by `/v1/clients/register`." }
+        authorization: { type: string, example: "Bearer eyJ...", description: "End-user's session token" }
+        valueFormat:
+          type: string
+          enum: [raw, display]
+          default: "raw"
+          description: |
+            Controls how numeric amounts (balances, supply, fees) are represented in responses.
+            - `raw` (default): Smallest-unit integer strings (e.g., "100500000" for 100.5 USDC with 6 decimals).
+            - `display`: Human-readable decimal strings (e.g., "100.50" for 100.5 USDC).
+            The service layer performs decimal conversion using token class metadata.
+            Amounts are always opaque strings, never parsed as float by any system.
+    UserRequestContext:
+      type: object
+      required: [context, payload]
+      properties:
+        context: { $ref: '#/components/schemas/UserContext' }
         payload: { type: object }
         signature: { $ref: '#/components/schemas/Signature'}
     ApiResponse:
@@ -3238,25 +3234,25 @@ components:
     # TokenClass API Envelopes
     ApiRequest_RegisterTokenClassRequest:
       allOf:
-        - $ref: '#/components/schemas/RequestContext'
+        - $ref: '#/components/schemas/UserRequestContext'
         - properties:
             payload: { $ref: '#/components/schemas/RegisterTokenClassRequest' }
 
     ApiRequest_UpdateTokenClassRequest:
       allOf:
-        - $ref: '#/components/schemas/RequestContext'
+        - $ref: '#/components/schemas/UserRequestContext'
         - properties:
             payload: { $ref: '#/components/schemas/UpdateTokenClassRequest' }
 
     ApiRequest_GetTokenClassRequest:
       allOf:
-        - $ref: '#/components/schemas/RequestContext'
+        - $ref: '#/components/schemas/UserRequestContext'
         - properties:
             payload: { $ref: '#/components/schemas/GetTokenClassRequest' }
 
     ApiRequest_SearchTokenClassRequest:
       allOf:
-        - $ref: '#/components/schemas/RequestContext'
+        - $ref: '#/components/schemas/UserRequestContext'
         - properties:
             payload: { $ref: '#/components/schemas/SearchTokenClassRequest' }
 
@@ -3275,26 +3271,26 @@ components:
     # Token API Envelopes
     ApiRequest_GetTokenRequest:
       allOf:
-        - $ref: '#/components/schemas/RequestContext'
+        - $ref: '#/components/schemas/UserRequestContext'
         - properties:
             payload: { $ref: '#/components/schemas/GetTokenRequest' }
 
     ApiRequest_MintTokenRequest:
       allOf:
-        - $ref: '#/components/schemas/RequestContext'
+        - $ref: '#/components/schemas/UserRequestContext'
         - properties:
             payload: { $ref: '#/components/schemas/MintTokenRequest' }
             signature: { $ref: '#/components/schemas/Signature' }
 
     ApiRequest_SearchTokensRequest:
       allOf:
-        - $ref: '#/components/schemas/RequestContext'
+        - $ref: '#/components/schemas/UserRequestContext'
         - properties:
             payload: { $ref: '#/components/schemas/SearchTokensRequest' }
 
     ApiRequest_TransactRequest:
       allOf:
-        - $ref: '#/components/schemas/RequestContext'
+        - $ref: '#/components/schemas/UserRequestContext'
         - required: [signature]
           properties:
             payload: { $ref: '#/components/schemas/TransactRequest' }
@@ -3302,7 +3298,7 @@ components:
 
     ApiRequest_AddTokenRequest:
       allOf:
-        - $ref: '#/components/schemas/RequestContext'
+        - $ref: '#/components/schemas/UserRequestContext'
         - properties:
             payload: { $ref: '#/components/schemas/AddTokenRequest' }
 
@@ -3354,25 +3350,25 @@ components:
     # --- Transaction API Request Envelopes ---
     ApiRequest_TransactionStatusRequest:
       allOf:
-        - $ref: '#/components/schemas/RequestContext'
+        - $ref: '#/components/schemas/UserRequestContext'
         - properties:
             payload: { $ref: '#/components/schemas/TransactionStatusRequest' }
 
     ApiRequest_GetTransactionRequest:
       allOf:
-        - $ref: '#/components/schemas/RequestContext'
+        - $ref: '#/components/schemas/UserRequestContext'
         - properties:
             payload: { $ref: '#/components/schemas/GetTransactionRequest' }
 
     ApiRequest_SearchTransactionsRequest:
       allOf:
-        - $ref: '#/components/schemas/RequestContext'
+        - $ref: '#/components/schemas/UserRequestContext'
         - properties:
             payload: { $ref: '#/components/schemas/SearchTransactionsRequest' }
 
     ApiRequest_TokenTransactionsRequest:
       allOf:
-        - $ref: '#/components/schemas/RequestContext'
+        - $ref: '#/components/schemas/UserRequestContext'
         - properties:
             payload: { $ref: '#/components/schemas/TokenTransactionsRequest' }
 
@@ -3614,19 +3610,19 @@ components:
 
     ApiRequest_GetProofRequest:
       allOf:
-        - $ref: '#/components/schemas/RequestContext'
+        - $ref: '#/components/schemas/UserRequestContext'
         - properties:
             payload: { $ref: '#/components/schemas/GetProofRequest' }
 
     ApiRequest_GetProofLeafRequest:
       allOf:
-        - $ref: '#/components/schemas/RequestContext'
+        - $ref: '#/components/schemas/UserRequestContext'
         - properties:
             payload: { $ref: '#/components/schemas/GetProofLeafRequest' }
 
     ApiRequest_VerifyProofRequest:
       allOf:
-        - $ref: '#/components/schemas/RequestContext'
+        - $ref: '#/components/schemas/UserRequestContext'
         - properties:
             payload: { $ref: '#/components/schemas/VerifyProofRequest' }
 
@@ -3705,19 +3701,3 @@ components:
           example:
             context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "TOO_MANY_REQUESTS", message: "Too many requests. Retry after 30s." } }
             response: {}
-
-  # -------------------- Security --------------------
-  securitySchemes:
-    developerToken:
-      type: http
-      scheme: bearer
-      bearerFormat: "JWT or Opaque"
-      description: "Developer token identifying the calling application, sent as `context.developerToken` in the request body."
-    userToken:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-      description: |
-        A JWT token that identifies the end-user making the request. This is obtained
-        after user authentication (e.g., via `/v1/account/login`) and is passed in
-        the `context.authorization` field as `Bearer <token>`.

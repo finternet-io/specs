@@ -35,24 +35,14 @@ info:
     ```
     (Error details are in the context.error object)
 
-    ### Authentication and Authorization
-    This API uses a two-level authorization model contained within the `context`:
+    ### Authentication
 
-    1.  **Platform-Level (Developer) Authentication:**
-        * `context.developerToken`: The B2B Developer's API Key/Token.
-
-    2.  **User-Level (End-User) Authorization:**
-        * `context.authorization`: The end-user's JWT session token (for session-based calls).
-        * `signature` (top-level): The end-user's JWS for critical, cryptographically-signed operations.
-
-    ### Per-endpoint authentication
-
-    * `POST /v1/terms/get`: Developer auth only. **No end-user JWT** is required: the
-      document must be readable during onboarding, before the user has a session.
-    * `POST /v1/terms/accept`: Developer auth **plus** an end-user JWT
-      (`context.authorization`). Consent is recorded against the authenticated account.
-    * `POST /v1/terms/publish`: Developer auth only, admin-gated via a protected scope.
-      **No end-user JWT** is required.
+    * `context.developerToken`: the developer token of the calling application. Required on
+      every endpoint.
+    * `context.authorization`: the end user's session token. Required on the endpoints that
+      act on a signed-in user; each operation states when it is needed.
+    * `signature` (top level): the end user's JWS over the payload, for operations that must
+      be signed by the user.
 
     ### RBAC Scopes
 
@@ -92,10 +82,8 @@ paths:
         Returns the current published version (with content) of a Terms document.
         The `docType` selects which document; omitting it returns the default document.
 
-        Requires Developer auth only. **No end-user JWT is required**, so the document
-        can be fetched during onboarding before the user has a session.
-      security:
-        - developerToken: []
+        No user session token is required, so the document can be fetched during onboarding
+        before the user has a session.
       x-scopes: [terms:view]
       requestBody:
         required: true
@@ -109,7 +97,7 @@ paths:
                 version: "v1"
                 ts: "2026-07-09T12:00:00Z"
                 msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
-                developerToken: "fnt_..."
+                developerToken: "c2Et..."
               payload:
                 docType: "terms_of_use"
       responses:
@@ -155,10 +143,9 @@ paths:
         version has since been published, the accept is rejected (409) so the user
         re-reads it.
 
-        Requires Developer auth **plus** an end-user JWT (`context.authorization`);
-        the consent is recorded against the authenticated account.
-      security:
-        - developerToken: []
+        The consent is recorded against the authenticated account.
+
+        Requires a user session token in `context.authorization`.
       x-scopes: [terms:create]
       requestBody:
         required: true
@@ -172,7 +159,7 @@ paths:
                 version: "v1"
                 ts: "2026-07-09T12:05:00Z"
                 msgId: "c1b2c3d4-e5f6-7890-1234-567890abcdef"
-                developerToken: "fnt_..."
+                developerToken: "c2Et..."
                 authorization: "Bearer eyJ..."
               payload:
                 docType: "terms_of_use"
@@ -228,10 +215,8 @@ paths:
         `terms:manage` scope, which is granted through the scope-approval workflow at
         client registration.
 
-        Requires Developer auth only. **No end-user JWT is required**.
+        No user session token is required.
         `requiresReconsent` defaults to `true` when omitted (treated as a material change).
-      security:
-        - developerToken: []
       x-scopes: [terms:manage]
       requestBody:
         required: true
@@ -245,7 +230,7 @@ paths:
                 version: "v1"
                 ts: "2026-07-09T09:00:00Z"
                 msgId: "e1b2c3d4-e5f6-7890-1234-567890abcdef"
-                developerToken: "fnt_..."
+                developerToken: "c2Et..."
               payload:
                 docType: "terms_of_use"
                 versionLabel: "2026.07"
@@ -293,14 +278,13 @@ components:
     # --- API Envelope Schemas ---
     Context:
       type: object
-      required: [id, version, ts, msgId]
+      required: [id, version, ts, msgId, developerToken]
       properties:
         id: { type: string, example: "api.terms.get" }
         version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
-        transactionId: { type: string, format: uuid, nullable: true, description: "ID for async operations" }
-        developerToken: { type: string, example: "fnt_...", nullable: true, description: "Developer token identifying the calling application, sent in the request body." }
+        developerToken: { type: string, example: "c2Et...", description: "Developer token for the calling application: base64 of `<clientId>:<clientSecret>`, as returned by `/v1/clients/register`." }
         authorization: { type: string, example: "Bearer eyJ...", nullable: true, description: "End-user's session token." }
     ResponseContext:
       type: object
@@ -340,6 +324,26 @@ components:
           nullable: true
           allOf:
             - $ref: '#/components/schemas/Signature'
+    UserContext:
+      type: object
+      required: [id, version, ts, msgId, developerToken, authorization]
+      properties:
+        id: { type: string, example: "api.terms.get" }
+        version: { type: string, example: "v1" }
+        ts: { type: string, format: date-time }
+        msgId: { type: string, format: uuid }
+        developerToken: { type: string, example: "c2Et...", description: "Developer token for the calling application: base64 of `<clientId>:<clientSecret>`, as returned by `/v1/clients/register`." }
+        authorization: { type: string, example: "Bearer eyJ...", description: "End-user's session token." }
+    UserRequestContext:
+      type: object
+      required: [context, payload]
+      properties:
+        context: { $ref: '#/components/schemas/UserContext' }
+        payload: { type: object }
+        signature:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Signature'
     ApiResponse:
       type: object
       required: [context, response]
@@ -355,7 +359,7 @@ components:
 
     # --- Specific Request Envelopes ---
     ApiRequest_GetTermsRequest:     { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/GetTermsRequest' } } } ] }
-    ApiRequest_AcceptTermsRequest:  { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/AcceptTermsRequest' } } } ] }
+    ApiRequest_AcceptTermsRequest:  { allOf: [ { $ref: '#/components/schemas/UserRequestContext' }, { properties: { payload: { $ref: '#/components/schemas/AcceptTermsRequest' } } } ] }
     ApiRequest_PublishTermsRequest: { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/PublishTermsRequest' } } } ] }
 
     # --- Specific Response Envelopes ---
@@ -457,16 +461,3 @@ components:
           example:
             context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "TOO_MANY_REQUESTS", message: "Too many requests. Retry after 30s." } }
             response: {}
-
-  # -------------------- Security --------------------
-  securitySchemes:
-    # This section is for documentation purposes.
-    # The server will check for the HTTP header first and fallbacks to context in case the headers are missing.
-
-    # 1. The Developer's Identity Token (Who they are)
-    developerToken:
-      type: http
-      scheme: bearer
-      bearerFormat: "JWT or Opaque"
-      description: "Developer token identifying the calling application, sent as `context.developerToken` in the request body."
-    # 2. The Developer's Request Signature (What they're attesting to)

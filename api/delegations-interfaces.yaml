@@ -11,9 +11,14 @@ info:
     These endpoints let the authenticated end user inspect the delegations relevant to
     them (`/list`) and resolve the effective permissions on a specific token (`/check`).
 
-    Both endpoints authenticate the end user (user JWT) in addition to the developer
-    token. All endpoints follow the standard envelope (`context`/`payload` →
-    `context`/`response`) and are subject to scope-tier rate limiting.
+    All endpoints follow the standard envelope (`context`/`payload` → `context`/`response`).
+
+    ### Authentication
+
+    * `context.developerToken`: the developer token of the calling application. Required on
+      every endpoint.
+    * `context.authorization`: the end user's session token. Required on the endpoints that
+      act on a signed-in user; each operation states when it is needed.
 
   version: "1.0.0"
 
@@ -37,8 +42,8 @@ paths:
         Returns the delegations matching the supplied `filter` relative to the
         authenticated end user: those they granted, those granted to them, or those
         pending their approval.
-      security:
-        - developerToken: []
+
+        Requires a user session token in `context.authorization`.
       x-scopes: [delegations:view]
       requestBody:
         required: true
@@ -51,7 +56,7 @@ paths:
                 version: "v1"
                 ts: "2026-04-07T10:00:00Z"
                 msgId: "11111111-2222-3333-4444-555555555555"
-                developerToken: "fnt_..."
+                developerToken: "c2Et..."
                 authorization: "Bearer eyJ..."
               payload:
                 filter: "granted_by_me"
@@ -74,8 +79,8 @@ paths:
         Resolve the *effective* permissions the authenticated user has on a specific
         token at request time. Returns, per permission level, whether it is allowed and
         where the decision came from, plus any active deny rules affecting the token.
-      security:
-        - developerToken: []
+
+        Requires a user session token in `context.authorization`.
       x-scopes: [delegations:view]
       requestBody:
         required: true
@@ -88,7 +93,7 @@ paths:
                 version: "v1"
                 ts: "2026-04-07T10:00:00Z"
                 msgId: "22222222-3333-4444-5555-666666666666"
-                developerToken: "fnt_..."
+                developerToken: "c2Et..."
                 authorization: "Bearer eyJ..."
               payload:
                 tokenId: "018f2c3d-4e5f-7890-abcd-1234567890ab"
@@ -110,7 +115,7 @@ components:
 
     Context:
       type: object
-      required: [id, version, ts, msgId]
+      required: [id, version, ts, msgId, developerToken]
       properties:
         id: { type: string, description: "Stable API identifier (e.g. `api.delegations.list`)." }
         version: { type: string, description: "API version." }
@@ -125,7 +130,25 @@ components:
           allOf:
             - $ref: '#/components/schemas/Context'
             - properties:
-                developerToken: { type: string, example: "fnt_...", nullable: true, description: "Developer token identifying the calling application, sent in the request body." }
+                developerToken: { type: string, example: "c2Et...", description: "Developer token for the calling application: base64 of `<clientId>:<clientSecret>`, as returned by `/v1/clients/register`." }
+                authorization: { type: string, description: "End-user session JWT. Required: both endpoints authenticate the end user (user JWT) in addition to the developer token." }
+    UserContext:
+      type: object
+      required: [id, version, ts, msgId, developerToken, authorization]
+      properties:
+        id: { type: string, description: "Stable API identifier (e.g. `api.delegations.list`)." }
+        version: { type: string, description: "API version." }
+        ts: { type: string, format: date-time }
+        msgId: { type: string, format: uuid }
+    UserRequestContext:
+      type: object
+      required: [context, payload]
+      properties:
+        context:
+          allOf:
+            - $ref: '#/components/schemas/UserContext'
+            - properties:
+                developerToken: { type: string, example: "c2Et...", description: "Developer token for the calling application: base64 of `<clientId>:<clientSecret>`, as returned by `/v1/clients/register`." }
                 authorization: { type: string, description: "End-user session JWT. Required: both endpoints authenticate the end user (user JWT) in addition to the developer token." }
 
     ResponseContext:
@@ -244,11 +267,11 @@ components:
 
     ApiRequest_ListDelegations:
       allOf:
-        - $ref: '#/components/schemas/RequestContext'
+        - $ref: '#/components/schemas/UserRequestContext'
         - properties: { payload: { $ref: '#/components/schemas/ListDelegationsRequest' } }
     ApiRequest_CheckDelegation:
       allOf:
-        - $ref: '#/components/schemas/RequestContext'
+        - $ref: '#/components/schemas/UserRequestContext'
         - properties: { payload: { $ref: '#/components/schemas/CheckDelegationRequest' } }
 
     ApiResponse_DelegationList:
@@ -301,11 +324,3 @@ components:
             context: { id: "...", ts: "...", msgId: "...", status: "failed", error: { code: "TOO_MANY_REQUESTS", message: "Too many requests. Retry after 30s." } }
             response: {}
 
-  # -------------------- Security --------------------
-
-  securitySchemes:
-    developerToken:
-      type: http
-      scheme: bearer
-      bearerFormat: "JWT or Opaque"
-      description: "Developer token identifying the calling application, sent as `context.developerToken` in the request body."

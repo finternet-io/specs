@@ -35,25 +35,14 @@ info:
     ```
     (Error details are in the context.error object)
 
-    ### Authentication and Authorization
-    This API uses a two-level authorization model contained within the `context`:
+    ### Authentication
 
-    1.  **Platform-Level (Developer) Authentication:**
-        * `context.developerToken`: The B2B Developer's API Key/Token.
-
-    2.  **User-Level (End-User) Authorization:**
-        * `context.authorization`: The end-user's JWT session token (for session-based calls).
-        * `signature` (top-level): The end-user's JWS for critical, cryptographically-signed operations.
-
-    ### Per-endpoint authentication
-
-    All three endpoints require Developer auth **plus** an end-user JWT
-    (`context.authorization`). In addition:
-
-    * `POST /v1/workflows/execute`: requires an **active consent** (enforced by the
-      consent middleware) on top of the user JWT.
-    * `POST /v1/workflows/status`: user JWT only.
-    * `POST /v1/workflows/cancel`: requires an **active consent** on top of the user JWT.
+    * `context.developerToken`: the developer token of the calling application. Required on
+      every endpoint.
+    * `context.authorization`: the end user's session token. Required on the endpoints that
+      act on a signed-in user; each operation states when it is needed.
+    * `signature` (top level): the end user's JWS over the payload, for operations that must
+      be signed by the user.
 
     ### RBAC Scopes
 
@@ -96,10 +85,9 @@ paths:
         (**200 OK**, returning the signal/handler response). The `data` object is validated
         dynamically against the workflow's registered JSON schema for the given action.
 
-        Requires Developer auth, an end-user JWT (`context.authorization`), and an active
-        consent.
-      security:
-        - developerToken: []
+        Requires an active consent.
+
+        Requires a user session token in `context.authorization`.
       x-scopes: [workflows:create]
       requestBody:
         required: true
@@ -113,7 +101,7 @@ paths:
                 version: "v1"
                 ts: "2026-07-09T12:00:00Z"
                 msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
-                developerToken: "fnt_..."
+                developerToken: "c2Et..."
                 authorization: "Bearer eyJ..."
               payload:
                 workflow: "profile-update"
@@ -177,9 +165,7 @@ paths:
         body is the raw status payload returned by the workflow runtime (`getStatus`
         query) and is therefore workflow-defined.
 
-        Requires Developer auth and an end-user JWT (`context.authorization`).
-      security:
-        - developerToken: []
+        Requires a user session token in `context.authorization`.
       x-scopes: [workflows:view]
       requestBody:
         required: true
@@ -193,7 +179,7 @@ paths:
                 version: "v1"
                 ts: "2026-07-09T12:10:00Z"
                 msgId: "d1b2c3d4-e5f6-7890-1234-567890abcdef"
-                developerToken: "fnt_..."
+                developerToken: "c2Et..."
                 authorization: "Bearer eyJ..."
               payload:
                 workflowId: "profile-update-3f2504e0-4f89-41d3-9a0c-0305e82c3301"
@@ -238,10 +224,9 @@ paths:
         Both the workflow instance ID and its workflow name are required (the name is
         used to resolve the runtime service).
 
-        Requires Developer auth, an end-user JWT (`context.authorization`), and an active
-        consent.
-      security:
-        - developerToken: []
+        Requires an active consent.
+
+        Requires a user session token in `context.authorization`.
       x-scopes: [workflows:manage]
       requestBody:
         required: true
@@ -255,7 +240,7 @@ paths:
                 version: "v1"
                 ts: "2026-07-09T12:20:00Z"
                 msgId: "f1b2c3d4-e5f6-7890-1234-567890abcdef"
-                developerToken: "fnt_..."
+                developerToken: "c2Et..."
                 authorization: "Bearer eyJ..."
               payload:
                 workflowId: "profile-update-3f2504e0-4f89-41d3-9a0c-0305e82c3301"
@@ -300,14 +285,13 @@ components:
     # --- API Envelope Schemas ---
     Context:
       type: object
-      required: [id, version, ts, msgId]
+      required: [id, version, ts, msgId, developerToken]
       properties:
         id: { type: string, example: "api.workflow.execute" }
         version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
-        transactionId: { type: string, format: uuid, nullable: true, description: "ID for async operations" }
-        developerToken: { type: string, example: "fnt_...", nullable: true, description: "Developer token identifying the calling application, sent in the request body." }
+        developerToken: { type: string, example: "c2Et...", description: "Developer token for the calling application: base64 of `<clientId>:<clientSecret>`, as returned by `/v1/clients/register`." }
         authorization: { type: string, example: "Bearer eyJ...", nullable: true, description: "End-user's session token." }
     ResponseContext:
       type: object
@@ -347,6 +331,26 @@ components:
           nullable: true
           allOf:
             - $ref: '#/components/schemas/Signature'
+    UserContext:
+      type: object
+      required: [id, version, ts, msgId, developerToken, authorization]
+      properties:
+        id: { type: string, example: "api.workflow.execute" }
+        version: { type: string, example: "v1" }
+        ts: { type: string, format: date-time }
+        msgId: { type: string, format: uuid }
+        developerToken: { type: string, example: "c2Et...", description: "Developer token for the calling application: base64 of `<clientId>:<clientSecret>`, as returned by `/v1/clients/register`." }
+        authorization: { type: string, example: "Bearer eyJ...", description: "End-user's session token." }
+    UserRequestContext:
+      type: object
+      required: [context, payload]
+      properties:
+        context: { $ref: '#/components/schemas/UserContext' }
+        payload: { type: object }
+        signature:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Signature'
     ApiResponse:
       type: object
       required: [context, response]
@@ -361,9 +365,9 @@ components:
         response: { type: object, description: "Always empty on error.", example: {} }
 
     # --- Specific Request Envelopes ---
-    ApiRequest_WorkflowExecuteRequest: { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/WorkflowExecuteRequest' } } } ] }
-    ApiRequest_WorkflowStatusRequest:  { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/WorkflowStatusRequest' } } } ] }
-    ApiRequest_WorkflowCancelRequest:  { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/WorkflowCancelRequest' } } } ] }
+    ApiRequest_WorkflowExecuteRequest: { allOf: [ { $ref: '#/components/schemas/UserRequestContext' }, { properties: { payload: { $ref: '#/components/schemas/WorkflowExecuteRequest' } } } ] }
+    ApiRequest_WorkflowStatusRequest:  { allOf: [ { $ref: '#/components/schemas/UserRequestContext' }, { properties: { payload: { $ref: '#/components/schemas/WorkflowStatusRequest' } } } ] }
+    ApiRequest_WorkflowCancelRequest:  { allOf: [ { $ref: '#/components/schemas/UserRequestContext' }, { properties: { payload: { $ref: '#/components/schemas/WorkflowCancelRequest' } } } ] }
 
     # --- Specific Response Envelopes ---
     ApiResponse_WorkflowStarted: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/WorkflowStartedResponse' } } } ] }
@@ -477,16 +481,3 @@ components:
           example:
             context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "TOO_MANY_REQUESTS", message: "Too many requests. Retry after 30s." } }
             response: {}
-
-  # -------------------- Security --------------------
-  securitySchemes:
-    # This section is for documentation purposes.
-    # The server will check for the HTTP header first and fallbacks to context in case the headers are missing.
-
-    # 1. The Developer's Identity Token (Who they are)
-    developerToken:
-      type: http
-      scheme: bearer
-      bearerFormat: "JWT or Opaque"
-      description: "Developer token identifying the calling application, sent as `context.developerToken` in the request body."
-    # 2. The Developer's Request Signature (What they're attesting to)

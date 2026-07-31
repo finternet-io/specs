@@ -40,18 +40,14 @@ info:
     ```
     (Error details are in the context.error object)
 
-    ### Authentication and Authorization
-    This API uses a two-level authorization model contained within the `context`:
+    ### Authentication
 
-    1.  **Platform-Level (Developer) Authentication:**
-        * `context.developerToken`: The B2B Developer's API Key/Token.
-
-    2.  **User-Level (End-User) Authorization:**
-        * `context.authorization`: The end-user's JWT session token (for session-based calls).
-        * `signature` (top-level): The end-user's JWS for critical, cryptographically-signed operations.
-
-    All endpoints in this service require **both** developer authentication and a
-    valid end-user session token.
+    * `context.developerToken`: the developer token of the calling application. Required on
+      every endpoint.
+    * `context.authorization`: the end user's session token. Required on the endpoints that
+      act on a signed-in user; each operation states when it is needed.
+    * `signature` (top level): the end user's JWS over the payload, for operations that must
+      be signed by the user.
 
     ### RBAC Scopes
 
@@ -96,12 +92,10 @@ paths:
       tags: [Scopes]
       summary: "Search scopes catalogue"
       description: |
-        Returns a paginated list of scope entities × actions. Requires developer
-        authentication and a valid end-user session token, plus the `scopes:view`
-        scope.
+        Returns a paginated list of scope entities × actions.
+
+        Requires a user session token in `context.authorization`.
       operationId: searchScopes
-      security:
-        - developerToken: []
       x-scopes: ["scopes:view"]
       requestBody:
         required: true
@@ -114,7 +108,7 @@ paths:
                 version: "v1"
                 ts: "2026-07-09T12:00:00Z"
                 msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
-                developerToken: "fnt_..."
+                developerToken: "c2Et..."
                 authorization: "Bearer eyJ..."
               payload:
                 filters: {}
@@ -151,11 +145,10 @@ paths:
       summary: "Search scope-to-API mappings"
       description: |
         Returns a paginated list of `(api_id -> scope_key)` mappings that drive
-        per-endpoint authorization. Requires developer authentication and a valid
-        end-user session token, plus the `scopes:view` scope.
+        per-endpoint authorization.
+
+        Requires a user session token in `context.authorization`.
       operationId: searchScopeAPIs
-      security:
-        - developerToken: []
       x-scopes: ["scopes:view"]
       requestBody:
         required: true
@@ -168,7 +161,7 @@ paths:
                 version: "v1"
                 ts: "2026-07-09T12:05:00Z"
                 msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef23"
-                developerToken: "fnt_..."
+                developerToken: "c2Et..."
                 authorization: "Bearer eyJ..."
               payload:
                 filters: {}
@@ -207,11 +200,10 @@ paths:
         Returns one row per client with at least one scope matching the requested
         status (defaults to `pending`). Results are narrowed server-side by caller
         role: super admins see all clients, owners see their clients' entries, and
-        other callers see only their own. Requires developer authentication and a
-        valid end-user session token.
+        other callers see only their own.
+
+        Requires a user session token in `context.authorization`.
       operationId: listScopeApprovals
-      security:
-        - developerToken: []
       requestBody:
         required: true
         content:
@@ -223,7 +215,7 @@ paths:
                 version: "v1"
                 ts: "2026-07-09T12:10:00Z"
                 msgId: "e5f6a7b8-c9d0-1234-5678-90abcdef2345"
-                developerToken: "fnt_..."
+                developerToken: "c2Et..."
                 authorization: "Bearer eyJ..."
               payload:
                 status: "pending"
@@ -263,15 +255,15 @@ paths:
       description: |
         Returns the scopes currently granted to the given user account. Requires the
         `users:view` scope.
-      security:
-        - developerToken: []
+
+        Requires a user session token in `context.authorization`.
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: '#/components/schemas/ApiRequest_GetUserScopesRequest' }
             example:
-              context: { id: "api.users.scopes.get", version: "v1", ts: "2026-04-07T10:00:00Z", msgId: "11111111-2222-3333-4444-555555555555", developerToken: "fnt_..." }
+              context: { id: "api.users.scopes.get", version: "v1", ts: "2026-04-07T10:00:00Z", msgId: "11111111-2222-3333-4444-555555555555", developerToken: "c2Et..." }
               payload:
                 account: { accountId: "018f2c3d-4e5f-7890-abcd-1234567890ab" }
       responses:
@@ -292,15 +284,15 @@ paths:
       description: |
         Replaces (not merges) the scopes granted to the given user account. Requires
         the `users:manage` scope.
-      security:
-        - developerToken: []
+
+        Requires a user session token in `context.authorization`.
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: '#/components/schemas/ApiRequest_UpdateUserScopesRequest' }
             example:
-              context: { id: "api.users.scopes.update", version: "v1", ts: "2026-04-07T10:00:00Z", msgId: "22222222-3333-4444-5555-666666666666", developerToken: "fnt_..." }
+              context: { id: "api.users.scopes.update", version: "v1", ts: "2026-04-07T10:00:00Z", msgId: "22222222-3333-4444-5555-666666666666", developerToken: "c2Et..." }
               payload:
                 account: { accountId: "018f2c3d-4e5f-7890-abcd-1234567890ab" }
                 scopes: ["tokens:read", "tokens:write"]
@@ -325,14 +317,13 @@ components:
     # --- API Envelope Schemas ---
     Context:
       type: object
-      required: [id, version, ts, msgId]
+      required: [id, version, ts, msgId, developerToken]
       properties:
         id: { type: string, example: "api.scopes.search" }
         version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
-        transactionId: { type: string, format: uuid, nullable: true, description: "ID for async operations" }
-        developerToken: { type: string, example: "fnt_...", nullable: true, description: "Developer token identifying the calling application, sent in the request body." }
+        developerToken: { type: string, example: "c2Et...", description: "Developer token for the calling application: base64 of `<clientId>:<clientSecret>`, as returned by `/v1/clients/register`." }
         authorization: { type: string, example: "Bearer eyJ...", nullable: true, description: "End-user's session token." }
     ResponseContext:
       type: object
@@ -367,6 +358,26 @@ components:
       required: [context, payload]
       properties:
         context: { $ref: '#/components/schemas/Context' }
+        payload: { type: object }
+        signature:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Signature'
+    UserContext:
+      type: object
+      required: [id, version, ts, msgId, developerToken, authorization]
+      properties:
+        id: { type: string, example: "api.scopes.search" }
+        version: { type: string, example: "v1" }
+        ts: { type: string, format: date-time }
+        msgId: { type: string, format: uuid }
+        developerToken: { type: string, example: "c2Et...", description: "Developer token for the calling application: base64 of `<clientId>:<clientSecret>`, as returned by `/v1/clients/register`." }
+        authorization: { type: string, example: "Bearer eyJ...", description: "End-user's session token." }
+    UserRequestContext:
+      type: object
+      required: [context, payload]
+      properties:
+        context: { $ref: '#/components/schemas/UserContext' }
         payload: { type: object }
         signature:
           nullable: true
@@ -534,16 +545,16 @@ components:
         scopes: { type: array, items: { type: string } }
 
     # --- Specific Request Envelopes ---
-    ApiRequest_SearchScopesRequest:       { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/SearchScopesRequest' } } } ] }
-    ApiRequest_SearchScopeAPIsRequest:    { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/SearchScopeAPIsRequest' } } } ] }
-    ApiRequest_ListScopeApprovalsRequest: { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/ListScopeApprovalsRequest' } } } ] }
+    ApiRequest_SearchScopesRequest:       { allOf: [ { $ref: '#/components/schemas/UserRequestContext' }, { properties: { payload: { $ref: '#/components/schemas/SearchScopesRequest' } } } ] }
+    ApiRequest_SearchScopeAPIsRequest:    { allOf: [ { $ref: '#/components/schemas/UserRequestContext' }, { properties: { payload: { $ref: '#/components/schemas/SearchScopeAPIsRequest' } } } ] }
+    ApiRequest_ListScopeApprovalsRequest: { allOf: [ { $ref: '#/components/schemas/UserRequestContext' }, { properties: { payload: { $ref: '#/components/schemas/ListScopeApprovalsRequest' } } } ] }
 
     # --- Specific Response Envelopes ---
     ApiResponse_SearchScopes:       { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/SearchScopesResponse' } } } ] }
     ApiResponse_SearchScopeAPIs:    { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/SearchScopeAPIsResponse' } } } ] }
     ApiResponse_ListScopeApprovals: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/ListScopeApprovalsResponse' } } } ] }
-    ApiRequest_GetUserScopesRequest:    { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/GetUserScopesRequest' } } } ] }
-    ApiRequest_UpdateUserScopesRequest: { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/UpdateUserScopesRequest' } } } ] }
+    ApiRequest_GetUserScopesRequest:    { allOf: [ { $ref: '#/components/schemas/UserRequestContext' }, { properties: { payload: { $ref: '#/components/schemas/GetUserScopesRequest' } } } ] }
+    ApiRequest_UpdateUserScopesRequest: { allOf: [ { $ref: '#/components/schemas/UserRequestContext' }, { properties: { payload: { $ref: '#/components/schemas/UpdateUserScopesRequest' } } } ] }
     ApiResponse_UserScopes:             { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/UserScopesResponse' } } } ] }
 
   # -------------------- Responses --------------------
@@ -585,16 +596,3 @@ components:
           example:
             context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "TOO_MANY_REQUESTS", message: "Too many requests. Retry after 30s." } }
             response: {}
-
-  # -------------------- Security --------------------
-  securitySchemes:
-    # This section is for documentation purposes.
-    # The server will check for the HTTP header first and fallbacks to context in case the headers are missing.
-
-    # 1. The Developer's Identity Token (Who they are)
-    developerToken:
-      type: http
-      scheme: bearer
-      bearerFormat: "JWT or Opaque"
-      description: "Developer token identifying the calling application, sent as `context.developerToken` in the request body."
-    # 2. The Developer's Request Signature (What they're attesting to)
