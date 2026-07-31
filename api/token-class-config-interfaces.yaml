@@ -48,7 +48,6 @@ info:
 
     1.  **Platform-Level (Developer) Authentication:**
         * `context.developerToken`: The B2B Developer's API Key/Token.
-        * `context.developerSignature`: The B2B Developer's signature.
 
     2.  **User-Level (End-User) Authorization:**
         * `context.authorization`: The end-user's JWT session token.
@@ -96,7 +95,6 @@ paths:
         executed on tokens of this class.
       security:
         - developerToken: []
-        - developerSignature: []
       requestBody:
         required: true
         content:
@@ -217,7 +215,6 @@ paths:
         hooks, change the program binding, or toggle status.
       security:
         - developerToken: []
-        - developerSignature: []
       requestBody:
         required: true
         content:
@@ -373,8 +370,7 @@ components:
         version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
-        developerToken: { type: string, nullable: true, description: "B2B Developer API Key/Token" }
-        developerSignature: { type: string, nullable: true, description: "B2B Developer Signature" }
+        developerToken: { type: string, example: "fnt_...", nullable: true, description: "Developer token identifying the calling application, sent in the request body." }
         authorization: { type: string, nullable: true, description: "End-user JWT session token" }
     ResponseContext:
       type: object
@@ -632,9 +628,4 @@ components:
       type: http
       scheme: bearer
       bearerFormat: "JWT or Opaque"
-      description: "B2B Developer API Key/Token in Authorization header."
-    developerSignature:
-      type: apiKey
-      in: header
-      name: Signature
-      description: "IETF HTTP Signature (RFC 9421) for message integrity."
+      description: "Developer token identifying the calling application, sent as `context.developerToken` in the request body."

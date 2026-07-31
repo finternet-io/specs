@@ -53,7 +53,6 @@ paths:
       operationId: createKey
       security:
         - developerToken: []
-        - developerSignature: []
       requestBody:
         required: true
         content:
@@ -107,7 +106,6 @@ paths:
       operationId: listKeys
       security:
         - developerToken: []
-        - developerSignature: []
       responses:
         '200':
           description: "List of the account's keys."
@@ -165,7 +163,6 @@ paths:
       operationId: sign
       security:
         - developerToken: []
-        - developerSignature: []
       requestBody:
         required: true
         content:
@@ -304,8 +301,7 @@ components:
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
         transactionId: { type: string, format: uuid, nullable: true }
-        developerToken: { type: string, example: "fnt_...", nullable: true, description: "The calling application's developer token." }
-        developerSignature: { type: string, example: "t=...,v1=...", nullable: true, description: "Signature over the request (RFC 9421)." }
+        developerToken: { type: string, example: "fnt_...", nullable: true, description: "Developer token identifying the calling application, sent in the request body." }
         authorization: { type: string, example: "Bearer eyJ...", nullable: true, description: "End user's session token." }
 
     ResponseContext:
@@ -377,8 +373,7 @@ components:
         version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
-        developerToken: { type: string, example: "fnt_...", nullable: true }
-        developerSignature: { type: string, nullable: true }
+        developerToken: { type: string, example: "fnt_...", nullable: true, description: "Developer token identifying the calling application, sent in the request body." }
         method:
           type: string
           example: "lock.request"
@@ -603,12 +598,4 @@ components:
       type: http
       scheme: bearer
       bearerFormat: "JWT or Opaque"
-      description: "Token identifying the calling application, sent as `context.developerToken`."
-
-    developerSignature:
-      type: apiKey
-      in: header
-      name: Signature
-      description: |
-        Optional request signature (RFC 9421) for message integrity and non-repudiation,
-        sent in the `Signature` header.
+      description: "Developer token identifying the calling application, sent as `context.developerToken` in the request body."

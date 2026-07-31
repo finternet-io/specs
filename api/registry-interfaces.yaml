@@ -40,7 +40,6 @@ info:
 
     1.  **Platform-Level (Developer) Authentication:**
         * `context.developerToken`: The B2B Developer's API Key/Token.
-        * `context.developerSignature`: The B2B Developer's signature.
 
     2.  **Admin-Level Authorization:**
         * Write operations (register, update) require admin privileges.
@@ -114,7 +113,6 @@ paths:
         for routing balance queries and transaction operations to the appropriate adapter service(s).
       security:
         - developerToken: []
-        - developerSignature: []
       requestBody:
         required: true
         content:
@@ -249,7 +247,6 @@ paths:
         Use this to add/remove adapters, change priorities, or deactivate a chain.
       security:
         - developerToken: []
-        - developerSignature: []
       requestBody:
         required: true
         content:
@@ -441,7 +438,6 @@ paths:
         Uses `rdns` (EIP-6963 standard) as the universal, library-agnostic identifier.
       security:
         - developerToken: []
-        - developerSignature: []
       requestBody:
         required: true
         content:
@@ -553,7 +549,6 @@ paths:
       description: "Update a wallet provider's status, supported chains, or metadata."
       security:
         - developerToken: []
-        - developerSignature: []
       requestBody:
         required: true
         content:
@@ -793,7 +788,6 @@ paths:
         end-user token) and rate limited.
       security:
         - developerToken: []
-        - developerSignature: []
       requestBody:
         required: false
         description: "No business payload; the envelope carries only the standard context."
@@ -1117,8 +1111,7 @@ components:
         version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
-        developerToken: { type: string, nullable: true, description: "B2B Developer API Key/Token" }
-        developerSignature: { type: string, nullable: true, description: "B2B Developer Signature" }
+        developerToken: { type: string, example: "fnt_...", nullable: true, description: "Developer token identifying the calling application, sent in the request body." }
     ResponseContext:
       type: object
       required: [id, version, ts, msgId, status]
@@ -1737,12 +1730,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: "JWT or Opaque"
-      description: "B2B Developer API Key/Token in Authorization header."
-    developerSignature:
-      type: apiKey
-      in: header
-      name: Signature
-      description: "IETF HTTP Signature (RFC 9421) for message integrity."
+      description: "Developer token identifying the calling application, sent as `context.developerToken` in the request body."
     userToken:
       type: http
       scheme: bearer

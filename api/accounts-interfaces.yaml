@@ -12,8 +12,6 @@ info:
 
     * `context.developerToken`: the calling application's developer token. Required on
       every endpoint.
-    * `context.developerSignature`: optional request signature (RFC 9421), sent in the
-      `Signature` header.
     * `context.authorization`: the end user's session token. Required by the endpoints
       that act on a signed-in user; each operation states when it is needed.
     * `signature` (top level): the end user's JWS, for operations that must be
@@ -74,7 +72,6 @@ paths:
         `context.authorization`, so it is not accepted in the payload.
       security:
         - developerToken: []
-        - developerSignature: []
       requestBody:
         required: true
         content:
@@ -181,7 +178,6 @@ paths:
         that is in progress. Requires a user session token.
       security:
         - developerToken: []
-        - developerSignature: []
       requestBody:
         required: true
         content:
@@ -274,7 +270,6 @@ paths:
         another federated instance is reported as unavailable.
       security:
         - developerToken: []
-        - developerSignature: []
       requestBody:
         required: true
         content:
@@ -321,7 +316,6 @@ paths:
           receive a session token without a code.
       security:
         - developerToken: []
-        - developerSignature: []
       requestBody:
         required: true
         content:
@@ -439,7 +433,6 @@ paths:
       description: "Invalidate the user's current session token. Requires a user session token."
       security:
         - developerToken: []
-        - developerSignature: []
       requestBody:
         required: true
         content:
@@ -474,7 +467,6 @@ paths:
       description: "Return the profile of the signed-in user. Requires a user session token."
       security:
         - developerToken: []
-        - developerSignature: []
       requestBody:
         required: true
         content:
@@ -511,7 +503,6 @@ paths:
         session token.
       security:
         - developerToken: []
-        - developerSignature: []
       requestBody:
         required: true
         content:
@@ -567,7 +558,6 @@ paths:
         Verify a code sent to the signed-in user. Requires a user session token.
       security:
         - developerToken: []
-        - developerSignature: []
       requestBody:
         required: true
         content:
@@ -625,7 +615,6 @@ paths:
         refused. Requires a user session token.
       security:
         - developerToken: []
-        - developerSignature: []
       requestBody:
         required: true
         content:
@@ -712,7 +701,6 @@ paths:
       description: "Resolve an address to its DID."
       security:
         - developerToken: []
-        - developerSignature: []
       requestBody:
         required: true
         content:
@@ -760,7 +748,6 @@ paths:
         `publicKey` or `address`. Requires a user session token.
       security:
         - developerToken: []
-        - developerSignature: []
       x-scopes: [keys:create]
       requestBody:
         required: true
@@ -803,7 +790,6 @@ paths:
         session token.
       security:
         - developerToken: []
-        - developerSignature: []
       x-scopes: [keys:manage]
       requestBody:
         required: true
@@ -841,7 +827,6 @@ paths:
         Requires a user session token.
       security:
         - developerToken: []
-        - developerSignature: []
       x-scopes: [keys:view]
       requestBody:
         required: true
@@ -878,7 +863,6 @@ paths:
         the results with `pagination`. Requires a user session token.
       security:
         - developerToken: []
-        - developerSignature: []
       x-scopes: [keys:view]
       requestBody:
         required: true
@@ -925,8 +909,7 @@ components:
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
         transactionId: { type: string, format: uuid, nullable: true, description: "ID for asynchronous operations." }
-        developerToken: { type: string, example: "fnt_...", nullable: true, description: "The calling application's developer token." }
-        developerSignature: { type: string, example: "t=...,v1=...", nullable: true, description: "Signature over the request (RFC 9421)." }
+        developerToken: { type: string, example: "fnt_...", nullable: true, description: "Developer token identifying the calling application, sent in the request body." }
         authorization: { type: string, example: "Bearer eyJ...", nullable: true, description: "End user's session token." }
     ResponseContext:
       type: object
@@ -1318,15 +1301,4 @@ components:
       type: http
       scheme: bearer
       bearerFormat: "JWT or Opaque"
-      description: "Token identifying the calling application, sent as `context.developerToken`."
-
-    developerSignature:
-      type: apiKey
-      in: header
-      name: Signature
-      description: |
-        Optional request signature (RFC 9421) for message integrity and non-repudiation,
-        sent in the `Signature` header.
-
-        Format:
-        Signature keyId="...",algorithm="...",created="...",expires="...",headers="...",signature="..."
+      description: "Developer token identifying the calling application, sent as `context.developerToken` in the request body."

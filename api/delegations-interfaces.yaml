@@ -39,7 +39,6 @@ paths:
         pending their approval.
       security:
         - developerToken: []
-        - developerSignature: []
       x-scopes: [delegations:view]
       requestBody:
         required: true
@@ -77,7 +76,6 @@ paths:
         where the decision came from, plus any active deny rules affecting the token.
       security:
         - developerToken: []
-        - developerSignature: []
       x-scopes: [delegations:view]
       requestBody:
         required: true
@@ -127,8 +125,7 @@ components:
           allOf:
             - $ref: '#/components/schemas/Context'
             - properties:
-                developerToken: { type: string, description: "Optional inline developer token; usually carried via the `Authorization` header." }
-                developerSignature: { type: string, description: "Optional inline developer signature." }
+                developerToken: { type: string, example: "fnt_...", nullable: true, description: "Developer token identifying the calling application, sent in the request body." }
                 authorization: { type: string, description: "End-user session JWT. Required: both endpoints authenticate the end user (user JWT) in addition to the developer token." }
 
     ResponseContext:
@@ -311,9 +308,4 @@ components:
       type: http
       scheme: bearer
       bearerFormat: "JWT or Opaque"
-      description: "Developer API Key/Token in Authorization header."
-    developerSignature:
-      type: apiKey
-      in: header
-      name: Signature
-      description: "IETF HTTP Signature (RFC 9421) for message integrity."
+      description: "Developer token identifying the calling application, sent as `context.developerToken` in the request body."

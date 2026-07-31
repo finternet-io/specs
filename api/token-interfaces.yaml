@@ -41,13 +41,10 @@ info:
 
     1.  **Platform-Level (Developer) Authentication:**
         * `context.developerToken`: The B2B Developer's API Key/Token.
-        * `context.developerSignature`: The B2B Developer's signature (e.g., RFC 9421) of the payload.
 
     2.  **User-Level (End-User) Authorization:**
         * `context.authorization`: The end-user's JWT session token (for session-based calls).
         * `signature` (top-level): The end-user's JWS for critical, cryptographically-signed operations.
-
-    *Note for HTTP Clients:* As a convenience, the `developerToken` may be provided in the standard `Authorization: Bearer <token>` HTTP header, and the `developerSignature` in an `X-Finternet-Signature` header.
 
     ### RBAC Scopes
 
@@ -118,7 +115,6 @@ paths:
         Only authorized administrators can register token classes.
       security:
         - developerToken: []
-        - developerSignature: []
       requestBody:
         required: true
         content:
@@ -463,7 +459,6 @@ paths:
         Can be used to add/remove authorized minters or update class properties.
       security:
         - developerToken: []
-        - developerSignature: []
       requestBody:
         required: true
         content:
@@ -815,7 +810,6 @@ paths:
         Requires both developer authentication and end-user signature.
       security:
         - developerToken: []
-        - developerSignature: []
       requestBody:
         required: true
         content:
@@ -998,7 +992,6 @@ paths:
       description: "Search tokens with filters (type, status, etc.). Owner filtering inferred from JWT/ACL. Supports pagination. Requires Developer auth."
       security:
         - developerToken: []
-        - developerSignature: []
       requestBody:
         required: true
         content:
@@ -1143,7 +1136,6 @@ paths:
         middleware on this route; a request without a valid `signature` is rejected.
       security:
         - developerToken: []
-        - developerSignature: []
       requestBody:
         required: true
         content:
@@ -1751,7 +1743,6 @@ paths:
         tracks it.
       security:
         - developerToken: []
-        - developerSignature: []
       requestBody:
         required: true
         content:
@@ -2115,8 +2106,7 @@ components:
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
         transactionId: { type: string, format: uuid, nullable: true, description: "ID for async operations" }
-        developerToken: { type: string, example: "fnt_...", nullable: true, description: "B2B Developer API Key/Token" }
-        developerSignature: { type: string, example: "t=...,v1=...", nullable: true, description: "B2B Developer Signature" }
+        developerToken: { type: string, example: "fnt_...", nullable: true, description: "Developer token identifying the calling application, sent in the request body." }
         authorization: { type: string, example: "Bearer eyJ...", nullable: true, description: "End-user's session token" }
         valueFormat:
           type: string
@@ -3722,17 +3712,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: "JWT or Opaque"
-      description: |
-        A JWT or Opaque token that identifies the calling B2B developer/backend service.
-
-    developerSignature:
-      type: apiKey
-      in: header
-      name: Signature
-      description: |
-        The IETF HTTP Signature (RFC 9421) used by B2B developers to ensure message
-        integrity and non-repudiation. This is passed in the `Signature` header.
-
+      description: "Developer token identifying the calling application, sent as `context.developerToken` in the request body."
     userToken:
       type: http
       scheme: bearer

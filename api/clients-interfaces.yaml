@@ -51,7 +51,6 @@ paths:
         the plaintext secret cannot be recovered.
       security:
         - developerToken: []
-        - developerSignature: []
       x-scopes: [clients:create]
       requestBody:
         required: true
@@ -92,7 +91,6 @@ paths:
       summary: "Get a single API client by ID"
       security:
         - developerToken: []
-        - developerSignature: []
       x-scopes: [clients:view]
       requestBody:
         required: true
@@ -116,7 +114,6 @@ paths:
       summary: "List API clients (scoped to the caller's account)"
       security:
         - developerToken: []
-        - developerSignature: []
       x-scopes: [clients:view]
       requestBody:
         required: true
@@ -143,7 +140,6 @@ paths:
         separately via `/v1/clients/scopes/update`.
       security:
         - developerToken: []
-        - developerSignature: []
       x-scopes: [clients:manage]
       requestBody:
         required: true
@@ -172,7 +168,6 @@ paths:
         present are added / preserved / re-requested.
       security:
         - developerToken: []
-        - developerSignature: []
       x-scopes: [clients:manage]
       requestBody:
         required: true
@@ -202,7 +197,6 @@ paths:
         returned **only on this response**.
       security:
         - developerToken: []
-        - developerSignature: []
       x-scopes: [clients:manage]
       requestBody:
         required: true
@@ -240,7 +234,6 @@ paths:
         client lifecycle; requires the same scope as `register` by design.
       security:
         - developerToken: []
-        - developerSignature: []
       x-scopes: [clients:create]
       requestBody:
         required: true
@@ -266,7 +259,6 @@ paths:
         Restore a previously deactivated client. Part of the client lifecycle.
       security:
         - developerToken: []
-        - developerSignature: []
       x-scopes: [clients:create]
       requestBody:
         required: true
@@ -301,8 +293,7 @@ components:
         version: { type: string, example: "v1" }
         ts: { type: string, format: date-time }
         msgId: { type: string, format: uuid }
-        developerToken: { type: string, description: "Caller's developer token (API key)." }
-        developerSignature: { type: string, description: "Optional HTTP Signature." }
+        developerToken: { type: string, example: "fnt_...", nullable: true, description: "Developer token identifying the calling application, sent in the request body." }
 
     ResponseContext:
       allOf:
@@ -733,9 +724,4 @@ components:
       type: http
       scheme: bearer
       bearerFormat: "JWT or Opaque"
-      description: "Developer API Key/Token in Authorization header."
-    developerSignature:
-      type: apiKey
-      in: header
-      name: Signature
-      description: "IETF HTTP Signature (RFC 9421) for message integrity."
+      description: "Developer token identifying the calling application, sent as `context.developerToken` in the request body."
