@@ -306,7 +306,7 @@ paths:
         - "Account"
       summary: "User login (OTP or SSO)"
       description: |
-        Three request shapes, selectable above:
+        Three payload shapes, selectable under `payload` below:
 
         * **Send OTP**: `username` only. Delivers a one-time code.
         * **Verify OTP**: `username` and `otp`. Returns a session token.
@@ -319,10 +319,7 @@ paths:
         content:
           application/json:
             schema:
-              oneOf:
-                - $ref: '#/components/schemas/ApiRequest_LoginSendOTP'
-                - $ref: '#/components/schemas/ApiRequest_LoginVerifyOTP'
-                - $ref: '#/components/schemas/ApiRequest_LoginSSO'
+              $ref: '#/components/schemas/ApiRequest_LoginRequest'
             examples:
               InitiateOTPMobile:
                 summary: "Send OTP (mobile)"
@@ -976,9 +973,15 @@ components:
     ApiRequest_RegistrationRequest: { allOf: [ { $ref: '#/components/schemas/UserRequestContext' }, { properties: { payload: { $ref: '#/components/schemas/RegistrationRequest' } } } ] }
     ApiRequest_UpdateAccountRequest: { allOf: [ { $ref: '#/components/schemas/UserRequestContext' }, { properties: { payload: { $ref: '#/components/schemas/UpdateAccountRequest' } } } ] }
     ApiRequest_AvailabilityCheckRequest: { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/AvailabilityCheckRequest' } } } ] }
-    ApiRequest_LoginSendOTP: { title: "Send OTP", allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/LoginSendOTPRequest' } } } ] }
-    ApiRequest_LoginVerifyOTP: { title: "Verify OTP", allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/LoginVerifyOTPRequest' } } } ] }
-    ApiRequest_LoginSSO: { title: "SSO login", allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/LoginSSORequest' } } } ] }
+    ApiRequest_LoginRequest:
+      allOf:
+        - $ref: '#/components/schemas/RequestContext'
+        - properties:
+            payload:
+              oneOf:
+                - $ref: '#/components/schemas/LoginSendOTPRequest'
+                - $ref: '#/components/schemas/LoginVerifyOTPRequest'
+                - $ref: '#/components/schemas/LoginSSORequest'
     ApiRequest_ResolveRequest: { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/ResolveRequest' } } } ] }
     ApiRequest_OTPVerifyRequest: { allOf: [ { $ref: '#/components/schemas/UserRequestContext' }, { properties: { payload: { $ref: '#/components/schemas/OTPVerifyRequest' } } } ] }
     ApiRequest_DecryptPIIRequest: { allOf: [ { $ref: '#/components/schemas/UserRequestContext' }, { properties: { payload: { $ref: '#/components/schemas/DecryptPIIRequest' } } } ] }
