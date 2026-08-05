@@ -1,0 +1,463 @@
+openapi: 3.0.4
+info:
+  title: "Finternet API - Terms & Consent"
+  description: |
+    The official API specification for the Finternet Terms and Consent services.
+    These endpoints publish, serve, and record end-user agreement to versioned
+    legal documents (Terms of Use, Privacy Policy, etc.).
+
+    ### Protocol-Agnostic Envelope
+    All API interactions use a standard JSON envelope.
+
+    **Request Envelope:**
+    ```json
+    {
+      "context": { ... },
+      "payload": { ... },
+      "signature": { ... } // Optional
+    }
+    ```
+
+    **Response Envelope (Success):**
+    ```json
+    {
+      "context": { ..., "status": "successful" },
+      "response": { ... }
+    }
+    ```
+
+    **Response Envelope (Error):**
+    ```json
+    {
+      "context": { ..., "status": "failed", "error": {"code": "...", "message": "..." },
+      "response": {} // Empty on error
+    }
+    ```
+    (Error details are in the context.error object)
+
+    ### Authentication
+
+    * `context.developerToken`: the developer token of the calling application. Required on
+      every endpoint.
+    * `context.authorization`: the end user's session token. Required on the endpoints that
+      act on a signed-in user; each operation states when it is needed.
+    * `signature` (top level): the end user's JWS over the payload, for operations that must
+      be signed by the user.
+
+    ### RBAC Scopes
+
+    | Endpoint | Required scope |
+    |----------|----------------|
+    | `POST /v1/terms/get` | `terms:view` |
+    | `POST /v1/terms/accept` | `terms:create` |
+    | `POST /v1/terms/publish` | `terms:manage` *(protected: admin-only; granted via the scope-approval workflow at client registration)* |
+
+    Calls failing the scope check return `403 FORBIDDEN`.
+
+    ### Rate limiting
+
+    All endpoints are protected by a scope-tier sliding-window rate limiter; on
+    breach the response is `429 Too Many Requests` with a `Retry-After` header.
+  version: "1.0.0"
+servers:
+  - url: "https://foundry.finternetlab.io"
+    description: "Development Environment"
+  - url: "http://localhost:3000"
+    description: "Local Server"
+tags:
+  - name: "Terms"
+    description: "Endpoints for publishing, serving, and accepting versioned Terms documents."
+
+# ===============================================================
+#   PATHS
+# ===============================================================
+
+paths:
+  /v1/terms/get:
+    post:
+      tags:
+        - "Terms"
+      summary: "Get the latest published Terms"
+      description: |
+        Returns the current published version (with content) of a Terms document.
+        The `docType` selects which document; omitting it returns the default document.
+
+        No user session token is required, so the document can be fetched during onboarding
+        before the user has a session.
+      x-scopes: [terms:view]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_GetTermsRequest'
+            example:
+              context:
+                id: "api.terms.get"
+                version: "v1"
+                ts: "2026-07-09T12:00:00Z"
+                msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                developerToken: "c2Et..."
+              payload:
+                docType: "terms_of_use"
+      responses:
+        '200':
+          description: "Latest published Terms version."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TermsVersion'
+              example:
+                context:
+                  id: "api.terms.get"
+                  version: "v1"
+                  ts: "2026-07-09T12:00:01Z"
+                  msgId: "b1b2c3d4-e5f6-7890-1234-567890abcdef"
+                  status: "successful"
+                response:
+                  id: "5f3c9a1e-2b4d-4c6e-8a1f-9b0c1d2e3f40"
+                  docType: "terms_of_use"
+                  version: 3
+                  versionLabel: "2026.07"
+                  content: "# Terms of Use\n\nBy using this service..."
+                  contentFormat: "markdown"
+                  contentHash: "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+                  status: "published"
+                  requiresReconsent: true
+                  effectiveFrom: "2026-07-01T00:00:00Z"
+                  publishedAt: "2026-06-25T10:00:00Z"
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+  /v1/terms/accept:
+    post:
+      tags:
+        - "Terms"
+      summary: "Record consent to a Terms version"
+      description: |
+        Records the authenticated user's agreement to a specific version of a Terms
+        document. `versionId` must be the version the user actually saw. If a newer
+        version has since been published, the accept is rejected (409) so the user
+        re-reads it.
+
+        The consent is recorded against the authenticated account.
+
+        Requires a user session token in `context.authorization`.
+      x-scopes: [terms:create]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_AcceptTermsRequest'
+            example:
+              context:
+                id: "api.terms.accept"
+                version: "v1"
+                ts: "2026-07-09T12:05:00Z"
+                msgId: "c1b2c3d4-e5f6-7890-1234-567890abcdef"
+                developerToken: "c2Et..."
+                authorization: "Bearer eyJ..."
+              payload:
+                docType: "terms_of_use"
+                versionId: "5f3c9a1e-2b4d-4c6e-8a1f-9b0c1d2e3f40"
+      responses:
+        '200':
+          description: "Consent recorded."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_AcceptTerms'
+              example:
+                context:
+                  id: "api.terms.accept"
+                  version: "v1"
+                  ts: "2026-07-09T12:05:01Z"
+                  msgId: "d1b2c3d4-e5f6-7890-1234-567890abcdef"
+                  status: "successful"
+                response:
+                  docType: "terms_of_use"
+                  version: 3
+                  consentedAt: "2026-07-09T12:05:01Z"
+                  message: "Consent recorded."
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409':
+          description: "The submitted version is stale; a newer version has been published and must be re-read."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example:
+                context:
+                  id: "api.terms.accept"
+                  version: "v1"
+                  ts: "2026-07-09T12:05:01Z"
+                  msgId: "d1b2c3d4-e5f6-7890-1234-567890abcdef"
+                  status: "failed"
+                  error:
+                    code: "CONFLICT"
+                    message: "A newer version of this document has been published. Please review it before accepting."
+                response: {}
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+  /v1/terms/publish:
+    post:
+      tags:
+        - "Terms"
+      summary: "Publish a new Terms version"
+      description: |
+        Creates a new version of a Terms document. Admin-only: gated by the protected
+        `terms:manage` scope, which is granted through the scope-approval workflow at
+        client registration.
+
+        No user session token is required.
+        `requiresReconsent` defaults to `true` when omitted (treated as a material change).
+      x-scopes: [terms:manage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_PublishTermsRequest'
+            example:
+              context:
+                id: "api.terms.publish"
+                version: "v1"
+                ts: "2026-07-09T09:00:00Z"
+                msgId: "e1b2c3d4-e5f6-7890-1234-567890abcdef"
+                developerToken: "c2Et..."
+              payload:
+                docType: "terms_of_use"
+                versionLabel: "2026.07"
+                content: "# Terms of Use\n\nBy using this service..."
+                requiresReconsent: true
+                effectiveFrom: "2026-07-01T00:00:00Z"
+      responses:
+        '201':
+          description: "New Terms version published."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_TermsVersion'
+              example:
+                context:
+                  id: "api.terms.publish"
+                  version: "v1"
+                  ts: "2026-07-09T09:00:01Z"
+                  msgId: "f1b2c3d4-e5f6-7890-1234-567890abcdef"
+                  status: "successful"
+                response:
+                  id: "5f3c9a1e-2b4d-4c6e-8a1f-9b0c1d2e3f40"
+                  docType: "terms_of_use"
+                  version: 3
+                  versionLabel: "2026.07"
+                  content: "# Terms of Use\n\nBy using this service..."
+                  contentFormat: "markdown"
+                  contentHash: "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+                  status: "published"
+                  requiresReconsent: true
+                  effectiveFrom: "2026-07-01T00:00:00Z"
+                  publishedAt: "2026-07-09T09:00:01Z"
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+# ===============================================================
+#   COMPONENTS
+# ===============================================================
+
+components:
+  # -------------------- Schemas --------------------
+  schemas:
+    # --- API Envelope Schemas ---
+    Context:
+      type: object
+      required: [id, version, ts, msgId, developerToken]
+      properties:
+        id: { type: string, example: "api.terms.get" }
+        version: { type: string, example: "v1" }
+        ts: { type: string, format: date-time }
+        msgId: { type: string, format: uuid }
+        developerToken: { type: string, example: "c2Et...", description: "Developer token for the calling application: base64 of `<clientId>:<clientSecret>`, as returned by `/v1/clients/register`." }
+        authorization: { type: string, example: "Bearer eyJ...", nullable: true, description: "End-user's session token." }
+    ResponseContext:
+      type: object
+      required: [id, version, ts, msgId, status]
+      properties:
+        id: { type: string, example: "api.terms.get" }
+        version: { type: string, example: "v1" }
+        ts: { type: string, format: date-time }
+        msgId: { type: string, format: uuid }
+        transactionId: { type: string, format: uuid, nullable: true }
+        status: { type: string, enum: [successful, failed, pending] }
+        error:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/ErrorPayload'
+    Signature:
+      type: object
+      required: [keyId, jws]
+      properties:
+        keyId: { type: string, format: uuid, example: "0f8fad5b-d9cb-469f-a165-70867728950e", description: "UUID of the registered key that produced the signature." }
+        jws: { type: string, example: "eyJ...", description: "End-user's JWS of the payload object." }
+    ErrorPayload:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, example: "RESOURCE_NOT_FOUND" }
+        message: { type: string }
+
+    # --- Base Request/Response Schemas ---
+    RequestContext:
+      type: object
+      required: [context, payload]
+      properties:
+        context: { $ref: '#/components/schemas/Context' }
+        payload: { type: object }
+        signature:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Signature'
+    UserContext:
+      type: object
+      required: [id, version, ts, msgId, developerToken, authorization]
+      properties:
+        id: { type: string, example: "api.terms.get" }
+        version: { type: string, example: "v1" }
+        ts: { type: string, format: date-time }
+        msgId: { type: string, format: uuid }
+        developerToken: { type: string, example: "c2Et...", description: "Developer token for the calling application: base64 of `<clientId>:<clientSecret>`, as returned by `/v1/clients/register`." }
+        authorization: { type: string, example: "Bearer eyJ...", description: "End-user's session token." }
+    UserRequestContext:
+      type: object
+      required: [context, payload]
+      properties:
+        context: { $ref: '#/components/schemas/UserContext' }
+        payload: { type: object }
+        signature:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Signature'
+    ApiResponse:
+      type: object
+      required: [context, response]
+      properties:
+        context: { $ref: '#/components/schemas/ResponseContext' }
+        response: { type: object }
+    ApiError:
+      type: object
+      required: [context, response]
+      properties:
+        context: { $ref: '#/components/schemas/ResponseContext' }
+        response: { type: object, description: "Always empty on error.", example: {} }
+
+    # --- Specific Request Envelopes ---
+    ApiRequest_GetTermsRequest:     { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/GetTermsRequest' } } } ] }
+    ApiRequest_AcceptTermsRequest:  { allOf: [ { $ref: '#/components/schemas/UserRequestContext' }, { properties: { payload: { $ref: '#/components/schemas/AcceptTermsRequest' } } } ] }
+    ApiRequest_PublishTermsRequest: { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/PublishTermsRequest' } } } ] }
+
+    # --- Specific Response Envelopes ---
+    ApiResponse_TermsVersion: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/TermsVersionResponse' } } } ] }
+    ApiResponse_AcceptTerms:  { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/AcceptTermsResponse' } } } ] }
+
+    # --- Core Data Schemas (Payloads) ---
+    GetTermsRequest:
+      type: object
+      description: "Requests the latest published version of a Terms document. `docType` is optional; empty means the default document (e.g. terms_of_use)."
+      properties:
+        docType: { type: string, example: "terms_of_use", description: "Which document to fetch. Defaults to the platform default when omitted." }
+    AcceptTermsRequest:
+      type: object
+      required: [versionId]
+      description: "Records a user's agreement to a specific version. `versionId` must be the version the user actually saw."
+      properties:
+        docType: { type: string, example: "terms_of_use", description: "Which document is being accepted. Defaults to the platform default when omitted." }
+        versionId: { type: string, example: "5f3c9a1e-2b4d-4c6e-8a1f-9b0c1d2e3f40", description: "Identifier of the exact version the user viewed and is accepting." }
+    PublishTermsRequest:
+      type: object
+      required: [content]
+      description: "Creates a new Terms version. Admin-only (protected scope)."
+      properties:
+        docType: { type: string, example: "terms_of_use", description: "Which document to publish a new version of. Defaults to the platform default when omitted." }
+        versionLabel: { type: string, example: "2026.07", description: "Optional human-readable label for the version." }
+        content: { type: string, minLength: 1, example: "# Terms of Use\n\nBy using this service...", description: "The full document body." }
+        requiresReconsent: { type: boolean, default: true, description: "Whether existing users must re-accept. Defaults to true (treat as a material change) when omitted." }
+        effectiveFrom: { type: string, format: date-time, nullable: true, description: "Optional RFC3339 timestamp; empty means effective immediately." }
+
+    TermsVersionResponse:
+      type: object
+      description: "A single Terms version, returned by /terms/get and /terms/publish."
+      properties:
+        id: { type: string, example: "5f3c9a1e-2b4d-4c6e-8a1f-9b0c1d2e3f40" }
+        docType: { type: string, example: "terms_of_use" }
+        version: { type: integer, example: 3 }
+        versionLabel: { type: string, example: "2026.07", description: "Omitted when unset." }
+        content: { type: string, example: "# Terms of Use\n\nBy using this service..." }
+        contentFormat: { type: string, example: "markdown" }
+        contentHash: { type: string, example: "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08" }
+        status: { type: string, example: "published" }
+        requiresReconsent: { type: boolean, example: true }
+        effectiveFrom: { type: string, format: date-time, example: "2026-07-01T00:00:00Z", description: "Omitted when unset." }
+        publishedAt: { type: string, format: date-time, example: "2026-06-25T10:00:00Z", description: "Omitted when unset." }
+    AcceptTermsResponse:
+      type: object
+      description: "Confirms a recorded agreement."
+      properties:
+        docType: { type: string, example: "terms_of_use" }
+        version: { type: integer, example: 3 }
+        consentedAt: { type: string, format: date-time, example: "2026-07-09T12:05:01Z" }
+        message: { type: string, example: "Consent recorded." }
+
+  # -------------------- Responses --------------------
+  responses:
+    UnauthorizedError:
+      description: "Authentication failed. Can be invalid Developer Token OR invalid User JWT."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "UNAUTHORIZED", message: "Token invalid or expired." } }
+            response: {}
+    ForbiddenError:
+      description: "Forbidden. Insufficient permissions (missing required scope)."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "FORBIDDEN", message: "Insufficient permissions to perform this action." } }
+            response: {}
+    NotFoundError:
+      description: "Resource not found."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "The requested resource was not found." } }
+            response: {}
+    BadRequestError:
+      description: "Invalid request."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "INVALID_INPUT", message: "Invalid request parameters." } }
+            response: {}
+    RateLimitedError:
+      description: |
+        Request exceeded the scope-tier sliding-window rate limit. The `Retry-After`
+        response header indicates how long the caller should wait before retrying.
+      headers:
+        Retry-After:
+          schema: { type: integer, description: "Seconds to wait before retrying." }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "TOO_MANY_REQUESTS", message: "Too many requests. Retry after 30s." } }
+            response: {}

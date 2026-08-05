@@ -1,0 +1,542 @@
+openapi: 3.0.4
+info:
+  title: "Finternet API - Token Program Registry"
+  description: |
+    The official API specification for the Finternet Token Program Registry service.
+
+    A **token program** is a registry entry describing a token implementation:
+    the standards it supports (e.g. `FT`, `NFT`), the operations it exposes
+    (e.g. `Transfer`, `Burn`, `Freeze`), a version, and optional configuration.
+
+    ### Protocol-Agnostic Envelope
+    All API interactions use a standard JSON envelope.
+
+    **Request Envelope:**
+    ```json
+    {
+      "context": { ... },
+      "payload": { ... },
+      "signature": { ... } // Optional
+    }
+    ```
+
+    **Response Envelope (Success):**
+    ```json
+    {
+      "context": { ..., "status": "successful" },
+      "response": { ... }
+    }
+    ```
+
+    **Response Envelope (Error):**
+    ```json
+    {
+      "context": { ..., "status": "failed", "error": {"code": "...", "message": "..." },
+      "response": {} // Empty on error
+    }
+    ```
+    (Error details are in the context.error object)
+
+    ### Authentication
+
+    * `context.developerToken`: the developer token of the calling application. Required on
+      every endpoint.
+    * `context.authorization`: the end user's session token. Required on the endpoints that
+      act on a signed-in user; each operation states when it is needed.
+    * `signature` (top level): the end user's JWS over the payload, for operations that must
+      be signed by the user.
+
+    ### RBAC Scopes
+
+    | Endpoint | Required scope |
+    |----------|----------------|
+    | `POST /v1/tokenprogram/register` | `registry-programs:create` |
+    | `POST /v1/tokenprogram/update` | `registry-programs:manage` |
+    | `POST /v1/tokenprogram/get` | `registry-programs:view` |
+    | `POST /v1/tokenprogram/search` | `registry-programs:view` |
+
+    Scope keys are resolved from the server-side `scope_api` mapping table. Calls
+    failing the scope check return `403 FORBIDDEN`.
+
+    ### Rate limiting
+
+    All endpoints are protected by a scope-tier sliding-window rate limiter; on
+    breach the response is `429 Too Many Requests` with a `Retry-After` header.
+  version: "1.0.0"
+servers:
+  - url: "https://foundry.finternetlab.io"
+    description: "Development Environment"
+  - url: "http://localhost:3000"
+    description: "Local Server"
+tags:
+  - name: "Token Program"
+    description: "Endpoints for registering, updating, retrieving, and searching token programs."
+
+# ===============================================================
+#   PATHS
+# ===============================================================
+
+paths:
+  # -------------------- Token Program --------------------
+  /v1/tokenprogram/register:
+    post:
+      tags: [Token Program]
+      summary: "Register a new token program"
+      description: |
+        Registers a new token program in the registry.
+
+        Requires a user session token in `context.authorization`.
+      operationId: registerTokenProgram
+      x-scopes: ["registry-programs:create"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApiRequest_RegisterTokenProgramRequest' }
+            example:
+              context:
+                id: "api.tokenprogram.register"
+                version: "v1"
+                ts: "2026-07-09T12:00:00Z"
+                msgId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                developerToken: "c2Et..."
+                authorization: "Bearer eyJ..."
+              payload:
+                programId: "reference-ft"
+                name: "Reference FT"
+                version: "1.0.0"
+                supportedStandards: ["FT"]
+                supportedOperations: ["Transfer", "Burn", "Freeze"]
+      responses:
+        '201':
+          description: "Token program registered successfully."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse_TokenProgram' }
+              example:
+                context:
+                  id: "api.tokenprogram.register"
+                  version: "v1"
+                  ts: "2026-07-09T12:00:01Z"
+                  msgId: "b2c3d4e5-f6a7-8901-2345-67890abcdef1"
+                  status: "successful"
+                response:
+                  id: "b50db0e7-d5f7-6bfe-fcbf-7f45ae7683e1"
+                  programId: "reference-ft"
+                  name: "Reference FT"
+                  version: "1.0.0"
+                  supportedStandards: ["FT"]
+                  supportedOperations: ["Transfer", "Burn", "Freeze"]
+                  status: "active"
+                  createdAt: "2026-07-09T12:00:01Z"
+                  updatedAt: "2026-07-09T12:00:01Z"
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+  /v1/tokenprogram/update:
+    post:
+      tags: [Token Program]
+      summary: "Update a token program"
+      description: |
+        Updates token program details, identified by `programId`. Only the
+        provided fields are changed.
+
+        Requires a user session token in `context.authorization`.
+      operationId: updateTokenProgram
+      x-scopes: ["registry-programs:manage"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApiRequest_UpdateTokenProgramRequest' }
+            example:
+              context:
+                id: "api.tokenprogram.update"
+                version: "v1"
+                ts: "2026-07-09T12:05:00Z"
+                msgId: "c3d4e5f6-a7b8-9012-3456-7890abcdef23"
+                developerToken: "c2Et..."
+                authorization: "Bearer eyJ..."
+              payload:
+                programId: "reference-ft"
+                version: "1.0.1"
+      responses:
+        '200':
+          description: "Token program updated successfully."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse_TokenProgram' }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+  /v1/tokenprogram/get:
+    post:
+      tags: [Token Program]
+      summary: "Get a token program"
+      description: |
+        Retrieves token program details by `programId`.
+
+        Requires a user session token in `context.authorization`.
+      operationId: getTokenProgram
+      x-scopes: ["registry-programs:view"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApiRequest_GetTokenProgramRequest' }
+            example:
+              context:
+                id: "api.tokenprogram.get"
+                version: "v1"
+                ts: "2026-07-09T12:10:00Z"
+                msgId: "d4e5f6a7-b8c9-0123-4567-890abcdef234"
+                developerToken: "c2Et..."
+                authorization: "Bearer eyJ..."
+              payload:
+                programId: "reference-ft"
+      responses:
+        '200':
+          description: "Token program retrieved successfully."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse_TokenProgram' }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+  /v1/tokenprogram/search:
+    post:
+      tags: [Token Program]
+      summary: "Search token programs"
+      description: |
+        Searches token programs with filters, pagination, and sorting.
+
+        Requires a user session token in `context.authorization`.
+      operationId: searchTokenPrograms
+      x-scopes: ["registry-programs:view"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApiRequest_SearchTokenProgramRequest' }
+            example:
+              context:
+                id: "api.tokenprogram.search"
+                version: "v1"
+                ts: "2026-07-09T12:15:00Z"
+                msgId: "e5f6a7b8-c9d0-1234-5678-90abcdef2345"
+                developerToken: "c2Et..."
+                authorization: "Bearer eyJ..."
+              payload:
+                filters: {}
+                pagination: { limit: 50, offset: 0 }
+      responses:
+        '200':
+          description: "Token programs retrieved successfully."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse_SearchTokenProgram' }
+              example:
+                context:
+                  id: "api.tokenprogram.search"
+                  version: "v1"
+                  ts: "2026-07-09T12:15:01Z"
+                  msgId: "f6a7b8c9-d0e1-2345-6789-0abcdef23456"
+                  status: "successful"
+                response:
+                  tokenPrograms:
+                    - id: "b50db0e7-d5f7-6bfe-fcbf-7f45ae7683e1"
+                      programId: "reference-ft"
+                      name: "Reference FT"
+                      version: "1.0.0"
+                      supportedStandards: ["FT"]
+                      supportedOperations: ["Transfer", "Burn", "Freeze"]
+                      status: "active"
+                      createdAt: "2026-07-09T12:00:01Z"
+                      updatedAt: "2026-07-09T12:00:01Z"
+                  pagination: { total: 1, limit: 50, offset: 0 }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '429': { $ref: '#/components/responses/RateLimitedError' }
+
+# ===============================================================
+#   COMPONENTS
+# ===============================================================
+
+components:
+  # -------------------- Schemas --------------------
+  schemas:
+    # --- API Envelope Schemas ---
+    Context:
+      type: object
+      required: [id, version, ts, msgId, developerToken]
+      properties:
+        id: { type: string, example: "api.tokenprogram.register" }
+        version: { type: string, example: "v1" }
+        ts: { type: string, format: date-time }
+        msgId: { type: string, format: uuid }
+        developerToken: { type: string, example: "c2Et...", description: "Developer token for the calling application: base64 of `<clientId>:<clientSecret>`, as returned by `/v1/clients/register`." }
+        authorization: { type: string, example: "Bearer eyJ...", nullable: true, description: "End-user's session token." }
+    ResponseContext:
+      type: object
+      required: [id, version, ts, msgId, status]
+      properties:
+        id: { type: string, example: "api.tokenprogram.register" }
+        version: { type: string, example: "v1" }
+        ts: { type: string, format: date-time }
+        msgId: { type: string, format: uuid }
+        transactionId: { type: string, format: uuid, nullable: true }
+        status: { type: string, enum: [successful, failed, pending] }
+        error:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/ErrorPayload'
+    Signature:
+      type: object
+      required: [keyId, jws]
+      properties:
+        keyId: { type: string, format: uuid, example: "0f8fad5b-d9cb-469f-a165-70867728950e", description: "UUID of the registered key that produced the signature." }
+        jws: { type: string, example: "eyJ...", description: "End-user's JWS of the payload object." }
+    ErrorPayload:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, example: "RESOURCE_NOT_FOUND" }
+        message: { type: string }
+
+    # --- Base Request/Response Schemas ---
+    RequestContext:
+      type: object
+      required: [context, payload]
+      properties:
+        context: { $ref: '#/components/schemas/Context' }
+        payload: { type: object }
+        signature:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Signature'
+    UserContext:
+      type: object
+      required: [id, version, ts, msgId, developerToken, authorization]
+      properties:
+        id: { type: string, example: "api.tokenprogram.register" }
+        version: { type: string, example: "v1" }
+        ts: { type: string, format: date-time }
+        msgId: { type: string, format: uuid }
+        developerToken: { type: string, example: "c2Et...", description: "Developer token for the calling application: base64 of `<clientId>:<clientSecret>`, as returned by `/v1/clients/register`." }
+        authorization: { type: string, example: "Bearer eyJ...", description: "End-user's session token." }
+    UserRequestContext:
+      type: object
+      required: [context, payload]
+      properties:
+        context: { $ref: '#/components/schemas/UserContext' }
+        payload: { type: object }
+        signature:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Signature'
+    ApiResponse:
+      type: object
+      required: [context, response]
+      properties:
+        context: { $ref: '#/components/schemas/ResponseContext' }
+        response: { type: object }
+    ApiError:
+      type: object
+      required: [context, response]
+      properties:
+        context: { $ref: '#/components/schemas/ResponseContext' }
+        response: { type: object, description: "Always empty on error.", example: {} }
+
+    # --- Core Data Schemas (Payloads) ---
+    RegisterTokenProgramRequest:
+      type: object
+      required: [programId, name, version, supportedStandards, supportedOperations]
+      properties:
+        programId: { type: string, example: "reference-ft" }
+        name: { type: string, example: "Reference FT" }
+        description: { type: string, nullable: true }
+        version: { type: string, example: "1.0.0" }
+        supportedStandards:
+          type: array
+          items: { type: string }
+          example: ["FT"]
+        supportedOperations:
+          type: array
+          items: { type: string }
+          example: ["Transfer", "Burn", "Freeze"]
+        config:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: "Free-form program configuration object."
+      additionalProperties: true
+    UpdateTokenProgramRequest:
+      type: object
+      required: [programId]
+      description: "All fields other than programId are optional; only provided fields are updated."
+      properties:
+        programId: { type: string, example: "reference-ft" }
+        name: { type: string, nullable: true }
+        description: { type: string, nullable: true }
+        version: { type: string, example: "1.0.1", nullable: true }
+        supportedStandards:
+          type: array
+          nullable: true
+          items: { type: string }
+        supportedOperations:
+          type: array
+          nullable: true
+          items: { type: string }
+        config:
+          type: object
+          nullable: true
+          additionalProperties: true
+        status: { type: string, nullable: true, example: "active" }
+      additionalProperties: true
+    GetTokenProgramRequest:
+      type: object
+      required: [programId]
+      properties:
+        programId: { type: string, example: "reference-ft" }
+      additionalProperties: false
+    SearchTokenProgramRequest:
+      type: object
+      properties:
+        filters:
+          type: object
+          additionalProperties: true
+          description: "Free-form filter object applied server-side."
+        pagination:
+          type: object
+          properties:
+            limit: { type: integer, minimum: 0 }
+            offset: { type: integer, minimum: 0 }
+          additionalProperties: false
+        sortBy:
+          type: object
+          properties:
+            field: { type: string }
+            order: { type: string, enum: [asc, desc] }
+          additionalProperties: false
+      additionalProperties: true
+
+    TokenProgramResponse:
+      type: object
+      required: [id, programId, name, version, supportedStandards, supportedOperations, status, createdAt, updatedAt]
+      properties:
+        id: { type: string, example: "b50db0e7-d5f7-6bfe-fcbf-7f45ae7683e1" }
+        programId: { type: string, example: "reference-ft" }
+        name: { type: string, example: "Reference FT" }
+        description: { type: string, description: "Omitted when empty." }
+        version: { type: string, example: "1.0.0" }
+        supportedStandards:
+          type: array
+          items: { type: string }
+          example: ["FT"]
+        supportedOperations:
+          type: array
+          items: { type: string }
+          example: ["Transfer", "Burn", "Freeze"]
+        config:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: "Free-form program configuration. Omitted when empty."
+        identities:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: "Owning/associated identities. Server-populated; omitted when empty. Exact shape unspecified in source (Go type is interface{})."
+        status: { type: string, example: "active" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    PaginationInfo:
+      type: object
+      properties:
+        total: { type: integer, example: 1 }
+        limit: { type: integer, example: 50 }
+        offset: { type: integer, example: 0 }
+    SearchTokenProgramResponse:
+      type: object
+      required: [tokenPrograms, pagination]
+      properties:
+        tokenPrograms:
+          type: array
+          items: { $ref: '#/components/schemas/TokenProgramResponse' }
+        pagination: { $ref: '#/components/schemas/PaginationInfo' }
+
+    # --- Specific Request Envelopes ---
+    ApiRequest_RegisterTokenProgramRequest: { allOf: [ { $ref: '#/components/schemas/UserRequestContext' }, { properties: { payload: { $ref: '#/components/schemas/RegisterTokenProgramRequest' } } } ] }
+    ApiRequest_UpdateTokenProgramRequest:   { allOf: [ { $ref: '#/components/schemas/UserRequestContext' }, { properties: { payload: { $ref: '#/components/schemas/UpdateTokenProgramRequest' } } } ] }
+    ApiRequest_GetTokenProgramRequest:      { allOf: [ { $ref: '#/components/schemas/UserRequestContext' }, { properties: { payload: { $ref: '#/components/schemas/GetTokenProgramRequest' } } } ] }
+    ApiRequest_SearchTokenProgramRequest:   { allOf: [ { $ref: '#/components/schemas/UserRequestContext' }, { properties: { payload: { $ref: '#/components/schemas/SearchTokenProgramRequest' } } } ] }
+
+    # --- Specific Response Envelopes ---
+    ApiResponse_TokenProgram:       { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/TokenProgramResponse' } } } ] }
+    ApiResponse_SearchTokenProgram: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/SearchTokenProgramResponse' } } } ] }
+
+  # -------------------- Responses --------------------
+  responses:
+    UnauthorizedError:
+      description: "Authentication failed. Can be invalid Developer Token OR invalid User JWT."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "UNAUTHORIZED", message: "Token invalid or expired." } }
+            response: {}
+    ForbiddenError:
+      description: "Forbidden. Insufficient permissions (scope check failed)."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "FORBIDDEN", message: "Insufficient permissions to perform this action." } }
+            response: {}
+    NotFoundError:
+      description: "Resource not found."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "RESOURCE_NOT_FOUND", message: "The requested token program was not found." } }
+            response: {}
+    BadRequestError:
+      description: "Invalid request."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "INVALID_INPUT", message: "Invalid request parameters." } }
+            response: {}
+    ConflictError:
+      description: "Conflict with existing resource."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "CONFLICT", message: "A token program with this programId already exists." } }
+            response: {}
+    RateLimitedError:
+      description: |
+        Request exceeded the scope-tier sliding-window rate limit. The `Retry-After`
+        response header indicates how long the caller should wait before retrying.
+      headers:
+        Retry-After:
+          schema: { type: integer, description: "Seconds to wait before retrying." }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example:
+            context: { id: "...", ts: "...", msgId: "...", transactionId: "...", status: "failed", error: { code: "TOO_MANY_REQUESTS", message: "Too many requests. Retry after 30s." } }
+            response: {}
