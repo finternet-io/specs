@@ -124,6 +124,8 @@ paths:
                   accessToken: "eyJ..."
                   tokenType: "Bearer"
                   expiresIn: 3600
+                  refreshToken: "eyJ..."
+                  refreshExpiresIn: 2592000
         '400':
           description: "Bad request, such as a missing required field."
           content:
@@ -372,6 +374,10 @@ paths:
             An acknowledgement that the code was sent (OTP step 1), or a session token.
             `isExisting` is `false` when no account exists yet for `username`, in which case
             the account must be created before the token can be used.
+
+            `refreshToken`/`refreshExpiresIn` are included so the client can call
+            `/v1/account/refresh` once `accessToken` expires, instead of repeating the login
+            flow. Omitted for token types that don't support refresh.
           content:
             application/json:
               schema:
@@ -402,6 +408,8 @@ paths:
                       accessToken: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
                       tokenType: "Bearer"
                       expiresIn: 3600
+                      refreshToken: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      refreshExpiresIn: 2592000
                       isExisting: true
                 VerifyOTP_Response_NewAccount:
                   summary: "Token for a user who has no account yet"
@@ -416,11 +424,87 @@ paths:
                       accessToken: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
                       tokenType: "Bearer"
                       expiresIn: 3600
+                      refreshToken: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      refreshExpiresIn: 2592000
                       isExisting: false
         '401':
           $ref: '#/components/responses/UnauthorizedError' # Catches both dev auth and user auth failures
         '404':
           description: "No account is registered for `username`. Returned on the OTP flow only."
+
+  /v1/account/refresh:
+    post:
+      tags:
+        - "Account"
+      summary: "Exchange a refresh token for a new session"
+      description: |
+        Replace an expired (or about-to-expire) access token using the `refreshToken` issued
+        alongside it by `/v1/account/login` or `/v1/account/create`.
+
+        Unlike other `/account/*` endpoints, this call does **not** take `context.authorization`
+        — the access token being replaced is expected to already be expired, so only
+        `context.developerToken` is required.
+
+        A successful refresh is recorded as a `SESSION_REFRESHED` audit event. Tokens
+        themselves are never persisted server-side.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest_RefreshRequest'
+            example:
+              context:
+                id: "api.account.refresh"
+                version: "v1"
+                ts: "2026-06-01T09:00:00Z"
+                msgId: "f1e2d3c4-b5a6-7890-1234-567890abcdef"
+                developerToken: "c2Et..."
+              payload:
+                refreshToken: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+      responses:
+        '200':
+          description: "New session token."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse_RefreshResponse'
+              example:
+                context:
+                  id: "api.account.refresh"
+                  version: "v1"
+                  ts: "2026-06-01T09:00:01Z"
+                  msgId: "f1e2d3c4-b5a6-7890-1234-567890abcdef"
+                  status: "successful"
+                response:
+                  accessToken: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  tokenType: "Bearer"
+                  expiresIn: 3600
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          description: |
+            Refresh failed. `error.code` distinguishes two cases:
+            * `SESSION_REVOKED` — reuse of an already-consumed refresh token was detected;
+              the whole session was destroyed and the user must sign in again.
+            * `UNAUTHORIZED` (`refresh_token_invalid`) — the token is expired, malformed, or
+              was issued to a different client.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              examples:
+                SessionRevoked:
+                  summary: "Refresh token reuse detected"
+                  value:
+                    context: { id: "api.account.refresh", version: "v1", ts: "2026-06-01T09:00:01Z", msgId: "f1e2d3c4-b5a6-7890-1234-567890abcdef", status: "failed", error: { code: "SESSION_REVOKED", message: "Session revoked: refresh token reuse detected. Please sign in again." } }
+                    response: {}
+                InvalidToken:
+                  summary: "Expired, malformed, or wrong-client token"
+                  value:
+                    context: { id: "api.account.refresh", version: "v1", ts: "2026-06-01T09:00:01Z", msgId: "f1e2d3c4-b5a6-7890-1234-567890abcdef", status: "failed", error: { code: "UNAUTHORIZED", message: "refresh_token_invalid" } }
+                    response: {}
+        '429':
+          $ref: '#/components/responses/RateLimitedError'
 
   /v1/account/logout:
     post:
@@ -984,6 +1068,7 @@ components:
     ApiRequest_ResolveRequest: { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/ResolveRequest' } } } ] }
     ApiRequest_OTPVerifyRequest: { allOf: [ { $ref: '#/components/schemas/UserRequestContext' }, { properties: { payload: { $ref: '#/components/schemas/OTPVerifyRequest' } } } ] }
     ApiRequest_DecryptPIIRequest: { allOf: [ { $ref: '#/components/schemas/UserRequestContext' }, { properties: { payload: { $ref: '#/components/schemas/DecryptPIIRequest' } } } ] }
+    ApiRequest_RefreshRequest: { allOf: [ { $ref: '#/components/schemas/RequestContext' }, { properties: { payload: { $ref: '#/components/schemas/RefreshRequest' } } } ] }
 
     # --- Specific Response Envelopes ---
     ApiResponse_RegistrationSuccess: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/CreateAccountResponse' } } } ] }
@@ -993,6 +1078,7 @@ components:
     ApiResponse_OTPGenerate: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/OTPGenerateResponse' } } } ] }
     ApiResponse_OTPVerify: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/OTPVerifyResponse' } } } ] }
     ApiResponse_DecryptPII: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/DecryptPIIResponse' } } } ] }
+    ApiResponse_RefreshResponse: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { $ref: '#/components/schemas/RefreshResponse' } } } ] }
 
     ApiResponse_Success: { allOf: [ { $ref: '#/components/schemas/ApiResponse' }, { properties: { response: { type: object, properties: { message: { type: string, example: "Signout successful" } } } } } ] }
 
@@ -1118,6 +1204,23 @@ components:
         accessToken: { type: string, example: "eyJ..." }
         tokenType: { type: string, example: "Bearer" }
         expiresIn: { type: integer, example: 3600 }
+        refreshToken: { type: string, description: "Exchange at `/v1/account/refresh` for a new access token once this one expires. Omitted for token types that don't support refresh.", example: "eyJ..." }
+        refreshExpiresIn: { type: integer, description: "Seconds until `refreshToken` itself expires.", example: 2592000 }
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken: { type: string, minLength: 1, description: "A `refreshToken` previously issued by `/v1/account/login` or `/v1/account/create`." }
+    RefreshResponse:
+      type: object
+      required: [accessToken, tokenType, expiresIn]
+      description: "New session token pair. No `isExisting` field — meaningless for a refresh."
+      properties:
+        accessToken: { type: string, example: "eyJ..." }
+        tokenType: { type: string, example: "Bearer" }
+        expiresIn: { type: integer, example: 3600 }
+        refreshToken: { type: string, description: "New refresh token, if the auth provider rotates refresh tokens on use. Omitted otherwise — keep using the previous one.", example: "eyJ..." }
+        refreshExpiresIn: { type: integer, description: "Seconds until `refreshToken` itself expires. Only present alongside a rotated `refreshToken`." }
     AvailabilityCheckRequest:
       type: object
       required: [address]
